@@ -1,19 +1,19 @@
-#ifndef WVLINT_INCLUDE_GUARD
-#define WVLINT_INCLUDE_GUARD
+#ifndef WMPINT_INCLUDE_GUARD
+#define WMPINT_INCLUDE_GUARD
 
-#define WVLUINT_VERSION 0x000100
-#define WVLUINT_VERSION_STRING "0.1.0"
-#define WVLUINT_COPYRIGHT_STRING "WVLUInt v" WVLUINT_VERSION_STRING " (C)2019 Juha Nieminen"
+#define WMPINT_VERSION 0x000100
+#define WMPINT_VERSION_STRING "0.1.0"
+#define WMPINT_COPYRIGHT_STRING "WMPInt v" WMPINT_VERSION_STRING " (C)2019 Juha Nieminen"
 
 #include <cstdint>
 #include <cstddef>
 #include <initializer_list>
 
 //============================================================================
-// WVLUInt class
+// WMPUInt class
 //============================================================================
 template<std::size_t kSize>
-class WVLUInt
+class WMPUInt
 {
     static_assert(kSize > 0, "Size must be at least 1");
 
@@ -22,14 +22,14 @@ class WVLUInt
     // Initialization
     //------------------------------------------------------------------------
     /* This object is by default uninitialized. The value is undefined. */
-    WVLUInt() {}
+    WMPUInt() {}
 
-    explicit WVLUInt(std::uint64_t);
+    explicit WMPUInt(std::uint64_t);
 
     template<typename... Values_t>
-    explicit WVLUInt(std::uint64_t, Values_t...);
+    explicit WMPUInt(std::uint64_t, Values_t...);
 
-    explicit WVLUInt(std::initializer_list<std::uint64_t>);
+    explicit WMPUInt(std::initializer_list<std::uint64_t>);
 
     template<typename... Values_t>
     void assign(std::uint64_t, Values_t...);
@@ -37,7 +37,7 @@ class WVLUInt
     void assign(std::initializer_list<std::uint64_t>);
 
     template<std::size_t kSize2>
-    void assign(const WVLUInt<kSize2>&);
+    void assign(const WMPUInt<kSize2>&);
 
     const char* assignFromHexStr(const char*);
     const char* assignFromDecStr(const char*);
@@ -62,60 +62,60 @@ class WVLUInt
     //------------------------------------------------------------------------
     // Comparison operators
     //------------------------------------------------------------------------
-    bool operator==(const WVLUInt<kSize>&) const;
+    bool operator==(const WMPUInt<kSize>&) const;
     bool operator==(std::uint64_t) const;
-    bool operator!=(const WVLUInt<kSize>&) const;
+    bool operator!=(const WMPUInt<kSize>&) const;
     bool operator!=(std::uint64_t) const;
-    bool operator<(const WVLUInt<kSize>&) const;
+    bool operator<(const WMPUInt<kSize>&) const;
     bool operator<(std::uint64_t) const;
-    bool operator<=(const WVLUInt<kSize>&) const;
+    bool operator<=(const WMPUInt<kSize>&) const;
     bool operator<=(std::uint64_t) const;
-    bool operator>(const WVLUInt<kSize>&) const;
+    bool operator>(const WMPUInt<kSize>&) const;
     bool operator>(std::uint64_t) const;
-    bool operator>=(const WVLUInt<kSize>&) const;
+    bool operator>=(const WMPUInt<kSize>&) const;
     bool operator>=(std::uint64_t) const;
 
     //------------------------------------------------------------------------
     // Bitwise operators
     //------------------------------------------------------------------------
-    WVLUInt<kSize>& operator&=(const WVLUInt<kSize>&);
-    WVLUInt<kSize>& operator&=(std::uint64_t);
-    WVLUInt<kSize> operator&(const WVLUInt<kSize>&) const;
-    WVLUInt<kSize> operator&(std::uint64_t) const;
-    WVLUInt<kSize>& operator|=(const WVLUInt<kSize>&);
-    WVLUInt<kSize>& operator|=(std::uint64_t);
-    WVLUInt<kSize> operator|(const WVLUInt<kSize>&) const;
-    WVLUInt<kSize> operator|(std::uint64_t) const;
-    WVLUInt<kSize>& operator^=(const WVLUInt<kSize>&);
-    WVLUInt<kSize>& operator^=(std::uint64_t);
-    WVLUInt<kSize> operator^(const WVLUInt<kSize>&) const;
-    WVLUInt<kSize> operator^(std::uint64_t) const;
+    WMPUInt<kSize>& operator&=(const WMPUInt<kSize>&);
+    WMPUInt<kSize>& operator&=(std::uint64_t);
+    WMPUInt<kSize> operator&(const WMPUInt<kSize>&) const;
+    WMPUInt<kSize> operator&(std::uint64_t) const;
+    WMPUInt<kSize>& operator|=(const WMPUInt<kSize>&);
+    WMPUInt<kSize>& operator|=(std::uint64_t);
+    WMPUInt<kSize> operator|(const WMPUInt<kSize>&) const;
+    WMPUInt<kSize> operator|(std::uint64_t) const;
+    WMPUInt<kSize>& operator^=(const WMPUInt<kSize>&);
+    WMPUInt<kSize>& operator^=(std::uint64_t);
+    WMPUInt<kSize> operator^(const WMPUInt<kSize>&) const;
+    WMPUInt<kSize> operator^(std::uint64_t) const;
 
     //------------------------------------------------------------------------
     // Arithmetic operators
     //------------------------------------------------------------------------
-    WVLUInt<kSize>& operator+=(const WVLUInt<kSize>&);
-    WVLUInt<kSize> operator+(const WVLUInt<kSize>&) const;
-    WVLUInt<kSize>& operator+=(std::uint64_t);
-    WVLUInt<kSize> operator+(std::uint64_t) const;
-    WVLUInt<kSize>& operator-=(const WVLUInt<kSize>&);
-    WVLUInt<kSize> operator-(const WVLUInt<kSize>&) const;
-    WVLUInt<kSize>& operator-=(std::uint64_t);
-    WVLUInt<kSize> operator-(std::uint64_t) const;
-    WVLUInt<kSize>& operator++();
-    WVLUInt<kSize>& operator--();
-    WVLUInt<kSize>& operator*=(const WVLUInt<kSize>&);
-    WVLUInt<kSize> operator*(const WVLUInt<kSize>&) const;
-    WVLUInt<kSize>& operator*=(std::uint64_t);
-    WVLUInt<kSize> operator*(std::uint64_t) const;
+    WMPUInt<kSize>& operator+=(const WMPUInt<kSize>&);
+    WMPUInt<kSize> operator+(const WMPUInt<kSize>&) const;
+    WMPUInt<kSize>& operator+=(std::uint64_t);
+    WMPUInt<kSize> operator+(std::uint64_t) const;
+    WMPUInt<kSize>& operator-=(const WMPUInt<kSize>&);
+    WMPUInt<kSize> operator-(const WMPUInt<kSize>&) const;
+    WMPUInt<kSize>& operator-=(std::uint64_t);
+    WMPUInt<kSize> operator-(std::uint64_t) const;
+    WMPUInt<kSize>& operator++();
+    WMPUInt<kSize>& operator--();
+    WMPUInt<kSize>& operator*=(const WMPUInt<kSize>&);
+    WMPUInt<kSize> operator*(const WMPUInt<kSize>&) const;
+    WMPUInt<kSize>& operator*=(std::uint64_t);
+    WMPUInt<kSize> operator*(std::uint64_t) const;
 
-    WVLUInt<kSize> operator-() const;
+    WMPUInt<kSize> operator-() const;
     void neg();
 
-    void multiply(const WVLUInt<kSize>&, std::uint64_t* result, std::uint64_t* tempBuffer) const;
+    void multiply(const WMPUInt<kSize>&, std::uint64_t* result, std::uint64_t* tempBuffer) const;
     void multiply(std::uint64_t, std::uint64_t* result) const;
 
-    void fullMultiply(const WVLUInt<kSize>&, std::uint64_t* result,
+    void fullMultiply(const WMPUInt<kSize>&, std::uint64_t* result,
                       std::uint64_t* tempBuffer) const;
 
 
@@ -127,48 +127,48 @@ class WVLUInt
 
 
 //============================================================================
-// WVLUInt<1> specialization
+// WMPUInt<1> specialization
 //============================================================================
 template<>
-class WVLUInt<1>
+class WMPUInt<1>
 {
  public:
-    WVLUInt() {}
-    WVLUInt(std::uint64_t value): mValue(value) {} // deliberately non-explicit
-    explicit WVLUInt(std::initializer_list<std::uint64_t>);
+    WMPUInt() {}
+    WMPUInt(std::uint64_t value): mValue(value) {} // deliberately non-explicit
+    explicit WMPUInt(std::initializer_list<std::uint64_t>);
     void assign(std::uint64_t value) { mValue = value; }
     void assign(std::initializer_list<std::uint64_t>);
     template<std::size_t kSize2>
-    void assign(const WVLUInt<kSize2>& rhs) { mValue = rhs.data()[kSize2-1]; }
+    void assign(const WMPUInt<kSize2>& rhs) { mValue = rhs.data()[kSize2-1]; }
     constexpr static std::size_t size() { return 1; }
     std::uint64_t* data() { return &mValue; }
     const std::uint64_t* data() const { return &mValue; }
-    bool operator==(const WVLUInt<1>& rhs) const { return mValue == rhs.mValue; }
-    bool operator!=(const WVLUInt<1>& rhs) const { return mValue != rhs.mValue; }
-    bool operator<(const WVLUInt<1>& rhs) const { return mValue < rhs.mValue; }
-    bool operator<=(const WVLUInt<1>& rhs) const { return mValue <= rhs.mValue; }
-    bool operator>(const WVLUInt<1>& rhs) const { return mValue > rhs.mValue; }
-    bool operator>=(const WVLUInt<1>& rhs) const { return mValue >= rhs.mValue; }
-    WVLUInt<1>& operator&=(const WVLUInt<1>& rhs) { mValue &= rhs.mValue; return *this; }
-    WVLUInt<1> operator&(const WVLUInt<1>& rhs) const { return WVLUInt<1>(mValue & rhs.mValue); }
-    WVLUInt<1>& operator|=(const WVLUInt<1>& rhs) { mValue |= rhs.mValue; return *this; }
-    WVLUInt<1> operator|(const WVLUInt<1>& rhs) const { return WVLUInt<1>(mValue | rhs.mValue); }
-    WVLUInt<1>& operator^=(const WVLUInt<1>& rhs) { mValue ^= rhs.mValue; return *this; }
-    WVLUInt<1> operator^(const WVLUInt<1>& rhs) const { return WVLUInt<1>(mValue ^ rhs.mValue); }
-    WVLUInt<1>& operator+=(const WVLUInt<1>& rhs) { mValue += rhs.mValue; return *this; }
-    WVLUInt<1> operator+(const WVLUInt<1>& rhs) const { return WVLUInt<1>(mValue + rhs.mValue); }
-    WVLUInt<1>& operator-=(const WVLUInt<1>& rhs) { mValue -= rhs.mValue; return *this; }
-    WVLUInt<1> operator-(const WVLUInt<1>& rhs) const { return WVLUInt<1>(mValue - rhs.mValue); }
-    WVLUInt<1>& operator++() { ++mValue; return *this; }
-    WVLUInt<1>& operator--() { --mValue; return *this; }
-    WVLUInt<1>& operator*=(const WVLUInt<1>& rhs) { mValue *= rhs.mValue; return *this; }
-    WVLUInt<1> operator*(const WVLUInt<1>& rhs) const { return WVLUInt<1>(mValue * rhs.mValue); }
-    WVLUInt<1> operator-() const { return WVLUInt<1>(-mValue); }
+    bool operator==(const WMPUInt<1>& rhs) const { return mValue == rhs.mValue; }
+    bool operator!=(const WMPUInt<1>& rhs) const { return mValue != rhs.mValue; }
+    bool operator<(const WMPUInt<1>& rhs) const { return mValue < rhs.mValue; }
+    bool operator<=(const WMPUInt<1>& rhs) const { return mValue <= rhs.mValue; }
+    bool operator>(const WMPUInt<1>& rhs) const { return mValue > rhs.mValue; }
+    bool operator>=(const WMPUInt<1>& rhs) const { return mValue >= rhs.mValue; }
+    WMPUInt<1>& operator&=(const WMPUInt<1>& rhs) { mValue &= rhs.mValue; return *this; }
+    WMPUInt<1> operator&(const WMPUInt<1>& rhs) const { return WMPUInt<1>(mValue & rhs.mValue); }
+    WMPUInt<1>& operator|=(const WMPUInt<1>& rhs) { mValue |= rhs.mValue; return *this; }
+    WMPUInt<1> operator|(const WMPUInt<1>& rhs) const { return WMPUInt<1>(mValue | rhs.mValue); }
+    WMPUInt<1>& operator^=(const WMPUInt<1>& rhs) { mValue ^= rhs.mValue; return *this; }
+    WMPUInt<1> operator^(const WMPUInt<1>& rhs) const { return WMPUInt<1>(mValue ^ rhs.mValue); }
+    WMPUInt<1>& operator+=(const WMPUInt<1>& rhs) { mValue += rhs.mValue; return *this; }
+    WMPUInt<1> operator+(const WMPUInt<1>& rhs) const { return WMPUInt<1>(mValue + rhs.mValue); }
+    WMPUInt<1>& operator-=(const WMPUInt<1>& rhs) { mValue -= rhs.mValue; return *this; }
+    WMPUInt<1> operator-(const WMPUInt<1>& rhs) const { return WMPUInt<1>(mValue - rhs.mValue); }
+    WMPUInt<1>& operator++() { ++mValue; return *this; }
+    WMPUInt<1>& operator--() { --mValue; return *this; }
+    WMPUInt<1>& operator*=(const WMPUInt<1>& rhs) { mValue *= rhs.mValue; return *this; }
+    WMPUInt<1> operator*(const WMPUInt<1>& rhs) const { return WMPUInt<1>(mValue * rhs.mValue); }
+    WMPUInt<1> operator-() const { return WMPUInt<1>(-mValue); }
     void neg() { mValue = -mValue; }
-    void multiply(const WVLUInt<1>& rhs, std::uint64_t* result, std::uint64_t*) const
+    void multiply(const WMPUInt<1>& rhs, std::uint64_t* result, std::uint64_t*) const
     { *result = mValue * rhs.mValue; }
     void multiply(std::uint64_t rhs, std::uint64_t* result) const { *result = mValue * rhs; }
-    void fullMultiply(const WVLUInt<1>&, std::uint64_t* result, std::uint64_t* tempBuffer) const;
+    void fullMultiply(const WMPUInt<1>&, std::uint64_t* result, std::uint64_t* tempBuffer) const;
 
  private:
     std::uint64_t mValue;
@@ -178,19 +178,19 @@ class WVLUInt<1>
 //============================================================================
 // Implementations
 //============================================================================
-// WVLUInt<1> specializations
+// WMPUInt<1> specializations
 //----------------------------------------------------------------------------
-inline WVLUInt<1>::WVLUInt(std::initializer_list<std::uint64_t> values):
+inline WMPUInt<1>::WMPUInt(std::initializer_list<std::uint64_t> values):
     mValue(values.size() ? *values.begin() : 0)
 {}
 
-inline void WVLUInt<1>::assign(std::initializer_list<std::uint64_t> values)
+inline void WMPUInt<1>::assign(std::initializer_list<std::uint64_t> values)
 {
     mValue = values.size() ? *values.begin() : 0;
 }
 
-inline void WVLUInt<1>::fullMultiply
-(const WVLUInt<1>& rhs, std::uint64_t* result, std::uint64_t*) const
+inline void WMPUInt<1>::fullMultiply
+(const WMPUInt<1>& rhs, std::uint64_t* result, std::uint64_t*) const
 {
     asm ("mulq %[rhs]"
          : "=a"(result[1]), "=d"(result[0])
@@ -201,7 +201,7 @@ inline void WVLUInt<1>::fullMultiply
 // Constructors
 //----------------------------------------------------------------------------
 template<std::size_t kSize>
-inline WVLUInt<kSize>::WVLUInt(std::uint64_t value)
+inline WMPUInt<kSize>::WMPUInt(std::uint64_t value)
 {
     for(std::size_t i = 0; i < kSize - 1; ++i)
         mData[i] = 0;
@@ -210,13 +210,13 @@ inline WVLUInt<kSize>::WVLUInt(std::uint64_t value)
 
 template<std::size_t kSize>
 template<typename... Values_t>
-inline WVLUInt<kSize>::WVLUInt(std::uint64_t firstValue, Values_t... rest)
+inline WMPUInt<kSize>::WMPUInt(std::uint64_t firstValue, Values_t... rest)
 {
     assign(firstValue, rest...);
 }
 
 template<std::size_t kSize>
-inline WVLUInt<kSize>::WVLUInt(std::initializer_list<std::uint64_t> values)
+inline WMPUInt<kSize>::WMPUInt(std::initializer_list<std::uint64_t> values)
 {
     assign(values);
 }
@@ -227,7 +227,7 @@ inline WVLUInt<kSize>::WVLUInt(std::initializer_list<std::uint64_t> values)
 //----------------------------------------------------------------------------
 template<std::size_t kSize>
 template<typename... Values_t>
-inline void WVLUInt<kSize>::assign(std::uint64_t firstValue, Values_t... rest)
+inline void WMPUInt<kSize>::assign(std::uint64_t firstValue, Values_t... rest)
 {
     static_assert(sizeof...(rest) < kSize);
     std::uint64_t values[] = { firstValue, static_cast<std::uint64_t>(rest)... };
@@ -237,7 +237,7 @@ inline void WVLUInt<kSize>::assign(std::uint64_t firstValue, Values_t... rest)
 }
 
 template<std::size_t kSize>
-inline void WVLUInt<kSize>::assign(std::initializer_list<std::uint64_t> values)
+inline void WMPUInt<kSize>::assign(std::initializer_list<std::uint64_t> values)
 {
     if(values.size() > kSize)
     {
@@ -257,7 +257,7 @@ inline void WVLUInt<kSize>::assign(std::initializer_list<std::uint64_t> values)
 
 template<std::size_t kSize>
 template<std::size_t kSize2>
-inline void WVLUInt<kSize>::assign(const WVLUInt<kSize2>& rhs)
+inline void WMPUInt<kSize>::assign(const WMPUInt<kSize2>& rhs)
 {
     if constexpr(kSize <= kSize2)
     {
@@ -277,7 +277,7 @@ inline void WVLUInt<kSize>::assign(const WVLUInt<kSize2>& rhs)
 // Assign from string
 //----------------------------------------------------------------------------
 template<std::size_t kSize>
-inline const char* WVLUInt<kSize>::assignFromHexStr(const char* ptr)
+inline const char* WMPUInt<kSize>::assignFromHexStr(const char* ptr)
 {
     const char* ptr2 = ptr - 1;
     unsigned char c;
@@ -314,7 +314,7 @@ inline const char* WVLUInt<kSize>::assignFromHexStr(const char* ptr)
 }
 
 template<std::size_t kSize>
-inline const char* WVLUInt<kSize>::assignFromDecStr(const char* ptr, std::uint64_t* tempBuffer)
+inline const char* WMPUInt<kSize>::assignFromDecStr(const char* ptr, std::uint64_t* tempBuffer)
 {
     std::uint64_t value = 0;
     unsigned charCounter;
@@ -362,7 +362,7 @@ inline const char* WVLUInt<kSize>::assignFromDecStr(const char* ptr, std::uint64
 }
 
 template<std::size_t kSize>
-inline const char* WVLUInt<kSize>::assignFromDecStr(const char* ptr)
+inline const char* WMPUInt<kSize>::assignFromDecStr(const char* ptr)
 {
     std::uint64_t tempBuffer[kSize];
     return assignFromDecStr(ptr, tempBuffer);
@@ -373,19 +373,19 @@ inline const char* WVLUInt<kSize>::assignFromDecStr(const char* ptr)
 // ASCII output
 //----------------------------------------------------------------------------
 template<std::size_t kSize>
-constexpr std::size_t WVLUInt<kSize>::maxHexadecimalDigits()
+constexpr std::size_t WMPUInt<kSize>::maxHexadecimalDigits()
 {
     return kSize * 16;
 }
 
 template<std::size_t kSize>
-constexpr std::size_t WVLUInt<kSize>::maxDecimalDigits()
+constexpr std::size_t WMPUInt<kSize>::maxDecimalDigits()
 {
     return std::size_t(kSize * 19.265919722494796493679289 + 1.0);
 }
 
 template<std::size_t kSize>
-inline void WVLUInt<kSize>::printAsHexStr(char* destination) const
+inline void WMPUInt<kSize>::printAsHexStr(char* destination) const
 {
     for(std::size_t componentInd = 0; componentInd < kSize; ++componentInd)
     {
@@ -403,7 +403,7 @@ inline void WVLUInt<kSize>::printAsHexStr(char* destination) const
 // Comparison operators
 //----------------------------------------------------------------------------
 template<std::size_t kSize>
-inline bool WVLUInt<kSize>::operator==(const WVLUInt<kSize>& rhs) const
+inline bool WMPUInt<kSize>::operator==(const WMPUInt<kSize>& rhs) const
 {
     for(std::size_t i = 0; i < kSize; ++i)
         if(mData[i] != rhs.mData[i]) return false;
@@ -411,7 +411,7 @@ inline bool WVLUInt<kSize>::operator==(const WVLUInt<kSize>& rhs) const
 }
 
 template<std::size_t kSize>
-inline bool WVLUInt<kSize>::operator==(std::uint64_t rhs) const
+inline bool WMPUInt<kSize>::operator==(std::uint64_t rhs) const
 {
     for(std::size_t i = 0; i < kSize - 1; ++i)
         if(mData[i]) return false;
@@ -419,19 +419,19 @@ inline bool WVLUInt<kSize>::operator==(std::uint64_t rhs) const
 }
 
 template<std::size_t kSize>
-inline bool operator==(std::uint64_t lhs, const WVLUInt<kSize>& rhs)
+inline bool operator==(std::uint64_t lhs, const WMPUInt<kSize>& rhs)
 {
     return rhs == lhs;
 }
 
 template<std::size_t kSize>
-inline bool WVLUInt<kSize>::operator!=(const WVLUInt<kSize>& rhs) const
+inline bool WMPUInt<kSize>::operator!=(const WMPUInt<kSize>& rhs) const
 {
     return !(*this == rhs);
 }
 
 template<std::size_t kSize>
-inline bool WVLUInt<kSize>::operator!=(std::uint64_t rhs) const
+inline bool WMPUInt<kSize>::operator!=(std::uint64_t rhs) const
 {
     for(std::size_t i = 0; i < kSize - 1; ++i)
         if(mData[i]) return true;
@@ -439,13 +439,13 @@ inline bool WVLUInt<kSize>::operator!=(std::uint64_t rhs) const
 }
 
 template<std::size_t kSize>
-inline bool operator!=(std::uint64_t lhs, const WVLUInt<kSize>& rhs)
+inline bool operator!=(std::uint64_t lhs, const WMPUInt<kSize>& rhs)
 {
     return rhs != lhs;
 }
 
 template<std::size_t kSize>
-inline bool WVLUInt<kSize>::operator<(const WVLUInt<kSize>& rhs) const
+inline bool WMPUInt<kSize>::operator<(const WMPUInt<kSize>& rhs) const
 {
     for(std::size_t i = 0; i < kSize; ++i)
     {
@@ -456,7 +456,7 @@ inline bool WVLUInt<kSize>::operator<(const WVLUInt<kSize>& rhs) const
 }
 
 template<std::size_t kSize>
-inline bool WVLUInt<kSize>::operator<(std::uint64_t rhs) const
+inline bool WMPUInt<kSize>::operator<(std::uint64_t rhs) const
 {
     for(std::size_t i = 0; i < kSize - 1; ++i)
         if(mData[i]) return false;
@@ -464,13 +464,13 @@ inline bool WVLUInt<kSize>::operator<(std::uint64_t rhs) const
 }
 
 template<std::size_t kSize>
-inline bool operator<(std::uint64_t lhs, const WVLUInt<kSize>& rhs)
+inline bool operator<(std::uint64_t lhs, const WMPUInt<kSize>& rhs)
 {
     return rhs > lhs;
 }
 
 template<std::size_t kSize>
-inline bool WVLUInt<kSize>::operator<=(const WVLUInt<kSize>& rhs) const
+inline bool WMPUInt<kSize>::operator<=(const WMPUInt<kSize>& rhs) const
 {
     for(std::size_t i = 0; i < kSize; ++i)
     {
@@ -481,7 +481,7 @@ inline bool WVLUInt<kSize>::operator<=(const WVLUInt<kSize>& rhs) const
 }
 
 template<std::size_t kSize>
-inline bool WVLUInt<kSize>::operator<=(std::uint64_t rhs) const
+inline bool WMPUInt<kSize>::operator<=(std::uint64_t rhs) const
 {
     for(std::size_t i = 0; i < kSize - 1; ++i)
         if(mData[i]) return false;
@@ -489,13 +489,13 @@ inline bool WVLUInt<kSize>::operator<=(std::uint64_t rhs) const
 }
 
 template<std::size_t kSize>
-inline bool operator<=(std::uint64_t lhs, const WVLUInt<kSize>& rhs)
+inline bool operator<=(std::uint64_t lhs, const WMPUInt<kSize>& rhs)
 {
     return rhs >= lhs;
 }
 
 template<std::size_t kSize>
-inline bool WVLUInt<kSize>::operator>(const WVLUInt<kSize>& rhs) const
+inline bool WMPUInt<kSize>::operator>(const WMPUInt<kSize>& rhs) const
 {
     for(std::size_t i = 0; i < kSize; ++i)
     {
@@ -506,7 +506,7 @@ inline bool WVLUInt<kSize>::operator>(const WVLUInt<kSize>& rhs) const
 }
 
 template<std::size_t kSize>
-inline bool WVLUInt<kSize>::operator>(std::uint64_t rhs) const
+inline bool WMPUInt<kSize>::operator>(std::uint64_t rhs) const
 {
     for(std::size_t i = 0; i < kSize - 1; ++i)
         if(mData[i]) return true;
@@ -514,13 +514,13 @@ inline bool WVLUInt<kSize>::operator>(std::uint64_t rhs) const
 }
 
 template<std::size_t kSize>
-inline bool operator>(std::uint64_t lhs, const WVLUInt<kSize>& rhs)
+inline bool operator>(std::uint64_t lhs, const WMPUInt<kSize>& rhs)
 {
     return rhs < lhs;
 }
 
 template<std::size_t kSize>
-inline bool WVLUInt<kSize>::operator>=(const WVLUInt<kSize>& rhs) const
+inline bool WMPUInt<kSize>::operator>=(const WMPUInt<kSize>& rhs) const
 {
     for(std::size_t i = 0; i < kSize; ++i)
     {
@@ -531,7 +531,7 @@ inline bool WVLUInt<kSize>::operator>=(const WVLUInt<kSize>& rhs) const
 }
 
 template<std::size_t kSize>
-inline bool WVLUInt<kSize>::operator>=(std::uint64_t rhs) const
+inline bool WMPUInt<kSize>::operator>=(std::uint64_t rhs) const
 {
     for(std::size_t i = 0; i < kSize - 1; ++i)
         if(mData[i]) return true;
@@ -539,7 +539,7 @@ inline bool WVLUInt<kSize>::operator>=(std::uint64_t rhs) const
 }
 
 template<std::size_t kSize>
-inline bool operator>=(std::uint64_t lhs, const WVLUInt<kSize>& rhs)
+inline bool operator>=(std::uint64_t lhs, const WMPUInt<kSize>& rhs)
 {
     return rhs <= lhs;
 }
@@ -549,7 +549,7 @@ inline bool operator>=(std::uint64_t lhs, const WVLUInt<kSize>& rhs)
 // Bitwise operators
 //----------------------------------------------------------------------------
 template<std::size_t kSize>
-inline WVLUInt<kSize>& WVLUInt<kSize>::operator&=(const WVLUInt<kSize>& rhs)
+inline WMPUInt<kSize>& WMPUInt<kSize>::operator&=(const WMPUInt<kSize>& rhs)
 {
     for(std::size_t i = 0; i < kSize; ++i)
         mData[i] &= rhs.mData[i];
@@ -557,7 +557,7 @@ inline WVLUInt<kSize>& WVLUInt<kSize>::operator&=(const WVLUInt<kSize>& rhs)
 }
 
 template<std::size_t kSize>
-inline WVLUInt<kSize>& WVLUInt<kSize>::operator&=(std::uint64_t rhs)
+inline WMPUInt<kSize>& WMPUInt<kSize>::operator&=(std::uint64_t rhs)
 {
     for(std::size_t i = 0; i < kSize - 1; ++i)
         mData[i] = 0;
@@ -566,18 +566,18 @@ inline WVLUInt<kSize>& WVLUInt<kSize>::operator&=(std::uint64_t rhs)
 }
 
 template<std::size_t kSize>
-inline WVLUInt<kSize> WVLUInt<kSize>::operator&(const WVLUInt<kSize>& rhs) const
+inline WMPUInt<kSize> WMPUInt<kSize>::operator&(const WMPUInt<kSize>& rhs) const
 {
-    WVLUInt<kSize> res;
+    WMPUInt<kSize> res;
     for(std::size_t i = 0; i < kSize; ++i)
         res[i] = mData[i] & rhs.mData[i];
     return res;
 }
 
 template<std::size_t kSize>
-inline WVLUInt<kSize> WVLUInt<kSize>::operator&(std::uint64_t rhs) const
+inline WMPUInt<kSize> WMPUInt<kSize>::operator&(std::uint64_t rhs) const
 {
-    WVLUInt<kSize> res;
+    WMPUInt<kSize> res;
     for(std::size_t i = 0; i < kSize - 1; ++i)
         res[i] = 0;
     res[kSize - 1] = mData[kSize - 1] & rhs;
@@ -585,13 +585,13 @@ inline WVLUInt<kSize> WVLUInt<kSize>::operator&(std::uint64_t rhs) const
 }
 
 template<std::size_t kSize>
-inline WVLUInt<kSize> operator&(std::uint64_t lhs, const WVLUInt<kSize>& rhs)
+inline WMPUInt<kSize> operator&(std::uint64_t lhs, const WMPUInt<kSize>& rhs)
 {
     return rhs & lhs;
 }
 
 template<std::size_t kSize>
-inline WVLUInt<kSize>& WVLUInt<kSize>::operator|=(const WVLUInt<kSize>& rhs)
+inline WMPUInt<kSize>& WMPUInt<kSize>::operator|=(const WMPUInt<kSize>& rhs)
 {
     for(std::size_t i = 0; i < kSize; ++i)
         mData[i] |= rhs.mData[i];
@@ -599,25 +599,25 @@ inline WVLUInt<kSize>& WVLUInt<kSize>::operator|=(const WVLUInt<kSize>& rhs)
 }
 
 template<std::size_t kSize>
-inline WVLUInt<kSize>& WVLUInt<kSize>::operator|=(std::uint64_t rhs)
+inline WMPUInt<kSize>& WMPUInt<kSize>::operator|=(std::uint64_t rhs)
 {
     mData[kSize - 1] |= rhs;
     return *this;
 }
 
 template<std::size_t kSize>
-inline WVLUInt<kSize> WVLUInt<kSize>::operator|(const WVLUInt<kSize>& rhs) const
+inline WMPUInt<kSize> WMPUInt<kSize>::operator|(const WMPUInt<kSize>& rhs) const
 {
-    WVLUInt<kSize> res;
+    WMPUInt<kSize> res;
     for(std::size_t i = 0; i < kSize; ++i)
         res[i] = mData[i] | rhs.mData[i];
     return res;
 }
 
 template<std::size_t kSize>
-inline WVLUInt<kSize> WVLUInt<kSize>::operator|(std::uint64_t rhs) const
+inline WMPUInt<kSize> WMPUInt<kSize>::operator|(std::uint64_t rhs) const
 {
-    WVLUInt<kSize> res;
+    WMPUInt<kSize> res;
     for(std::size_t i = 0; i < kSize - 1; ++i)
         res[i] = mData[i];
     res[kSize - 1] = mData[kSize - 1] | rhs;
@@ -625,13 +625,13 @@ inline WVLUInt<kSize> WVLUInt<kSize>::operator|(std::uint64_t rhs) const
 }
 
 template<std::size_t kSize>
-inline WVLUInt<kSize> operator|(std::uint64_t lhs, const WVLUInt<kSize>& rhs)
+inline WMPUInt<kSize> operator|(std::uint64_t lhs, const WMPUInt<kSize>& rhs)
 {
     return rhs | lhs;
 }
 
 template<std::size_t kSize>
-inline WVLUInt<kSize>& WVLUInt<kSize>::operator^=(const WVLUInt<kSize>& rhs)
+inline WMPUInt<kSize>& WMPUInt<kSize>::operator^=(const WMPUInt<kSize>& rhs)
 {
     for(std::size_t i = 0; i < kSize; ++i)
         mData[i] ^= rhs.mData[i];
@@ -639,25 +639,25 @@ inline WVLUInt<kSize>& WVLUInt<kSize>::operator^=(const WVLUInt<kSize>& rhs)
 }
 
 template<std::size_t kSize>
-inline WVLUInt<kSize>& WVLUInt<kSize>::operator^=(std::uint64_t rhs)
+inline WMPUInt<kSize>& WMPUInt<kSize>::operator^=(std::uint64_t rhs)
 {
     mData[kSize - 1] ^= rhs;
     return *this;
 }
 
 template<std::size_t kSize>
-inline WVLUInt<kSize> WVLUInt<kSize>::operator^(const WVLUInt<kSize>& rhs) const
+inline WMPUInt<kSize> WMPUInt<kSize>::operator^(const WMPUInt<kSize>& rhs) const
 {
-    WVLUInt<kSize> res;
+    WMPUInt<kSize> res;
     for(std::size_t i = 0; i < kSize; ++i)
         res[i] = mData[i] ^ rhs.mData[i];
     return res;
 }
 
 template<std::size_t kSize>
-inline WVLUInt<kSize> WVLUInt<kSize>::operator^(std::uint64_t rhs) const
+inline WMPUInt<kSize> WMPUInt<kSize>::operator^(std::uint64_t rhs) const
 {
-    WVLUInt<kSize> res;
+    WMPUInt<kSize> res;
     for(std::size_t i = 0; i < kSize - 1; ++i)
         res[i] = mData[i];
     res[kSize - 1] = mData[kSize - 1] ^ rhs;
@@ -665,7 +665,7 @@ inline WVLUInt<kSize> WVLUInt<kSize>::operator^(std::uint64_t rhs) const
 }
 
 template<std::size_t kSize>
-inline WVLUInt<kSize> operator^(std::uint64_t lhs, const WVLUInt<kSize>& rhs)
+inline WMPUInt<kSize> operator^(std::uint64_t lhs, const WMPUInt<kSize>& rhs)
 {
     return rhs ^ lhs;
 }
@@ -675,7 +675,7 @@ inline WVLUInt<kSize> operator^(std::uint64_t lhs, const WVLUInt<kSize>& rhs)
 // Addition
 //----------------------------------------------------------------------------
 template<std::size_t kSize>
-inline WVLUInt<kSize>& WVLUInt<kSize>::operator+=(const WVLUInt<kSize>& rhs)
+inline WMPUInt<kSize>& WMPUInt<kSize>::operator+=(const WMPUInt<kSize>& rhs)
 {
     std::uint64_t tempReg;
 
@@ -726,20 +726,20 @@ inline WVLUInt<kSize>& WVLUInt<kSize>::operator+=(const WVLUInt<kSize>& rhs)
 }
 
 template<std::size_t kSize>
-inline WVLUInt<kSize> WVLUInt<kSize>::operator+(const WVLUInt<kSize>& rhs) const
+inline WMPUInt<kSize> WMPUInt<kSize>::operator+(const WMPUInt<kSize>& rhs) const
 {
     /* In theory this could be implemented also in inline asm which adds the
        elements of *this with lhs and puts the result in res directly, so that
        we skip the copying happening below. However, at least gcc insists in
        zero-initializing res below even when it's not explicitly initialized here,
        and there's probably little speed benefit in doing this with its own asm. */
-    WVLUInt<kSize> res = *this;
+    WMPUInt<kSize> res = *this;
     res += rhs;
     return res;
 }
 
 template<std::size_t kSize>
-inline WVLUInt<kSize>& WVLUInt<kSize>::operator+=(std::uint64_t value)
+inline WMPUInt<kSize>& WMPUInt<kSize>::operator+=(std::uint64_t value)
 {
     std::uint64_t zero = 0;
 
@@ -799,26 +799,26 @@ inline WVLUInt<kSize>& WVLUInt<kSize>::operator+=(std::uint64_t value)
 }
 
 template<std::size_t kSize>
-inline WVLUInt<kSize> WVLUInt<kSize>::operator+(std::uint64_t value) const
+inline WMPUInt<kSize> WMPUInt<kSize>::operator+(std::uint64_t value) const
 {
     /* Same as with the other operator+(), there's probably little to no benefit
        in implementing this as its own asm implementation instead of copying and
        calling operator+=(). gcc would zero-initialize res anyway, and there doesn't
        seem to be any way of stopping it from doing that (plus there's probably very
        little speed benefit in implementing this operator+() separately.) */
-    WVLUInt<kSize> res = *this;
+    WMPUInt<kSize> res = *this;
     res += value;
     return res;
 }
 
 template<std::size_t kSize>
-inline WVLUInt<kSize> operator+(std::uint64_t lhs, const WVLUInt<kSize>& rhs)
+inline WMPUInt<kSize> operator+(std::uint64_t lhs, const WMPUInt<kSize>& rhs)
 {
     return rhs + lhs;
 }
 
 template<std::size_t kSize>
-inline WVLUInt<kSize>& WVLUInt<kSize>::operator++()
+inline WMPUInt<kSize>& WMPUInt<kSize>::operator++()
 {
     /* There is probably negligible speed advantage in implementing this in the exact
        same way as operator+=(std::uint64_t) with the only difference being the first
@@ -831,7 +831,7 @@ inline WVLUInt<kSize>& WVLUInt<kSize>::operator++()
 // Subtraction
 //----------------------------------------------------------------------------
 template<std::size_t kSize>
-inline WVLUInt<kSize>& WVLUInt<kSize>::operator-=(const WVLUInt<kSize>& rhs)
+inline WMPUInt<kSize>& WMPUInt<kSize>::operator-=(const WMPUInt<kSize>& rhs)
 {
     std::uint64_t tempReg;
 
@@ -880,15 +880,15 @@ inline WVLUInt<kSize>& WVLUInt<kSize>::operator-=(const WVLUInt<kSize>& rhs)
 }
 
 template<std::size_t kSize>
-inline WVLUInt<kSize> WVLUInt<kSize>::operator-(const WVLUInt<kSize>& rhs) const
+inline WMPUInt<kSize> WMPUInt<kSize>::operator-(const WMPUInt<kSize>& rhs) const
 {
-    WVLUInt<kSize> res = *this;
+    WMPUInt<kSize> res = *this;
     res -= rhs;
     return res;
 }
 
 template<std::size_t kSize>
-inline WVLUInt<kSize>& WVLUInt<kSize>::operator-=(std::uint64_t value)
+inline WMPUInt<kSize>& WMPUInt<kSize>::operator-=(std::uint64_t value)
 {
     std::uint64_t zero = 0;
 
@@ -946,23 +946,23 @@ inline WVLUInt<kSize>& WVLUInt<kSize>::operator-=(std::uint64_t value)
 }
 
 template<std::size_t kSize>
-inline WVLUInt<kSize> WVLUInt<kSize>::operator-(std::uint64_t value) const
+inline WMPUInt<kSize> WMPUInt<kSize>::operator-(std::uint64_t value) const
 {
-    WVLUInt<kSize> res = *this;
+    WMPUInt<kSize> res = *this;
     res -= value;
     return res;
 }
 
 template<std::size_t kSize>
-inline WVLUInt<kSize> operator-(std::uint64_t lhs, const WVLUInt<kSize>& rhs)
+inline WMPUInt<kSize> operator-(std::uint64_t lhs, const WMPUInt<kSize>& rhs)
 {
-    WVLUInt<kSize> res(lhs);
+    WMPUInt<kSize> res(lhs);
     res -= rhs;
     return res;
 }
 
 template<std::size_t kSize>
-inline WVLUInt<kSize>& WVLUInt<kSize>::operator--()
+inline WMPUInt<kSize>& WMPUInt<kSize>::operator--()
 {
     /* There is probably negligible speed advantage in implementing this in the exact
        same way as operator-=(std::uint64_t) with the only difference being the first
@@ -975,8 +975,8 @@ inline WVLUInt<kSize>& WVLUInt<kSize>::operator--()
 // Multiplication
 //----------------------------------------------------------------------------
 template<std::size_t kSize>
-inline void WVLUInt<kSize>::multiply
-(const WVLUInt<kSize>& rhs, std::uint64_t* result, std::uint64_t* tempBuffer) const
+inline void WMPUInt<kSize>::multiply
+(const WMPUInt<kSize>& rhs, std::uint64_t* result, std::uint64_t* tempBuffer) const
 {
     /* Long multiplication algorithm in base 2^64 (eg. kSize == 5)
        -----------------------------------------------------------
@@ -1068,7 +1068,7 @@ inline void WVLUInt<kSize>::multiply
 }
 
 template<std::size_t kSize>
-inline void WVLUInt<kSize>::fullMultiply(const WVLUInt<kSize>& rhs, std::uint64_t* result,
+inline void WMPUInt<kSize>::fullMultiply(const WMPUInt<kSize>& rhs, std::uint64_t* result,
                                          std::uint64_t* tempBuffer) const
 {
     static_assert(kSize == 2, "Not yet implemented");
@@ -1164,9 +1164,9 @@ inline void WVLUInt<kSize>::fullMultiply(const WVLUInt<kSize>& rhs, std::uint64_
 }
 
 template<std::size_t kSize>
-inline WVLUInt<kSize> WVLUInt<kSize>::operator*(const WVLUInt<kSize>& rhs) const
+inline WMPUInt<kSize> WMPUInt<kSize>::operator*(const WMPUInt<kSize>& rhs) const
 {
-    WVLUInt<kSize> result;
+    WMPUInt<kSize> result;
     if constexpr(kSize == 2)
     {
         multiply(rhs, result.mData, nullptr);
@@ -1180,7 +1180,7 @@ inline WVLUInt<kSize> WVLUInt<kSize>::operator*(const WVLUInt<kSize>& rhs) const
 }
 
 template<std::size_t kSize>
-inline WVLUInt<kSize>& WVLUInt<kSize>::operator*=(const WVLUInt<kSize>& rhs)
+inline WMPUInt<kSize>& WMPUInt<kSize>::operator*=(const WMPUInt<kSize>& rhs)
 {
     /* The result of the multiplication has to be accumulated into a temporary buffer
        anyway, ie. it cannot be done "in-place", so this is essentially free: */
@@ -1189,7 +1189,7 @@ inline WVLUInt<kSize>& WVLUInt<kSize>::operator*=(const WVLUInt<kSize>& rhs)
 }
 
 template<std::size_t kSize>
-inline void WVLUInt<kSize>::multiply(std::uint64_t rhs, std::uint64_t* result) const
+inline void WMPUInt<kSize>::multiply(std::uint64_t rhs, std::uint64_t* result) const
 {
     if constexpr(kSize == 2)
     {
@@ -1223,22 +1223,22 @@ inline void WVLUInt<kSize>::multiply(std::uint64_t rhs, std::uint64_t* result) c
 }
 
 template<std::size_t kSize>
-inline WVLUInt<kSize> WVLUInt<kSize>::operator*(std::uint64_t rhs) const
+inline WMPUInt<kSize> WMPUInt<kSize>::operator*(std::uint64_t rhs) const
 {
-    WVLUInt<kSize> result;
+    WMPUInt<kSize> result;
     multiply(rhs, result.mData);
     return result;
 }
 
 template<std::size_t kSize>
-inline WVLUInt<kSize>& WVLUInt<kSize>::operator*=(std::uint64_t rhs)
+inline WMPUInt<kSize>& WMPUInt<kSize>::operator*=(std::uint64_t rhs)
 {
     *this = *this * rhs;
     return *this;
 }
 
 template<std::size_t kSize>
-inline WVLUInt<kSize> operator*(std::uint64_t lhs, const WVLUInt<kSize>& rhs)
+inline WMPUInt<kSize> operator*(std::uint64_t lhs, const WMPUInt<kSize>& rhs)
 {
     return rhs * lhs;
 }
@@ -1248,11 +1248,11 @@ inline WVLUInt<kSize> operator*(std::uint64_t lhs, const WVLUInt<kSize>& rhs)
 // Negation
 //----------------------------------------------------------------------------
 template<std::size_t kSize>
-inline WVLUInt<kSize> WVLUInt<kSize>::operator-() const
+inline WMPUInt<kSize> WMPUInt<kSize>::operator-() const
 {
     /* It's unlikely for there to exist a faster way of doing this.
        If there is, this may be changed to use that method. */
-    WVLUInt<kSize> result;
+    WMPUInt<kSize> result;
     const std::uint64_t allBits = ~UINT64_C(0);
     for(std::size_t i = 0; i < kSize; ++i)
         result.mData[i] = mData[i] ^ allBits;
@@ -1261,7 +1261,7 @@ inline WVLUInt<kSize> WVLUInt<kSize>::operator-() const
 }
 
 template<std::size_t kSize>
-inline void WVLUInt<kSize>::neg()
+inline void WMPUInt<kSize>::neg()
 {
     if constexpr(kSize == 2)
     {

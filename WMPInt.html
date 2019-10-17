@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-  <title>WVLInt 0.1.0 documentation</title>
+  <title>WMPInt 0.1.0 documentation</title>
   <style type="text/css"> <!--
 html
 {
@@ -79,18 +79,18 @@ code
 </head>
 
 <body>
-<h1>WVLInt 0.1.0 documentation</h1>
+<h1>WMPInt 0.1.0 documentation</h1>
 
-<p><code>WVLUInt</code> and <code>WVLInt</code> (not yet implemented) are templated
-  classes that implement multiple-precision integer arithmetic for x86-64 platforms
+<p><code>WMPUInt</code> and <code>WMPInt</code> (not yet implemented) are templated
+  classes that implement multi-precision integer arithmetic for x86-64 platforms
   in C++17 and inline asm. They allow using arbitrarily large integers, of a size
   determined at compile time. This library aims for maximum speed and efficiency.</p>
 
 <p>Sizes of the integers are defined in multiples of 64 bits. Example of using 1024-bit
   unsigned integers:</p>
 
-<pre>WVLUInt&lt;16&gt; a(10), b(20), c(30); <span class="comment">// 1024-bit integers</span>
-WVLUInt&lt;16&gt; result = a + b * c;</pre>
+<pre>WMPUInt&lt;16&gt; a(10), b(20), c(30); <span class="comment">// 1024-bit integers</span>
+WMPUInt&lt;16&gt; result = a + b * c;</pre>
 
 <p>For efficiency, these classes do not perform any dynamic memory allocations.</p>
 
@@ -138,14 +138,14 @@ WVLUInt&lt;16&gt; result = a + b * c;</pre>
 <!---------------------------------------------------------------------------->
 <h2 id="summary">Feature and usage summary</h2>
 
-<p>To use the class, include the <code>WVLInt.hh</code> header file in your code.</p>
+<p>To use the class, include the <code>WMPInt.hh</code> header file in your code.</p>
 
-<pre>#include "WVLInt.hh"</pre>
+<pre>#include "WMPInt.hh"</pre>
 
 <p>Class declaration:</p>
 
 <pre>template&lt;std::size_t kSize&gt;
-class WVLUInt;</pre>
+class WMPUInt;</pre>
 
 <p>The classes work very similarly to <code>std::array&lt;std::uint64_t, kSize&gt;</code>,
   containing an array of 64-bit integers inside them. The template parameter specifies the size
@@ -157,7 +157,7 @@ class WVLUInt;</pre>
 <p>Instances of these classes can be used like unsigned and signed integers respectively.
   For example:</p>
 
-<pre>WVLUInt<16> a(10), b(20), c(30); <span class="comment">// 1024-bit integers</span>
+<pre>WMPUInt<16> a(10), b(20), c(30); <span class="comment">// 1024-bit integers</span>
 c += b;
 c -= a;
 a *= c;
@@ -188,7 +188,7 @@ b = a*a + b*b + c*c;</pre>
 <!---------------------------------------------------------------------------->
 <h2 id="initialization">Value initialization</h2>
 
-<p>There are two main ways to initialize an instance of <code>WVLUInt</code> with a value:
+<p>There are two main ways to initialize an instance of <code>WMPUInt</code> with a value:
   Providing <code>std::uint64_t</code> values to its constructor or the <code>assign()</code>
   function, or with an ASCII string containing the number in either decimal or hexadecimal.</p>
 
@@ -196,14 +196,14 @@ b = a*a + b*b + c*c;</pre>
 
 <p>Synopsis:</p>
 
-<pre>WVLUInt();
+<pre>WMPUInt();
 
-explicit WVLUInt(std::uint64_t);
+explicit WMPUInt(std::uint64_t);
 
 template&lt;typename... Values_t&gt;
-explicit WVLUInt(std::uint64_t, Values_t...);
+explicit WMPUInt(std::uint64_t, Values_t...);
 
-explicit WVLUInt(std::initializer_list&lt;std::uint64_t&gt;);
+explicit WMPUInt(std::initializer_list&lt;std::uint64_t&gt;);
 
 template&lttypename... Values_t&gt;
 void assign(std::uint64_t, Values_t...);
@@ -221,9 +221,9 @@ void assign(std::initializer_list&lt;std::uint64_t&gt;);</pre>
   elements of this object (the remaining most-significant elements will be initialized
   to zero.) Examples:</p>
 
-<pre>WVLUInt&lt;3&gt; v1(10);
-WVLUInt&lt;3&gt; v2(0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF);
-WVLUInt&lt;3&gt; v3(0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF);</pre>
+<pre>WMPUInt&lt;3&gt; v1(10);
+WMPUInt&lt;3&gt; v2(0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF);
+WMPUInt&lt;3&gt; v3(0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF);</pre>
 
 <p>These are the values of the three example objects above, in decimal:</p>
 
@@ -275,12 +275,12 @@ v3.assignFromDecStr("6277101735386680763835789423207666416102355444464034512895"
   the multiplication operation. Consult the section <a href="#multiply">Multiplying very
     large integers</a> for the reason for this.</p>
 
-<h3>Initialization with another <code>WVLUInt</code> object</h3>
+<h3>Initialization with another <code>WMPUInt</code> object</h3>
 
 <p>Synopsis:</p>
 
 <pre>template&lt;std::size_t kSize2&gt;
-void assign(const WVLUInt&lt;kSize2&gt;&amp;);</pre>
+void assign(const WMPUInt&lt;kSize2&gt;&amp;);</pre>
 
 <p>An object of one size can also be assigned with the value of an object of another size.
   If the size of the parameter is larger than the size of this object, the least-significant
@@ -315,55 +315,55 @@ const std::uint64_t* data() const;</pre>
 
 <p>Synopsis:</p>
 
-<pre>bool operator==(const WVLUInt&lt;kSize&gt;&amp;) const;
+<pre>bool operator==(const WMPUInt&lt;kSize&gt;&amp;) const;
 bool operator==(std::uint64_t) const;
-bool operator!=(const WVLUInt&lt;kSize&gt;&amp;) const;
+bool operator!=(const WMPUInt&lt;kSize&gt;&amp;) const;
 bool operator!=(std::uint64_t) const;
-bool operator&lt;(const WVLUInt&lt;kSize&gt;&amp;) const;
+bool operator&lt;(const WMPUInt&lt;kSize&gt;&amp;) const;
 bool operator&lt;(std::uint64_t) const;
-bool operator&lt;=(const WVLUInt&lt;kSize&gt;&amp;) const;
+bool operator&lt;=(const WMPUInt&lt;kSize&gt;&amp;) const;
 bool operator&lt;=(std::uint64_t) const;
-bool operator&gt;(const WVLUInt&lt;kSize&gt;&amp;) const;
+bool operator&gt;(const WMPUInt&lt;kSize&gt;&amp;) const;
 bool operator&gt;(std::uint64_t) const;
-bool operator&gt;=(const WVLUInt&lt;kSize&gt;&amp;) const;
+bool operator&gt;=(const WMPUInt&lt;kSize&gt;&amp;) const;
 bool operator&gt;=(std::uint64_t) const;</pre>
 
 <h3 id="bitwise">Bitwise operators</h3>
 
 <p>Synopsis:</p>
 
-<pre>WVLUInt&lt;kSize&gt;&amp; operator&amp;=(const WVLUInt&lt;kSize&gt;&amp;);
-WVLUInt&lt;kSize&gt;&amp; operator&amp;=(std::uint64_t);
-WVLUInt&lt;kSize&gt; operator&amp;(const WVLUInt&lt;kSize&gt;&amp;) const;
-WVLUInt&lt;kSize&gt; operator&amp;(std::uint64_t) const;
-WVLUInt&lt;kSize&gt;&amp; operator|=(const WVLUInt&lt;kSize&gt;&amp;);
-WVLUInt&lt;kSize&gt;&amp; operator|=(std::uint64_t);
-WVLUInt&lt;kSize&gt; operator|(const WVLUInt&lt;kSize&gt;&amp;) const;
-WVLUInt&lt;kSize&gt; operator|(std::uint64_t) const;
-WVLUInt&lt;kSize&gt;&amp; operator^=(const WVLUInt&lt;kSize&gt;&amp;);
-WVLUInt&lt;kSize&gt;&amp; operator^=(std::uint64_t);
-WVLUInt&lt;kSize&gt; operator^(const WVLUInt&lt;kSize&gt;&amp;) const;
-WVLUInt&lt;kSize&gt; operator^(std::uint64_t) const;</pre>
+<pre>WMPUInt&lt;kSize&gt;&amp; operator&amp;=(const WMPUInt&lt;kSize&gt;&amp;);
+WMPUInt&lt;kSize&gt;&amp; operator&amp;=(std::uint64_t);
+WMPUInt&lt;kSize&gt; operator&amp;(const WMPUInt&lt;kSize&gt;&amp;) const;
+WMPUInt&lt;kSize&gt; operator&amp;(std::uint64_t) const;
+WMPUInt&lt;kSize&gt;&amp; operator|=(const WMPUInt&lt;kSize&gt;&amp;);
+WMPUInt&lt;kSize&gt;&amp; operator|=(std::uint64_t);
+WMPUInt&lt;kSize&gt; operator|(const WMPUInt&lt;kSize&gt;&amp;) const;
+WMPUInt&lt;kSize&gt; operator|(std::uint64_t) const;
+WMPUInt&lt;kSize&gt;&amp; operator^=(const WMPUInt&lt;kSize&gt;&amp;);
+WMPUInt&lt;kSize&gt;&amp; operator^=(std::uint64_t);
+WMPUInt&lt;kSize&gt; operator^(const WMPUInt&lt;kSize&gt;&amp;) const;
+WMPUInt&lt;kSize&gt; operator^(std::uint64_t) const;</pre>
 
 <h3 id="arithmetic">Arithmetic operators</h3>
 
 <p>Synopsis:</p>
 
-<pre>WVLUInt&lt;kSize&gt;&amp; operator+=(const WVLUInt&lt;kSize&gt;&amp;);
-WVLUInt&lt;kSize&gt; operator+(const WVLUInt&lt;kSize&gt;&amp;) const;
-WVLUInt&lt;kSize&gt;&amp; operator+=(std::uint64_t);
-WVLUInt&lt;kSize&gt; operator+(std::uint64_t) const;
-WVLUInt&lt;kSize&gt;&amp; operator-=(const WVLUInt&lt;kSize&gt;&amp;);
-WVLUInt&lt;kSize&gt; operator-(const WVLUInt&lt;kSize&gt;&amp;) const;
-WVLUInt&lt;kSize&gt;&amp; operator-=(std::uint64_t);
-WVLUInt&lt;kSize&gt; operator-(std::uint64_t) const;
-WVLUInt&lt;kSize&gt;&amp; operator++();
-WVLUInt&lt;kSize&gt;&amp; operator--();
-WVLUInt&lt;kSize&gt;&amp; operator*=(const WVLUInt&lt;kSize&gt;&amp;);
-WVLUInt&lt;kSize&gt; operator*(const WVLUInt&lt;kSize&gt;&amp;) const;
-WVLUInt&lt;kSize&gt;&amp; operator*=(std::uint64_t);
-WVLUInt&lt;kSize&gt; operator*(std::uint64_t) const;
-WVLUInt&lt;kSize&gt; operator-() const;
+<pre>WMPUInt&lt;kSize&gt;&amp; operator+=(const WMPUInt&lt;kSize&gt;&amp;);
+WMPUInt&lt;kSize&gt; operator+(const WMPUInt&lt;kSize&gt;&amp;) const;
+WMPUInt&lt;kSize&gt;&amp; operator+=(std::uint64_t);
+WMPUInt&lt;kSize&gt; operator+(std::uint64_t) const;
+WMPUInt&lt;kSize&gt;&amp; operator-=(const WMPUInt&lt;kSize&gt;&amp;);
+WMPUInt&lt;kSize&gt; operator-(const WMPUInt&lt;kSize&gt;&amp;) const;
+WMPUInt&lt;kSize&gt;&amp; operator-=(std::uint64_t);
+WMPUInt&lt;kSize&gt; operator-(std::uint64_t) const;
+WMPUInt&lt;kSize&gt;&amp; operator++();
+WMPUInt&lt;kSize&gt;&amp; operator--();
+WMPUInt&lt;kSize&gt;&amp; operator*=(const WMPUInt&lt;kSize&gt;&amp;);
+WMPUInt&lt;kSize&gt; operator*(const WMPUInt&lt;kSize&gt;&amp;) const;
+WMPUInt&lt;kSize&gt;&amp; operator*=(std::uint64_t);
+WMPUInt&lt;kSize&gt; operator*(std::uint64_t) const;
+WMPUInt&lt;kSize&gt; operator-() const;
 
 void neg();</pre>
 
@@ -378,7 +378,7 @@ void neg();</pre>
 
 <p>Synopsis:</p>
 
-<pre>void multiply(const WVLUInt&lt;kSize&gt;&amp; rhs,
+<pre>void multiply(const WMPUInt&lt;kSize&gt;&amp; rhs,
               std::uint64_t* result,
               std::uint64_t* tempBuffer) const;
 
@@ -410,12 +410,12 @@ void multiply(std::uint64_t rhs, std::uint64_t* result) const;</pre>
 {
     const std::size_t kSize = 10000;
 
-    thread_local WVLUInt&lt;kSize&gt; multResult;
+    thread_local WMPUInt&lt;kSize&gt; multResult;
     thread_local std::uint64_t multTempBuf[kSize];
 }
 
-void foo(const WVLUInt&lt;kSize&gt;&amp; value1,
-         const WVLUInt&lt;kSize&gt;&amp; value2)
+void foo(const WMPUInt&lt;kSize&gt;&amp; value1,
+         const WMPUInt&lt;kSize&gt;&amp; value2)
 {
     value1.multiply(value2, multResult.data(), multTempBuf);
 
@@ -444,7 +444,7 @@ void printAsHexStr(char* destination) const;</pre>
 
 <p>Example:</p>
 
-<pre>WVLUInt&lt;8&gt; number;
+<pre>WMPUInt&lt;8&gt; number;
 char str[number.maxHexadecimalDigits() + 1] = {};
 number.printAsHexStr(str);
 std::cout &lt;&lt; "The number is " &lt;&lt; str &lt;&lt; "\n";</pre>
@@ -459,7 +459,7 @@ std::cout &lt;&lt; "The number is " &lt;&lt; str &lt;&lt; "\n";</pre>
   <li>Modulo operators.</li>
   <li>A <code>divmod()</code> function that returns both the result and remainder of division.</li>
   <li>Output to a string in decimal format (not yet provided because it requires division.)</li>
-  <li>A signed version of the class, <code>WVLInt</code>.</li>
+  <li>A signed version of the class, <code>WMPInt</code>.</li>
 </ul>
 
 <p>Possible future improvements:</p>
@@ -504,11 +504,11 @@ a -= e;</pre>
   by reference, unless you really need a local copy of the parameter. In other words,
   instead of doing:</p>
 
-<pre>void foo(WVLUInt&lt;128&gt; value1, WVLUInt&lt;128&gt; value2);</pre>
+<pre>void foo(WMPUInt&lt;128&gt; value1, WMPUInt&lt;128&gt; value2);</pre>
 
 <p>prefer:</p>
 
-<pre>void foo(const WVLUInt&lt;128&gt;&amp; value1, const WVLUInt&lt;128&gt;&amp; value2);</pre>
+<pre>void foo(const WMPUInt&lt;128&gt;&amp; value1, const WMPUInt&lt;128&gt;&amp; value2);</pre>
 
 <h3 id="multiplication">Multiplication</h3>
 
@@ -519,7 +519,7 @@ a -= e;</pre>
   efficiency, the <code>multiply()</code> member function can be used to elide this copying completely,
   for example like this:</p>
 
-<pre>WVLUInt&lt;128&gt; v1, v2, result; <span class="comment">// 8192-bit integers</span>
+<pre>WMPUInt&lt;128&gt; v1, v2, result; <span class="comment">// 8192-bit integers</span>
 
 <span class="comment">// Multiply without any data copying:</span>
 std::uint64_t tempBuffer[128];
