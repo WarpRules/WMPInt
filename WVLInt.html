@@ -1,0 +1,561 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <title>WVLInt 0.1.0 documentation</title>
+  <style type="text/css"> <!--
+html
+{
+  background-color: #DDDDDD;
+}
+
+body
+{
+  background-color: white;
+  margin-left: 5%;
+  margin-top: 16px;
+  margin-right: 5%;
+  padding-top: 2em;
+  padding-left: 7%;
+  padding-right: 7%;
+  padding-bottom: 2%;
+  border-color: black;
+  border: solid;
+  border-width: 1px;
+}
+
+h1
+{
+  text-align: center;
+  background-color: #FFEEA0;
+  padding-bottom: 0.2em;
+  padding-top: 0.1em;
+}
+
+h2
+{
+  background-color: #FFE0A0;
+  padding-left: 0.5em;
+}
+
+h3
+{
+  background-color: #FFFFA0;
+}
+
+h4
+{
+  background-color: #FFFFD0;
+}
+
+li
+{
+  padding-top: 0.3em;
+}
+
+pre
+{
+  background-color: #E0E0E0;
+  padding-left: 1em;
+  padding-top: 0.5em;
+  padding-bottom: 0.5em;
+  border-color: black;
+  border: solid;
+  border-width: 1px;
+  color: #004070;
+}
+
+code
+{
+  font-family: monospace;
+  color: #206000;
+}
+
+.comment
+{
+  color: #008000;
+}
+--> </style>
+</head>
+
+<body>
+<h1>WVLInt 0.1.0 documentation</h1>
+
+<p><code>WVLUInt</code> and <code>WVLInt</code> (not yet implemented) are templated
+  classes that implement multiple-precision integer arithmetic for x86-64 platforms
+  in C++17 and inline asm. They allow using arbitrarily large integers, of a size
+  determined at compile time. This library aims for maximum speed and efficiency.</p>
+
+<p>Sizes of the integers are defined in multiples of 64 bits. Example of using 1024-bit
+  unsigned integers:</p>
+
+<pre>WVLUInt&lt;16&gt; a(10), b(20), c(30); <span class="comment">// 1024-bit integers</span>
+WVLUInt&lt;16&gt; result = a + b * c;</pre>
+
+<p>For efficiency, these classes do not perform any dynamic memory allocations.</p>
+
+<p>Note that these classes use x86-64 inline asm, which means support is restricted
+  to such targets, using compatible compilers (modern gcc and clang tested, icc may work).</p>
+
+<p>Table of contents:</p>
+
+<ul>
+  <li><a href="#license">License</a></li>
+  <li><a href="#summary">Feature and usage summary</a></li>
+  <li><a href="#compatibility">Compiler and platform compatibility</a></li>
+  <li><a href="#initialization">Value initialization</a></li>
+  <li><a href="#functions">Supported math functions and operators</a></li>
+  <ul>
+    <li><a href="#data">Data retrieval</a></li>
+    <li><a href="#comparison">Comparison operators</a></li>
+    <li><a href="#bitwise">Bitwise operators</a></li>
+    <li><a href="#arithmetic">Arithmetic operators</a></li>
+    <li><a href="#multiply">Multiplying very large integers</a></li>
+  </ul>
+  <li><a href="#printing">ASCII output</a></li>
+  <li><a href="#notyetsupported">Not yet supported features</a></li>
+  <li><a href="#tips">Efficiency tips</a></li>
+  <ul>
+    <li><a href="#copying">Copying and temporaries</a></li>
+    <li><a href="#multiplication">Multiplication</a></li>
+    <li><a href="#exproptimization">Expression optimizations</a></li>
+  </ul>
+</ul>
+
+<!---------------------------------------------------------------------------->
+<h2 id="license">License</h2>
+
+<p>The source code of this software is published under the MIT license.</p>
+
+<p>Copyright (c) 2019 Juha Nieminen
+
+<p>Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:</p>
+
+<p>The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.</p>
+
+<p>THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.</p>
+
+<!---------------------------------------------------------------------------->
+<h2 id="summary">Feature and usage summary</h2>
+
+<p>To use the class, include the <code>WVLInt.hh</code> header file in your code.</p>
+
+<pre>#include "WVLInt.hh"</pre>
+
+<p>Class declaration:</p>
+
+<pre>template&lt;std::size_t kSize&gt;
+class WVLUInt;</pre>
+
+<p>The classes work very similarly to <code>std::array&lt;std::uint64_t, kSize&gt;</code>,
+  containing an array of 64-bit integers inside them. The template parameter specifies the size
+  of the array. They work like integers of <code>kSize*64</code> bits. They provide most of the
+  integer operators, and aim for maximum efficiency and speed. Like <code>std::array</code>,
+  their size is determined at compile time, and they do not perform any dynamic memory
+  allocations.</p>
+
+<p>Instances of these classes can be used like unsigned and signed integers respectively.
+  For example:</p>
+
+<pre>WVLUInt<16> a(10), b(20), c(30); <span class="comment">// 1024-bit integers</span>
+c += b;
+c -= a;
+a *= c;
+b = a*a + b*b + c*c;</pre>
+
+<p>Note, however, the <a href="#tips">tips about the most efficient ways to use these classes</a>
+  at the end of this documentation.</p>
+
+<p>Instances can be initialized with a value with either direct numerical values or from
+  an ASCII string. Consult the <a href="#initialization">value initialization</a> section
+  below for details.</p>
+
+<!---------------------------------------------------------------------------->
+<h2 id="compatibility">Compiler and platform compatibility</h2>
+
+<p>These classes use x86-64 inline assembly for efficiency. They have been tested with the
+  following platforms and compilers:</p>
+
+<ul>
+  <li>Windows 10: mingw64 (gcc 7.1.0)</li>
+  <li>Linux: gcc (7, 8 and 9), clang (5, 6 and 7)</li>
+  <li>macOS High Sierra: Apple LLVM version 10.0.0 (clang-1000.11.45.5)</li>
+</ul>
+
+<p>Note that the classes require C++17, so the <code>-std=c++17</code> compiler
+  option or bigger may be necessary.</p>
+
+<!---------------------------------------------------------------------------->
+<h2 id="initialization">Value initialization</h2>
+
+<p>There are two main ways to initialize an instance of <code>WVLUInt</code> with a value:
+  Providing <code>std::uint64_t</code> values to its constructor or the <code>assign()</code>
+  function, or with an ASCII string containing the number in either decimal or hexadecimal.</p>
+
+<h3>Initialization with <code>std::uint64_t</code> values</h3>
+
+<p>Synopsis:</p>
+
+<pre>WVLUInt();
+
+explicit WVLUInt(std::uint64_t);
+
+template&lt;typename... Values_t&gt;
+explicit WVLUInt(std::uint64_t, Values_t...);
+
+explicit WVLUInt(std::initializer_list&lt;std::uint64_t&gt;);
+
+template&lttypename... Values_t&gt;
+void assign(std::uint64_t, Values_t...);
+
+void assign(std::initializer_list&lt;std::uint64_t&gt;);</pre>
+
+<p>The default constructor will leave this object uninitialized (thus its value will
+  be unspecified, just as with basic types.) To zero-initialize the object, simply
+  give the constructor the value <code>0</code>.</p>
+
+<p>The constructor can be given at most <code>kSize</code> values of type
+  <code>std::uint64_t</code>, which will form the value of this object. The values
+  are listed from most-significant to least-significant. If there are less values
+  specified than <code>kSize</code>, the given values will form the least-significant
+  elements of this object (the remaining most-significant elements will be initialized
+  to zero.) Examples:</p>
+
+<pre>WVLUInt&lt;3&gt; v1(10);
+WVLUInt&lt;3&gt; v2(0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF);
+WVLUInt&lt;3&gt; v3(0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF);</pre>
+
+<p>These are the values of the three example objects above, in decimal:</p>
+
+<p><code>v1</code>: 10<br />
+  <code>v2</code>: 340282366920938463463374607431768211455<br />
+  <code>v3</code>: 6277101735386680763835789423207666416102355444464034512895</p>
+
+<p>Alternatively, the objects can be constructed or assigned a value using an
+  initializer list of <code>std::uint64_t</code> values.</p>
+
+<p>Note that the <code>data()</code> member function returns a pointer to the internal
+  array of the object. This can also be used to directly set (and read) these components.</p>
+
+<h3>Initialization with an ASCII string</h3>
+
+<p>Alternatively, the object can be initialized with an ASCII string containing a number
+  in either decimal or hexadecimal.</p>
+
+<p>Synopsis:</p>
+
+<pre>const char* assignFromHexStr(const char*);
+const char* assignFromDecStr(const char*);
+const char* assignFromDecStr(const char*, std::uint64_t* tempBuffer);</pre>
+
+<p>The functions will do very little sanity checks on the strings. They will simply
+  scan the string until they find a non-hexadecimal (in the first case) or non-decimal
+  (in the second case) character, or the null character, and interpret the characters
+  up to that point. Hexadecimal characters can be in uppercase or lowercase. They return
+  a pointer to the position in the string where the scan was stopped.</p>
+
+<p>Currently a leading <code>'-'</code> character is not supported.</p>
+
+<p>If possible, using <code>assignFromHexStr()</code> is recommended because it's
+  <em>significantly</em> more efficient than <code>assignFromDecStr()</code>.</p>
+
+<p>Examples (which are equivalent to the previous examples above):</p>
+
+<pre>v1.assignFromHexStr("A");
+v2.assignFromHexStr("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF");
+v3.assignFromHexStr("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF");
+
+v1.assignFromDecStr("10");
+v2.assignFromDecStr("340282366920938463463374607431768211455");
+v3.assignFromDecStr("6277101735386680763835789423207666416102355444464034512895");</pre>
+
+<p>Note that since <code>assignFromDecStr()</code> involves multiplication, a version
+  of the function is provided that can be given a user-provided temporary buffer
+  (containing at least <code>kSize</code> <code>std::uint64_t</code> values) for
+  the multiplication operation. Consult the section <a href="#multiply">Multiplying very
+    large integers</a> for the reason for this.</p>
+
+<h3>Initialization with another <code>WVLUInt</code> object</h3>
+
+<p>Synopsis:</p>
+
+<pre>template&lt;std::size_t kSize2&gt;
+void assign(const WVLUInt&lt;kSize2&gt;&amp;);</pre>
+
+<p>An object of one size can also be assigned with the value of an object of another size.
+  If the size of the parameter is larger than the size of this object, the least-significant
+  components will be assigned (in other words, the parameter value will be taken modulo the
+  size of this object.)</p>
+
+
+<!---------------------------------------------------------------------------->
+<h2 id="functions">Supported math functions and operators</h2>
+
+<h3 id="data">Data retrieval</h3>
+
+<p>Synopsis:</p>
+
+<pre>constexpr static std::size_t size();
+constexpr static std::size_t bits();
+std::uint64_t* data();
+const std::uint64_t* data() const;</pre>
+
+<p><code>size()</code> simply returns <code>kSize</code>.</p>
+
+<p><code>bits()</code> returns the size of this object in bits (which is always
+  <code>kSize*64</code>, but provided for convenience.)</p>
+
+<p><code>data()</code> returns a pointer to the internal array of component values.
+  The calling code is free to read and modify these values. <code>data()[0]</code> is
+  the most-significant component, and <code>data()[kSize-1]</code> is the least-significant
+  component.</p>
+
+
+<h3 id="comparison">Comparison operators</h3>
+
+<p>Synopsis:</p>
+
+<pre>bool operator==(const WVLUInt&lt;kSize&gt;&amp;) const;
+bool operator==(std::uint64_t) const;
+bool operator!=(const WVLUInt&lt;kSize&gt;&amp;) const;
+bool operator!=(std::uint64_t) const;
+bool operator&lt;(const WVLUInt&lt;kSize&gt;&amp;) const;
+bool operator&lt;(std::uint64_t) const;
+bool operator&lt;=(const WVLUInt&lt;kSize&gt;&amp;) const;
+bool operator&lt;=(std::uint64_t) const;
+bool operator&gt;(const WVLUInt&lt;kSize&gt;&amp;) const;
+bool operator&gt;(std::uint64_t) const;
+bool operator&gt;=(const WVLUInt&lt;kSize&gt;&amp;) const;
+bool operator&gt;=(std::uint64_t) const;</pre>
+
+<h3 id="bitwise">Bitwise operators</h3>
+
+<p>Synopsis:</p>
+
+<pre>WVLUInt&lt;kSize&gt;&amp; operator&amp;=(const WVLUInt&lt;kSize&gt;&amp;);
+WVLUInt&lt;kSize&gt;&amp; operator&amp;=(std::uint64_t);
+WVLUInt&lt;kSize&gt; operator&amp;(const WVLUInt&lt;kSize&gt;&amp;) const;
+WVLUInt&lt;kSize&gt; operator&amp;(std::uint64_t) const;
+WVLUInt&lt;kSize&gt;&amp; operator|=(const WVLUInt&lt;kSize&gt;&amp;);
+WVLUInt&lt;kSize&gt;&amp; operator|=(std::uint64_t);
+WVLUInt&lt;kSize&gt; operator|(const WVLUInt&lt;kSize&gt;&amp;) const;
+WVLUInt&lt;kSize&gt; operator|(std::uint64_t) const;
+WVLUInt&lt;kSize&gt;&amp; operator^=(const WVLUInt&lt;kSize&gt;&amp;);
+WVLUInt&lt;kSize&gt;&amp; operator^=(std::uint64_t);
+WVLUInt&lt;kSize&gt; operator^(const WVLUInt&lt;kSize&gt;&amp;) const;
+WVLUInt&lt;kSize&gt; operator^(std::uint64_t) const;</pre>
+
+<h3 id="arithmetic">Arithmetic operators</h3>
+
+<p>Synopsis:</p>
+
+<pre>WVLUInt&lt;kSize&gt;&amp; operator+=(const WVLUInt&lt;kSize&gt;&amp;);
+WVLUInt&lt;kSize&gt; operator+(const WVLUInt&lt;kSize&gt;&amp;) const;
+WVLUInt&lt;kSize&gt;&amp; operator+=(std::uint64_t);
+WVLUInt&lt;kSize&gt; operator+(std::uint64_t) const;
+WVLUInt&lt;kSize&gt;&amp; operator-=(const WVLUInt&lt;kSize&gt;&amp;);
+WVLUInt&lt;kSize&gt; operator-(const WVLUInt&lt;kSize&gt;&amp;) const;
+WVLUInt&lt;kSize&gt;&amp; operator-=(std::uint64_t);
+WVLUInt&lt;kSize&gt; operator-(std::uint64_t) const;
+WVLUInt&lt;kSize&gt;&amp; operator++();
+WVLUInt&lt;kSize&gt;&amp; operator--();
+WVLUInt&lt;kSize&gt;&amp; operator*=(const WVLUInt&lt;kSize&gt;&amp;);
+WVLUInt&lt;kSize&gt; operator*(const WVLUInt&lt;kSize&gt;&amp;) const;
+WVLUInt&lt;kSize&gt;&amp; operator*=(std::uint64_t);
+WVLUInt&lt;kSize&gt; operator*(std::uint64_t) const;
+WVLUInt&lt;kSize&gt; operator-() const;
+
+void neg();</pre>
+
+<p>Note 1: The postfix versions of <code>operator++</code> and <code>operator--</code>
+  are <em>deliberately</em> omitted because of their (needless) overhead.</p>
+
+<p>Note 2: If possible, always use the <code>neg()</code> function instead of using the
+  unary negation operator, as <code>neg()</code> negates the number in-place, while
+  the unary negation operator will calculate the result into and return a temporary.</p>
+
+<h3 id="multiply">Multiplying very large integers</h3>
+
+<p>Synopsis:</p>
+
+<pre>void multiply(const WVLUInt&lt;kSize&gt;&amp; rhs,
+              std::uint64_t* result,
+              std::uint64_t* tempBuffer) const;
+
+void multiply(std::uint64_t rhs, std::uint64_t* result) const;</pre>
+
+<p>Note that the multiplication operators <code>operator*()</code> and <code>operator*=()</code>
+  use internally two stack-allocated buffers of <code>kSize</code> <code>std::uint64_t</code>
+  values. For values of <code>kSize</code> up to the hundreds, perhaps even thousands, this
+  shouldn't pose a problem. However, if <code>kSize</code> is extremely large (in the tens
+  of thousands or more), this may pose a problem because in most platforms stack size is
+  limited, and this could cause a stack overflow. It might also potentially have some
+  efficiency implications (even when the stack does not overflow).</p>
+
+<p>These two member functions are provided to circumvent this problem.</p>
+
+<p><code>result</code> and <code>tempBuffer</code> should both be (separate) arrays
+  of at least <code>kSize</code> <code>std::uint64_t</code> values. (These arrays
+  don't need to be initialized with anything.)</p>
+
+<p><b>Important!</b> Neither <code>result</code> nor <code>tempBuffer</code> should
+  point to this object or to the <code>rhs</code> object, else the result will be
+  completely incorrect.</p>
+
+<p>The idea with these functions is that they can be used with temporary buffers that
+  are statically or dynamically (but not stack) allocated, avoiding the problem of
+  stack overflows. For example:</p>
+
+<pre>namespace
+{
+    const std::size_t kSize = 10000;
+
+    thread_local WVLUInt&lt;kSize&gt; multResult;
+    thread_local std::uint64_t multTempBuf[kSize];
+}
+
+void foo(const WVLUInt&lt;kSize&gt;&amp; value1,
+         const WVLUInt&lt;kSize&gt;&amp; value2)
+{
+    value1.multiply(value2, multResult.data(), multTempBuf);
+
+    <span class="comment">// The result of the multiplication will be in multResult</span>
+}</pre>
+
+
+<!---------------------------------------------------------------------------->
+<h2 id="printing">ASCII output</h2>
+<h3>Output in hexadecimal format</h3>
+
+<p>Synopsis:</p>
+
+<pre>constexpr static std::size_t maxHexadecimalDigits();
+void printAsHexStr(char* destination) const;</pre>
+
+<p><code>printAsHexStr()</code> can be used to print the value of this object as an
+  ASCII string in hexadecimal format. The length of the output can be determined using
+  the <code>maxHexadecimalDigits()</code> constexpr function (the return value is always
+  <code>kSize*16</code>, but this function is provided for convenience.).</p>
+
+<p>This function will always print <code>maxHexadecimalDigits()</code> characters
+  (with leading <code>'0'</code> characters if needed).</p>
+
+<p>Note that this function does not output an ending null character.</p>
+
+<p>Example:</p>
+
+<pre>WVLUInt&lt;8&gt; number;
+char str[number.maxHexadecimalDigits() + 1] = {};
+number.printAsHexStr(str);
+std::cout &lt;&lt; "The number is " &lt;&lt; str &lt;&lt; "\n";</pre>
+
+<!---------------------------------------------------------------------------->
+<h2 id="notyetsupported">Not yet supported features</h2>
+
+<p>These missing features will be added in a later update:</p>
+
+<ul>
+  <li>Division operators.</li>
+  <li>Modulo operators.</li>
+  <li>A <code>divmod()</code> function that returns both the result and remainder of division.</li>
+  <li>Output to a string in decimal format (not yet provided because it requires division.)</li>
+  <li>A signed version of the class, <code>WVLInt</code>.</li>
+</ul>
+
+<p>Possible future improvements:</p>
+
+<ul>
+  <li>Implement the Karatsuba algorithm or the Toom-Cook algorithm to be used instead of long
+    multiplication for larger values of <code>kSize</code>.</li>
+</ul>
+
+<!---------------------------------------------------------------------------->
+<h2 id="tips">Efficiency tips</h2>
+
+<h3 id="copying">Copying and temporaries</h3>
+
+<p>These classes behave in the exact same way as
+  <code>std::array&lt;std::uint64_t, kSize&gt;</code>, so the same considerations apply
+  with regards to storage and copying.</p>
+
+<p>For maximum efficiency, needless temporaries and copying should be avoided. The larger
+  the classes are, the more important to avoid them. For example, instead of:</p>
+
+<pre>a = b + c + d - e;</pre>
+
+<p>prefer:</p>
+
+<pre>a = b;
+a += c;
+a += d;
+a -= e;</pre>
+
+<p>Note that the unary negation operator will <em>always</em> calculate the result into
+  and return a temporary. Thus it ought to be avoided if possible, and the member function
+  <code>neg()</code> used instead. In other words, instead of doing:</p>
+
+<pre>a = -a;</pre>
+
+<p>prefer:</p>
+
+<pre>a.neg();</pre>
+
+<p>Also avoid passing objects of these types to functions by value and prefer passing them
+  by reference, unless you really need a local copy of the parameter. In other words,
+  instead of doing:</p>
+
+<pre>void foo(WVLUInt&lt;128&gt; value1, WVLUInt&lt;128&gt; value2);</pre>
+
+<p>prefer:</p>
+
+<pre>void foo(const WVLUInt&lt;128&gt;&amp; value1, const WVLUInt&lt;128&gt;&amp; value2);</pre>
+
+<h3 id="multiplication">Multiplication</h3>
+
+<p>Take note of the earlier section <a href="#multiply">Multiplying very large integers</a>.
+  While this is important with very large objects, the copying that's happening with
+  <code>operator*()</code> and <code>operator*=()</code> may also be an efficiency concern even with
+  more moderately-sized objects. If this copying of objects turns out to have a negative impact on
+  efficiency, the <code>multiply()</code> member function can be used to elide this copying completely,
+  for example like this:</p>
+
+<pre>WVLUInt&lt;128&gt; v1, v2, result; <span class="comment">// 8192-bit integers</span>
+
+<span class="comment">// Multiply without any data copying:</span>
+std::uint64_t tempBuffer[128];
+v1.multiply(v2, result.data(), tempBuffer);</pre>
+
+<p>(Note that <code>v1.data()</code> and <code>v2.data()</code> above can <em>not</em> be used as the second
+  (ie. result) parameter to the function, as this would simply give a completely incorrect result. The result
+  must always be calculated into a third object or array.)</p>
+
+<h3 id="exproptimization">Expression optimizations</h3>
+
+<p>Note that even though these classes behave like they were integers, the compiler will not
+  consider them such, and therefore will be unable to perform any expression optimizations.
+  Any such optimizations should be done by hand.</p>
+
+<p>For example, the compiler will not be able to optimize repeated expressions to be calculated
+  only once, such as:</p>
+
+<pre>result = (a + b + c) * (a + b + c);</pre>
+
+<p>Such an expression will needlessly make those summations twice. It should be optimized
+  manually into something like:</p>
+
+<pre>result = a;
+result += b;
+result += c;
+result *= result;</pre>
+
+<p>Also, multiplications are genuinely and significantly slower than additions, and such
+  the former should be manually optimized into the latter whenever possible. For example,
+  instead of doing:</p>
+
+<pre>a *= 2;</pre>
+
+<p>prefer:</p>
+
+<pre>a += a;</pre>
+
+</body></html>
