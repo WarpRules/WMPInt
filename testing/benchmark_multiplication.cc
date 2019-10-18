@@ -2,6 +2,11 @@
 #include "benchmark_timer.hh"
 #include <random>
 
+namespace
+{
+    volatile std::uint64_t gValueSink1, gValueSink2;
+}
+
 template<std::size_t kSize>
 void runMultiplicationBenchmark(std::size_t totalIterations)
 {
@@ -25,7 +30,8 @@ void runMultiplicationBenchmark(std::size_t totalIterations)
         resultSumLSW += result.data()[kSize-1];
     }
 
-    timer.printResult(kSize, totalIterations, resultSumMSW, resultSumLSW);
+    gValueSink1 = resultSumMSW; gValueSink2 = resultSumLSW;
+    timer.printResult(kSize, totalIterations);
 }
 
 int main()
