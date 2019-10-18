@@ -1,0 +1,41 @@
+#include "../WMPInt.hh"
+#include "benchmark_timer.hh"
+#include <random>
+
+template<std::size_t kSize>
+void runAdditionBenchmark(std::size_t totalIterations)
+{
+    std::mt19937_64 rngEngine(totalIterations);
+    WMPUInt<kSize> sum(0), value;
+
+    for(std::size_t i = 0; i < kSize; ++i)
+        value.data()[i] = rngEngine();
+
+    Timer timer;
+
+    for(std::size_t i = 0; i < totalIterations; ++i)
+        sum += value;
+
+    timer.printResult(kSize, totalIterations, sum.data()[0], sum.data()[kSize-1]);
+}
+
+int main()
+{
+    std::printf("Benchmarks for operator+=(WMPUInt):\n");
+
+    runAdditionBenchmark<2>(360000000);
+    runAdditionBenchmark<3>(350000000);
+    runAdditionBenchmark<4>(320000000);
+    runAdditionBenchmark<5>(230000000);
+    runAdditionBenchmark<6>(220000000);
+    runAdditionBenchmark<7>(180000000);
+    runAdditionBenchmark<8>(160000000);
+    runAdditionBenchmark<10>(125000000);
+    runAdditionBenchmark<16>(80000000);
+    runAdditionBenchmark<24>(50000000);
+    runAdditionBenchmark<32>(38000000);
+    runAdditionBenchmark<50>(25000000);
+    runAdditionBenchmark<150>(7500000);
+    runAdditionBenchmark<256>(4500000);
+    runAdditionBenchmark<1024>(1200000);
+}
