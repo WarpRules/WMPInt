@@ -117,6 +117,7 @@ WMPUInt&lt;16&gt; result = a + b * c;</pre>
   <li><a href="#tips">Efficiency tips</a></li>
   <ul>
     <li><a href="#copying">Copying and temporaries</a></li>
+    <li><a href="#smalloperands">Small operands</a></li>
     <li><a href="#multiplication">Multiplication</a></li>
     <li><a href="#exproptimization">Expression optimizations</a></li>
   </ul>
@@ -509,6 +510,36 @@ a -= e;</pre>
 <p>prefer:</p>
 
 <pre>void foo(const WMPUInt&lt;128&gt;&amp; value1, const WMPUInt&lt;128&gt;&amp; value2);</pre>
+
+<h3 id="smalloperands">Small operands</h3>
+
+<p>In general, the versions of the operators and functions that take a <code>std::uint64_t</code>
+  as parameter are significantly faster then the ones that take a <code>WMPUInt</code> as
+  parameter. Therefore if the value of the right-hand-side operand is small enough to fit in
+  a 64-bit value, it should be used as such.</p>
+
+<p>In other words, instead of:</p>
+
+<pre>WMPUInt&lt;256&gt; value1, value2, value2;
+WMPUInt&lt;256&gt; operand(10);
+
+value1 += operand;
+value2 -= operand;
+value3 *= operand;</pre>
+
+<p>prefer:</p>
+
+<pre>WMPUInt&lt;256&gt; value1, value2, value2;
+std::uint64_t operand = 10;
+
+value1 += operand;
+value2 -= operand;
+value3 *= operand;
+
+<span class="comment">// or simply:</span>
+value1 += 10;
+value2 -= 10;
+value3 *= 10;</pre>
 
 <h3 id="multiplication">Multiplication</h3>
 
