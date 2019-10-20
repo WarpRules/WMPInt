@@ -693,11 +693,8 @@ inline WMPUInt<kSize>& WMPUInt<kSize>::operator+=(const WMPUInt<kSize>& rhs)
              "addq %[tempReg], 8(%[lhs])\n\t"
              "movq (%[rhs]), %[tempReg]\n\t"
              "adcq %[tempReg], (%[lhs])"
-             : "+m"(*(std::uint64_t(*)[kSize])mData), [tempReg]"=&r"(tempReg)
-             : [lhs]"r"(mData), [rhs]"r"(rhs.mData),
-               "m"(*(std::uint64_t(*)[kSize])mData),
-               "m"(*(std::uint64_t(*)[kSize])rhs.mData)
-             : "cc");
+             : "+m"(mData), [tempReg]"=&r"(tempReg)
+             : [lhs]"r"(mData), [rhs]"r"(rhs.mData), "m"(rhs.mData) : "cc");
     else if constexpr(kSize == 3)
         asm ("movq 16(%[rhs]), %[tempReg]\n\t"
              "addq %[tempReg], 16(%[lhs])\n\t"
@@ -705,11 +702,8 @@ inline WMPUInt<kSize>& WMPUInt<kSize>::operator+=(const WMPUInt<kSize>& rhs)
              "adcq %[tempReg], 8(%[lhs])\n\t"
              "movq (%[rhs]), %[tempReg]\n\t"
              "adcq %[tempReg], (%[lhs])"
-             : "+m"(*(std::uint64_t(*)[kSize])mData), [tempReg]"=&r"(tempReg)
-             : [lhs]"r"(mData), [rhs]"r"(rhs.mData),
-               "m"(*(std::uint64_t(*)[kSize])mData),
-               "m"(*(std::uint64_t(*)[kSize])rhs.mData)
-             : "cc");
+             : "+m"(mData), [tempReg]"=&r"(tempReg)
+             : [lhs]"r"(mData), [rhs]"r"(rhs.mData), "m"(rhs.mData) : "cc");
     else if constexpr(kSize == 4)
         asm ("movq 24(%[rhs]), %[tempReg]\n\t"
              "addq %[tempReg], 24(%[lhs])\n\t"
@@ -719,11 +713,8 @@ inline WMPUInt<kSize>& WMPUInt<kSize>::operator+=(const WMPUInt<kSize>& rhs)
              "adcq %[tempReg], 8(%[lhs])\n\t"
              "movq (%[rhs]), %[tempReg]\n\t"
              "adcq %[tempReg], (%[lhs])"
-             : "+m"(*(std::uint64_t(*)[kSize])mData), [tempReg]"=&r"(tempReg)
-             : [lhs]"r"(mData), [rhs]"r"(rhs.mData),
-               "m"(*(std::uint64_t(*)[kSize])mData),
-               "m"(*(std::uint64_t(*)[kSize])rhs.mData)
-             : "cc");
+             : "+m"(mData), [tempReg]"=&r"(tempReg)
+             : [lhs]"r"(mData), [rhs]"r"(rhs.mData), "m"(rhs.mData) : "cc");
 #if __ADX__
     else if constexpr(kSize % 2 == 0)
     {
@@ -750,13 +741,11 @@ inline WMPUInt<kSize>& WMPUInt<kSize>::operator+=(const WMPUInt<kSize>& rhs)
              "incq (%[lhsBegin],%[dataInd],8)\n\t"
              "jz loop2%=\n"
              "end%=:"
-             : "+m"(*(std::uint64_t(*)[kSize])mData),
-               [dataInd]"+c"(dataInd), [tempReg1]"=&r"(tempReg), [tempReg2]"=&r"(tempReg2)
+             : "+m"(mData), [dataInd]"+c"(dataInd),
+               [tempReg1]"=&r"(tempReg), [tempReg2]"=&r"(tempReg2)
              : [lhsHalf]"r"(lhsHalfPoint), [rhsHalf]"r"(rhsHalfPoint),
                [lhsBegin]"r"(mData), [rhsBegin]"r"(rhs.mData), [kSizeP2]"i"(kSize/2),
-               "m"(*(std::uint64_t(*)[kSize])mData),
-               "m"(*(std::uint64_t(*)[kSize])rhs.mData)
-             : "cc");
+               "m"(rhs.mData) : "cc");
     }
 #endif
     else
@@ -771,12 +760,8 @@ inline WMPUInt<kSize>& WMPUInt<kSize>::operator+=(const WMPUInt<kSize>& rhs)
              "adcq %[tempReg], -8(%[lhs],%[dataInd],8)\n\t"
              "decq %[dataInd]\n\t"
              "jnz loop%="
-             : "+m"(*(std::uint64_t(*)[kSize])mData),
-               [dataInd]"+r"(dataInd), [tempReg]"=&r"(tempReg)
-             : [lhs]"r"(mData), [rhs]"r"(rhs.mData),
-               "m"(*(std::uint64_t(*)[kSize])mData),
-               "m"(*(std::uint64_t(*)[kSize])rhs.mData)
-             : "cc");
+             : "+m"(mData), [dataInd]"+r"(dataInd), [tempReg]"=&r"(tempReg)
+             : [lhs]"r"(mData), [rhs]"r"(rhs.mData), "m"(rhs.mData) : "cc");
     }
 
     return *this;
@@ -803,27 +788,18 @@ inline WMPUInt<kSize>& WMPUInt<kSize>::operator+=(std::uint64_t value)
     if constexpr(kSize == 2)
         asm ("addq %[value], 8(%[lhs])\n\t"
              "adcq %[zero], (%[lhs])"
-             : "+m"(*(std::uint64_t(*)[kSize])mData)
-             : [lhs]"r"(mData), [value]"r"(value), [zero]"r"(zero),
-               "m"(*(std::uint64_t(*)[kSize])mData)
-             : "cc");
+             : "+m"(mData) : [lhs]"r"(mData), [value]"r"(value), [zero]"r"(zero) : "cc");
     else if constexpr(kSize == 3)
         asm ("addq %[value], 16(%[lhs])\n\t"
              "adcq %[zero], 8(%[lhs])\n\t"
              "adcq %[zero], (%[lhs])"
-             : "+m"(*(std::uint64_t(*)[kSize])mData)
-             : [lhs]"r"(mData), [value]"r"(value), [zero]"r"(zero),
-               "m"(*(std::uint64_t(*)[kSize])mData)
-             : "cc");
+             : "+m"(mData) : [lhs]"r"(mData), [value]"r"(value), [zero]"r"(zero) : "cc");
     else if constexpr(kSize == 4)
         asm ("addq %[value], 24(%[lhs])\n\t"
              "adcq %[zero], 16(%[lhs])\n\t"
              "adcq %[zero], 8(%[lhs])\n\t"
              "adcq %[zero], (%[lhs])"
-             : "+m"(*(std::uint64_t(*)[kSize])mData)
-             : [lhs]"r"(mData), [value]"r"(value), [zero]"r"(zero),
-               "m"(*(std::uint64_t(*)[kSize])mData)
-             : "cc");
+             : "+m"(mData) : [lhs]"r"(mData), [value]"r"(value), [zero]"r"(zero) : "cc");
 
     /* The speed advantage we get from unrolling is large enough to warrant it below. */
     else if constexpr(kSize % 2 == 0)
@@ -839,10 +815,8 @@ inline WMPUInt<kSize>& WMPUInt<kSize>::operator+=(std::uint64_t value)
              "decq %[dataInd]\n\t"
              "jns loop%=\n"
              "exitLoop%=:"
-             : "+m"(*(std::uint64_t(*)[kSize])mData), [dataInd]"+r"(dataInd)
-             : [lhs]"r"(mData), [value]"r"(value), [zero]"r"(zero),
-               "m"(*(std::uint64_t(*)[kSize])mData)
-             : "cc");
+             : "+m"(mData), [dataInd]"+r"(dataInd)
+             : [lhs]"r"(mData), [value]"r"(value), [zero]"r"(zero) : "cc");
     }
     else
     {
@@ -856,10 +830,8 @@ inline WMPUInt<kSize>& WMPUInt<kSize>::operator+=(std::uint64_t value)
              "decq %[dataInd]\n\t"
              "jns loop%=\n"
              "exitLoop%=:"
-             : "+m"(*(std::uint64_t(*)[kSize])mData), [dataInd]"+r"(dataInd)
-             : [lhs]"r"(mData), [value]"r"(value), [zero]"r"(zero),
-               "m"(*(std::uint64_t(*)[kSize])mData)
-             : "cc");
+             : "+m"(mData), [dataInd]"+r"(dataInd)
+             : [lhs]"r"(mData), [value]"r"(value), [zero]"r"(zero) : "cc");
     }
 
     return *this;
@@ -907,11 +879,8 @@ inline WMPUInt<kSize>& WMPUInt<kSize>::operator-=(const WMPUInt<kSize>& rhs)
              "subq %[tempReg], 8(%[lhs])\n\t"
              "movq (%[rhs]), %[tempReg]\n\t"
              "sbbq %[tempReg], (%[lhs])"
-             : "+m"(*(std::uint64_t(*)[kSize])mData), [tempReg]"=&r"(tempReg)
-             : [lhs]"r"(mData), [rhs]"r"(rhs.mData),
-               "m"(*(std::uint64_t(*)[kSize])mData),
-               "m"(*(std::uint64_t(*)[kSize])rhs.mData)
-             : "cc");
+             : "+m"(mData), [tempReg]"=&r"(tempReg)
+             : [lhs]"r"(mData), [rhs]"r"(rhs.mData), "m"(rhs.mData) : "cc");
     else if constexpr(kSize == 3)
         asm ("movq 16(%[rhs]), %[tempReg]\n\t"
              "subq %[tempReg], 16(%[lhs])\n\t"
@@ -919,11 +888,8 @@ inline WMPUInt<kSize>& WMPUInt<kSize>::operator-=(const WMPUInt<kSize>& rhs)
              "sbbq %[tempReg], 8(%[lhs])\n\t"
              "movq (%[rhs]), %[tempReg]\n\t"
              "sbbq %[tempReg], (%[lhs])"
-             : "+m"(*(std::uint64_t(*)[kSize])mData), [tempReg]"=&r"(tempReg)
-             : [lhs]"r"(mData), [rhs]"r"(rhs.mData),
-               "m"(*(std::uint64_t(*)[kSize])mData),
-               "m"(*(std::uint64_t(*)[kSize])rhs.mData)
-             : "cc");
+             : "+m"(mData), [tempReg]"=&r"(tempReg)
+             : [lhs]"r"(mData), [rhs]"r"(rhs.mData), "m"(rhs.mData) : "cc");
     else if constexpr(kSize == 4)
         asm ("movq 24(%[rhs]), %[tempReg]\n\t"
              "subq %[tempReg], 24(%[lhs])\n\t"
@@ -933,11 +899,8 @@ inline WMPUInt<kSize>& WMPUInt<kSize>::operator-=(const WMPUInt<kSize>& rhs)
              "sbbq %[tempReg], 8(%[lhs])\n\t"
              "movq (%[rhs]), %[tempReg]\n\t"
              "sbbq %[tempReg], (%[lhs])"
-             : "+m"(*(std::uint64_t(*)[kSize])mData), [tempReg]"=&r"(tempReg)
-             : [lhs]"r"(mData), [rhs]"r"(rhs.mData),
-               "m"(*(std::uint64_t(*)[kSize])mData),
-               "m"(*(std::uint64_t(*)[kSize])rhs.mData)
-             : "cc");
+             : "+m"(mData), [tempReg]"=&r"(tempReg)
+             : [lhs]"r"(mData), [rhs]"r"(rhs.mData), "m"(rhs.mData) : "cc");
     else
     {
         std::uint64_t dataInd = kSize - 2;
@@ -948,12 +911,8 @@ inline WMPUInt<kSize>& WMPUInt<kSize>::operator-=(const WMPUInt<kSize>& rhs)
              "sbbq %[tempReg], (%[lhs],%[dataInd],8)\n\t"
              "decq %[dataInd]\n\t"
              "jns loop%="
-             : "+m"(*(std::uint64_t(*)[kSize])mData),
-               [tempReg]"=&r"(tempReg), [dataInd]"+r"(dataInd)
-             : [lhs]"r"(mData), [rhs]"r"(rhs.mData),
-               "m"(*(std::uint64_t(*)[kSize])mData),
-               "m"(*(std::uint64_t(*)[kSize])rhs.mData)
-             : "cc");
+             : "+m"(mData), [tempReg]"=&r"(tempReg), [dataInd]"+r"(dataInd)
+             : [lhs]"r"(mData), [rhs]"r"(rhs.mData), "m"(rhs.mData) : "cc");
     }
 
     return *this;
@@ -975,27 +934,18 @@ inline WMPUInt<kSize>& WMPUInt<kSize>::operator-=(std::uint64_t value)
     if constexpr(kSize == 2)
         asm ("subq %[value], 8(%[lhs])\n\t"
              "sbbq %[zero], (%[lhs])"
-             : "+m"(*(std::uint64_t(*)[kSize])mData)
-             : [lhs]"r"(mData), [value]"r"(value), [zero]"r"(zero),
-               "m"(*(std::uint64_t(*)[kSize])mData)
-             : "cc");
+             : "+m"(mData) : [lhs]"r"(mData), [value]"r"(value), [zero]"r"(zero) : "cc");
     else if constexpr(kSize == 3)
         asm ("subq %[value], 16(%[lhs])\n\t"
              "sbbq %[zero], 8(%[lhs])\n\t"
              "sbbq %[zero], (%[lhs])"
-             : "+m"(*(std::uint64_t(*)[kSize])mData)
-             : [lhs]"r"(mData), [value]"r"(value), [zero]"r"(zero),
-               "m"(*(std::uint64_t(*)[kSize])mData)
-             : "cc");
+             : "+m"(mData) : [lhs]"r"(mData), [value]"r"(value), [zero]"r"(zero) : "cc");
     else if constexpr(kSize == 4)
         asm ("subq %[value], 24(%[lhs])\n\t"
              "sbbq %[zero], 16(%[lhs])\n\t"
              "sbbq %[zero], 8(%[lhs])\n\t"
              "sbbq %[zero], (%[lhs])"
-             : "+m"(*(std::uint64_t(*)[kSize])mData)
-             : [lhs]"r"(mData), [value]"r"(value), [zero]"r"(zero),
-               "m"(*(std::uint64_t(*)[kSize])mData)
-             : "cc");
+             : "+m"(mData) : [lhs]"r"(mData), [value]"r"(value), [zero]"r"(zero) : "cc");
     else if constexpr(kSize % 2 == 0)
     {
         std::uint64_t dataInd = kSize - 3;
@@ -1009,10 +959,8 @@ inline WMPUInt<kSize>& WMPUInt<kSize>::operator-=(std::uint64_t value)
              "decq %[dataInd]\n\t"
              "jns loop%=\n"
              "exitLoop%=:"
-             : "+m"(*(std::uint64_t(*)[kSize])mData), [dataInd]"+r"(dataInd)
-             : [lhs]"r"(mData), [value]"r"(value), [zero]"r"(zero),
-               "m"(*(std::uint64_t(*)[kSize])mData)
-             : "cc");
+             : "+m"(mData), [dataInd]"+r"(dataInd)
+             : [lhs]"r"(mData), [value]"r"(value), [zero]"r"(zero) : "cc");
     }
     else
     {
@@ -1026,10 +974,8 @@ inline WMPUInt<kSize>& WMPUInt<kSize>::operator-=(std::uint64_t value)
              "decq %[dataInd]\n\t"
              "jns loop%=\n"
              "exitLoop%=:"
-             : "+m"(*(std::uint64_t(*)[kSize])mData), [dataInd]"+r"(dataInd)
-             : [lhs]"r"(mData), [value]"r"(value), [zero]"r"(zero),
-               "m"(*(std::uint64_t(*)[kSize])mData)
-             : "cc");
+             : "+m"(mData), [dataInd]"+r"(dataInd)
+             : [lhs]"r"(mData), [value]"r"(value), [zero]"r"(zero) : "cc");
     }
 
     return *this;
@@ -1096,8 +1042,7 @@ inline void WMPUInt<kSize>::multiply
              : "+m"(*(std::uint64_t(*)[kSize])result),
                [tmp1]"=&r"(tmp1), [tmp2]"=&r"(tmp2)
              : [lhs]"r"(mData), [rhs]"r"(rhs.mData), [result]"r"(result),
-               "m"(*(std::uint64_t(*)[kSize])mData),
-               "m"(*(std::uint64_t(*)[kSize])rhs.mData)
+               "m"(mData), "m"(rhs.mData)
              : "rax", "rdx", "cc");
     }
     else
@@ -1152,13 +1097,12 @@ inline void WMPUInt<kSize>::multiply
              "decq %[lhsInd]\n\t" // --lhsInd
              "jns L2%=" // if(lhsInd >= 0) goto L2
              : "+m"(*(std::uint64_t(*)[kSize])result),
-               "+m"(*(std::uint64_t(*)[kSize])tempBuffer),
+               "=m"(*(std::uint64_t(*)[kSize])tempBuffer),
                [lhsInd]"+r"(lhsInd), [rhsInd]"+r"(rhsInd),
                [rhsIndCounter]"=&r"(rhsIndCounter), [lhsValue]"+r"(lhsValue)
              : [lhs]"r"(mData), [rhs]"r"(rhs.mData), [result]"r"(result),
                [tempBuf]"r"(tempBuffer), [kSizeM1]"i"(kSize - 1),
-               "m"(*(std::uint64_t(*)[kSize])mData),
-               "m"(*(std::uint64_t(*)[kSize])rhs.mData)
+               "m"(mData), "m"(rhs.mData)
              : "rax", "rdx", "cc");
     }
 }
@@ -1196,11 +1140,9 @@ inline void WMPUInt<kSize>::fullMultiply(const WMPUInt<kSize>& rhs, std::uint64_
              "addq %%rax, 16(%[result])\n\t" // result[2] += rax
              "adcq %%rdx, 8(%[result])\n\t" // result[1] += rdx
              "adcq %[zero], (%[result])" // result[0] += 0
-             : "+m"(*(std::uint64_t(*)[kSize])result),
-               "+m"(*(std::uint64_t(*)[kSize])tempBuffer)
+             : "=m"(*(std::uint64_t(*)[kSize])result)
              : [lhs]"r"(mData), [rhs]"r"(rhs.mData), [result]"r"(result), [zero]"r"(zero),
-               "m"(*(std::uint64_t(*)[kSize])mData),
-               "m"(*(std::uint64_t(*)[kSize])rhs.mData)
+               "m"(mData), "m"(rhs.mData)
              : "rax", "rdx", "cc");
     }
     else
@@ -1244,9 +1186,8 @@ inline void WMPUInt<kSize>::multiply(std::uint64_t rhs, std::uint64_t* result) c
              "movq %%rdx,(%[result])\n\t"
              "imulq (%[lhs]),%[rhs]\n\t"
              "addq %[rhs],(%[result])"
-             : "+m"(*(std::uint64_t(*)[kSize])result), [rhs]"+r"(rhs)
-             : [lhs]"r"(mData), [result]"r"(result),
-               "m"(*(std::uint64_t(*)[kSize])mData)
+             : "=m"(*(std::uint64_t(*)[kSize])result), [rhs]"+r"(rhs)
+             : [lhs]"r"(mData), [result]"r"(result), "m"(mData)
              : "rax", "rdx", "cc");
     }
     else
@@ -1263,8 +1204,7 @@ inline void WMPUInt<kSize>::multiply(std::uint64_t rhs, std::uint64_t* result) c
              "imulq (%[lhs]),%[rhs]\n\t" // rhs = lhs[0] * rhs
              "addq %[rhs],(%[result])" // result[0] += rhs
              : "+m"(*(std::uint64_t(*)[kSize])result), [rhs]"+r"(rhs), [lhsInd]"+r"(lhsInd)
-             : [lhs]"r"(mData), [result]"r"(result),
-               "m"(*(std::uint64_t(*)[kSize])mData)
+             : [lhs]"r"(mData), [result]"r"(result), "m"(mData)
              : "rax", "rdx", "cc");
     }
 }
@@ -1316,9 +1256,7 @@ inline void WMPUInt<kSize>::neg()
         asm ("negq 8(%[lhs])\n\t"
              "adcq $0, (%[lhs])\n\t"
              "negq (%[lhs])"
-             : "+m"(*(std::uint64_t(*)[kSize])mData)
-             : [lhs]"r"(mData), "m"(*(std::uint64_t(*)[kSize])mData)
-             : "cc");
+             : "+m"(mData) : [lhs]"r"(mData) : "cc");
     }
     else
     {
@@ -1358,14 +1296,10 @@ inline void WMPUInt<kSize>::addTo(WMPUInt<kSize>& target1, WMPUInt<kSize>& targe
              "adoxq (%[self]), %[tempReg2]\n\t"
              "movq %[tempReg1], (%[target1])\n\t"
              "movq %[tempReg2], (%[target2])"
-             : "+m"(*(std::uint64_t(*)[kSize])target1.mData),
-               "+m"(*(std::uint64_t(*)[kSize])target2.mData),
+             : "+m"(target1.mData), "+m"(target2.mData),
                [tempReg1]"=&r"(tempReg1), [tempReg2]"=&r"(tempReg2)
              : [self]"r"(mData), [target1]"r"(target1.mData), [target2]"r"(target2.mData),
-               "m"(*(std::uint64_t(*)[kSize])mData),
-               "m"(*(std::uint64_t(*)[kSize])target1.mData),
-               "m"(*(std::uint64_t(*)[kSize])target2.mData)
-             : "cc");
+               "m"(mData) : "cc");
     else
     {
         std::uint64_t dataInd = 8 * kSize;
@@ -1381,14 +1315,10 @@ inline void WMPUInt<kSize>::addTo(WMPUInt<kSize>& target1, WMPUInt<kSize>& targe
              "jrcxz done%=\n\t"
              "jmp loop%=\n"
              "done%=:"
-             : "+m"(*(std::uint64_t(*)[kSize])target1.mData),
-               "+m"(*(std::uint64_t(*)[kSize])target2.mData),
+             : "+m"(target1.mData), "+m"(target2.mData),
                [dataInd]"+c"(dataInd), [tempReg1]"=&r"(tempReg1), [tempReg2]"=&r"(tempReg2)
              : [self]"r"(mData), [target1]"r"(target1.mData), [target2]"r"(target2.mData),
-               "m"(*(std::uint64_t(*)[kSize])mData),
-               "m"(*(std::uint64_t(*)[kSize])target1.mData),
-               "m"(*(std::uint64_t(*)[kSize])target2.mData)
-             : "cc");
+               "m"(mData) : "cc");
     }
 #endif
 }
@@ -1417,15 +1347,11 @@ inline void addWMPPair(WMPUInt<kSize>& lhs1, const WMPUInt<kSize>& rhs1,
              "adoxq (%[rhs2]), %[tempReg2]\n\t"
              "movq %[tempReg1], (%[lhs1])\n\t"
              "movq %[tempReg2], (%[lhs2])"
-             : "+m"(*(std::uint64_t(*)[kSize])lhs1.mData),
-               "+m"(*(std::uint64_t(*)[kSize])lhs2.mData),
+             : "+m"(lhs1.mData), "+m"(lhs2.mData),
                [tempReg1]"=&r"(tempReg1), [tempReg2]"=&r"(tempReg2)
              : [lhs1]"r"(lhs1.mData), [lhs2]"r"(lhs2.mData),
                [rhs1]"r"(rhs1.mData), [rhs2]"r"(rhs2.mData),
-               "m"(*(std::uint64_t(*)[kSize])lhs1.mData),
-               "m"(*(std::uint64_t(*)[kSize])rhs1.mData),
-               "m"(*(std::uint64_t(*)[kSize])lhs2.mData),
-               "m"(*(std::uint64_t(*)[kSize])rhs2.mData)
+               "m"(rhs1.mData), "m"(rhs2.mData)
              : "cc");
     else
     {
@@ -1442,15 +1368,11 @@ inline void addWMPPair(WMPUInt<kSize>& lhs1, const WMPUInt<kSize>& rhs1,
              "jrcxz done%=\n\t"
              "jmp loop%=\n"
              "done%=:"
-             : "+m"(*(std::uint64_t(*)[kSize])lhs1.mData),
-               "+m"(*(std::uint64_t(*)[kSize])lhs2.mData),
+             : "+m"(lhs1.mData), "+m"(lhs2.mData),
                [dataInd]"+c"(dataInd), [tempReg1]"=&r"(tempReg1), [tempReg2]"=&r"(tempReg2)
              : [lhs1]"r"(lhs1.mData), [lhs2]"r"(lhs2.mData),
                [rhs1]"r"(rhs1.mData), [rhs2]"r"(rhs2.mData),
-               "m"(*(std::uint64_t(*)[kSize])lhs1.mData),
-               "m"(*(std::uint64_t(*)[kSize])rhs1.mData),
-               "m"(*(std::uint64_t(*)[kSize])lhs2.mData),
-               "m"(*(std::uint64_t(*)[kSize])rhs2.mData)
+               "m"(rhs1.mData), "m"(rhs2.mData)
              : "cc");
     }
 #endif
