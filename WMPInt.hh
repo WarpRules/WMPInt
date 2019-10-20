@@ -706,6 +706,40 @@ inline WMPUInt<kSize>& WMPUInt<kSize>::operator+=(const WMPUInt<kSize>& rhs)
              "adcq %[tempReg], (%[lhs])"
              : "+m"(mData), [tempReg]"=&r"(tempReg)
              : [lhs]"r"(mData), [rhs]"r"(rhs.mData) : "cc");
+#if __ADX__
+    else if constexpr(kSize % 2 == 0)
+    {
+        const std::uint64_t* lhsHalfPoint = mData + (kSize / 2);
+        const std::uint64_t* rhsHalfPoint = rhs.mData + (kSize / 2);
+        std::uint64_t dataInd = 8 * (kSize/2), tempReg2;
+        asm ("test %%al, %%al\n"
+             "loop%=:\n\t"
+             "leaq -8(%[dataInd]), %[dataInd]\n\t"
+             "movq (%[lhsBegin],%[dataInd]), %[tempReg1]\n\t"
+             "movq (%[lhsHalf],%[dataInd]), %[tempReg2]\n\t"
+             "adoxq (%[rhsBegin],%[dataInd]), %[tempReg1]\n\t"
+             "adcxq (%[rhsHalf],%[dataInd]), %[tempReg2]\n\t"
+             "movq %[tempReg1], (%[lhsBegin],%[dataInd])\n\t"
+             "movq %[tempReg2], (%[lhsHalf],%[dataInd])\n\t"
+             "jrcxz done%=\n\t"
+             "jmp loop%=\n"
+             "done%=:\n\t"
+             "jnc end%=\n\t"
+             "movq %[kSizeP2], %[dataInd]\n"
+             "loop2%=:\n\t"
+             "decq %[dataInd]\n\t"
+             "js end%=\n\t"
+             "incq (%[lhsBegin],%[dataInd],8)\n\t"
+             "jz loop2%=\n"
+             "end%=:"
+             : "+m"(*(std::uint64_t(*)[kSize])mData),
+               [dataInd]"+c"(dataInd), [tempReg1]"=&r"(tempReg), [tempReg2]"=&r"(tempReg2)
+             : [lhsHalf]"r"(lhsHalfPoint), [rhsHalf]"r"(rhsHalfPoint),
+               [lhsBegin]"r"(mData), [rhsBegin]"r"(rhs.mData),
+               [kSizeP2]"i"(kSize/2)
+             : "cc");
+    }
+#endif
     else
     {
         /* There is not enough speed advantage in unrolling the loop to warrant
