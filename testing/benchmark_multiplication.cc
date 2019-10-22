@@ -4,13 +4,14 @@
 
 namespace
 {
+    std::mt19937_64 rngEngine(0);
+
     volatile std::uint64_t gValueSink1, gValueSink2;
 }
 
 template<std::size_t kSize>
 void runMultiplicationBenchmark(std::size_t totalIterations)
 {
-    std::mt19937_64 rngEngine(totalIterations);
     WMPUInt<kSize> value1, value2, result;
     std::uint64_t tempBuffer[kSize];
     std::uint64_t resultSumMSW = 0, resultSumLSW = 0;

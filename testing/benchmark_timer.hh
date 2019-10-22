@@ -9,12 +9,16 @@ class Timer
 
 
  public:
-    void printResult(std::size_t kSize, std::size_t iterationCount)
+    double getElapsedSeconds() const
     {
         const std::chrono::time_point endTime = std::chrono::high_resolution_clock::now();
         const std::chrono::duration<double> diff = endTime - mStartTime;
-        const double seconds = diff.count();
+        return diff.count();
+    }
 
+    void printResult(std::size_t kSize, std::size_t iterationCount)
+    {
+        const double seconds = getElapsedSeconds();
         std::printf("WMPUInt<%zu>: %.3f s (%zu iterations, %.3f us)\n",
                     kSize, seconds, iterationCount, seconds * 1.0e6 / iterationCount);
     }

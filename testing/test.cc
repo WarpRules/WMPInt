@@ -249,6 +249,65 @@ static bool testAdditionWithSize()
     if(!checkSubtraction(value1, 2, value3)) DRET;
     if(!checkSubtraction(1, value2, value3)) DRET;
 
+    WMPUInt<kSize> value[3], result1[2], result2[2];
+
+    for(std::uint64_t startValue = 1; startValue <= 100; ++startValue)
+    {
+        for(std::size_t cInd = 0; cInd < kSize; ++cInd)
+        {
+            value[0].data()[cInd] = startValue + cInd;
+            value[1].data()[cInd] = startValue + cInd + 1;
+            value[2].data()[cInd] = startValue + cInd + 2;
+            result1[0].data()[cInd] = value[0].data()[cInd] + value[1].data()[cInd];
+            result1[1].data()[cInd] = value[0].data()[cInd] + value[2].data()[cInd];
+        }
+
+        if(!checkAddition(value[0], value[1], result1[0])) DRET;
+        if(!checkAddition(value[0], value[2], result1[1])) DRET;
+
+        result2[0] = value[1];
+        result2[1] = value[2];
+        value[0].addTo(result2[0], result2[1]);
+
+        if(!checkAddition(value[0], value[1], result2[0])) DRET;
+        if(!checkAddition(value[0], value[2], result2[1])) DRET;
+
+        for(std::size_t cInd = kSize-1; cInd > 0; --cInd)
+        {
+            for(std::size_t cInd = 0; cInd < kSize; ++cInd)
+            {
+                value[0].data()[cInd] = startValue + cInd;
+                value[1].data()[cInd] = startValue + cInd + 1;
+                value[2].data()[cInd] = startValue + cInd + 2;
+                result1[0].data()[cInd] = value[0].data()[cInd] + value[1].data()[cInd];
+                result1[1].data()[cInd] = value[0].data()[cInd] + value[2].data()[cInd];
+            }
+
+            value[0].data()[cInd] = UINT64_C(0xFFFFFFFFFFFFFFFF);
+            result1[0].data()[cInd] = value[0].data()[cInd] + value[1].data()[cInd];
+            ++result1[0].data()[cInd-1];
+            result1[1].data()[cInd] = value[0].data()[cInd] + value[2].data()[cInd];
+            ++result1[1].data()[cInd-1];
+
+            if(!checkAddition(value[0], value[1], result1[0])) DRET;
+            if(!checkAddition(value[0], value[2], result1[1])) DRET;
+
+            result2[0] = value[1];
+            result2[1] = value[2];
+            value[0].addTo(result2[0], result2[1]);
+
+            if(!checkAddition(value[0], value[1], result2[0])) DRET;
+            if(!checkAddition(value[0], value[2], result2[1])) DRET;
+
+            result2[0] = value[1];
+            result2[1] = value[2];
+            addWMPPair(result2[0], value[0], result2[1], value[0]);
+
+            if(!checkAddition(value[0], value[1], result2[0])) DRET;
+            if(!checkAddition(value[0], value[2], result2[1])) DRET;
+        }
+    }
+
     return true;
 }
 

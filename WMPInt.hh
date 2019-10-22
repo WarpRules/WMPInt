@@ -1283,7 +1283,7 @@ inline void WMPUInt<kSize>::addTo(WMPUInt<kSize>& target1, WMPUInt<kSize>& targe
     std::uint64_t tempReg1, tempReg2;
 
     if constexpr(kSize == 2)
-        asm ("test %%al %%al\n\t"
+        asm ("test %%al, %%al\n\t"
              "movq 8(%[target1]), %[tempReg1]\n\t"
              "movq 8(%[target2]), %[tempReg2]\n\t"
              "adcxq 8(%[self]), %[tempReg1]\n\t"
@@ -1300,6 +1300,35 @@ inline void WMPUInt<kSize>::addTo(WMPUInt<kSize>& target1, WMPUInt<kSize>& targe
                [tempReg1]"=&r"(tempReg1), [tempReg2]"=&r"(tempReg2)
              : [self]"r"(mData), [target1]"r"(target1.mData), [target2]"r"(target2.mData),
                "m"(mData) : "cc");
+    else if constexpr(kSize % 2 == 0)
+    {
+        std::uint64_t tempReg3, tempReg4;
+        std::uint64_t dataInd = 8 * kSize;
+        asm ("test %%al, %%al\n"
+             "loop%=:\n\t"
+             "leaq -16(%[dataInd]), %[dataInd]\n\t"
+             "movq 8(%[target1],%[dataInd]), %[tempReg1]\n\t"
+             "movq 8(%[target2],%[dataInd]), %[tempReg2]\n\t"
+             "movq (%[target1],%[dataInd]), %[tempReg3]\n\t"
+             "movq (%[target2],%[dataInd]), %[tempReg4]\n\t"
+             "adcxq 8(%[self],%[dataInd]), %[tempReg1]\n\t"
+             "adoxq 8(%[self],%[dataInd]), %[tempReg2]\n\t"
+             "adcxq (%[self],%[dataInd]), %[tempReg3]\n\t"
+             "adoxq (%[self],%[dataInd]), %[tempReg4]\n\t"
+             "movq %[tempReg1], 8(%[target1],%[dataInd])\n\t"
+             "movq %[tempReg2], 8(%[target2],%[dataInd])\n\t"
+             "movq %[tempReg3], (%[target1],%[dataInd])\n\t"
+             "movq %[tempReg4], (%[target2],%[dataInd])\n\t"
+             "jrcxz done%=\n\t"
+             "jmp loop%=\n"
+             "done%=:"
+             : "+m"(target1.mData), "+m"(target2.mData),
+               [dataInd]"+c"(dataInd),
+               [tempReg1]"=&r"(tempReg1), [tempReg2]"=&r"(tempReg2),
+               [tempReg3]"=&r"(tempReg3), [tempReg4]"=&r"(tempReg4)
+             : [self]"r"(mData), [target1]"r"(target1.mData), [target2]"r"(target2.mData),
+               "m"(mData) : "cc");
+    }
     else
     {
         std::uint64_t dataInd = 8 * kSize;
@@ -1334,7 +1363,7 @@ inline void addWMPPair(WMPUInt<kSize>& lhs1, const WMPUInt<kSize>& rhs1,
     std::uint64_t tempReg1, tempReg2;
 
     if constexpr(kSize == 2)
-        asm ("test %%al %%al\n\t"
+        asm ("test %%al, %%al\n\t"
              "movq 8(%[lhs1]), %[tempReg1]\n\t"
              "movq 8(%[lhs2]), %[tempReg2]\n\t"
              "adcxq 8(%[rhs1]), %[tempReg1]\n\t"
@@ -1347,11 +1376,13 @@ inline void addWMPPair(WMPUInt<kSize>& lhs1, const WMPUInt<kSize>& rhs1,
              "adoxq (%[rhs2]), %[tempReg2]\n\t"
              "movq %[tempReg1], (%[lhs1])\n\t"
              "movq %[tempReg2], (%[lhs2])"
-             : "+m"(lhs1.mData), "+m"(lhs2.mData),
+             : "+m"(*(std::uint64_t(*)[kSize])lhs1.data()),
+               "+m"(*(std::uint64_t(*)[kSize])lhs2.data()),
                [tempReg1]"=&r"(tempReg1), [tempReg2]"=&r"(tempReg2)
-             : [lhs1]"r"(lhs1.mData), [lhs2]"r"(lhs2.mData),
-               [rhs1]"r"(rhs1.mData), [rhs2]"r"(rhs2.mData),
-               "m"(rhs1.mData), "m"(rhs2.mData)
+             : [lhs1]"r"(lhs1.data()), [lhs2]"r"(lhs2.data()),
+               [rhs1]"r"(rhs1.data()), [rhs2]"r"(rhs2.data()),
+               "m"(*(std::uint64_t(*)[kSize])rhs1.data()),
+               "m"(*(std::uint64_t(*)[kSize])rhs2.data())
              : "cc");
     else
     {
@@ -1368,11 +1399,13 @@ inline void addWMPPair(WMPUInt<kSize>& lhs1, const WMPUInt<kSize>& rhs1,
              "jrcxz done%=\n\t"
              "jmp loop%=\n"
              "done%=:"
-             : "+m"(lhs1.mData), "+m"(lhs2.mData),
+             : "+m"(*(std::uint64_t(*)[kSize])lhs1.data()),
+               "+m"(*(std::uint64_t(*)[kSize])lhs2.data()),
                [dataInd]"+c"(dataInd), [tempReg1]"=&r"(tempReg1), [tempReg2]"=&r"(tempReg2)
-             : [lhs1]"r"(lhs1.mData), [lhs2]"r"(lhs2.mData),
-               [rhs1]"r"(rhs1.mData), [rhs2]"r"(rhs2.mData),
-               "m"(rhs1.mData), "m"(rhs2.mData)
+             : [lhs1]"r"(lhs1.data()), [lhs2]"r"(lhs2.data()),
+               [rhs1]"r"(rhs1.data()), [rhs2]"r"(rhs2.data()),
+               "m"(*(std::uint64_t(*)[kSize])rhs1.data()),
+               "m"(*(std::uint64_t(*)[kSize])rhs2.data())
              : "cc");
     }
 #endif
