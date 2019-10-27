@@ -285,6 +285,18 @@ const char* <span class="funcname">assignFromDecStr</span> (const char*, std::ui
     truncated. (Currently there is no mechanism implemented to know this for sure.)</p>
 </ul>
 
+<p>Note, however, that this does not take into account possible leading <code>'0'</code> characters
+  in the input string. If determining whether truncation happened is important, these leading
+  characters should be skipped prior to calling these functions.</p>
+
+<p>(If it's absolutely crucial to know if the value of an input decimal string was truncated,
+  then one sure way is to use a temporary <code>WMPUInt</code> object that's one larger than
+  the target object, then read the decimal string value into it, and if the difference between
+  pointers is exactly <code>maxDecimalDigits()</code> of the target object, check if
+  <code>data()[0]</code> of this temporary object is zero. If it's not, then the value
+  was truncated. After this, the temporary object can be assigned to the target object
+  using <code>assign()</code>.)</p>
+
 <p>If possible, using <code>assignFromHexStr()</code> is recommended because it's
   <em>significantly</em> more efficient than <code>assignFromDecStr()</code>.</p>
 
