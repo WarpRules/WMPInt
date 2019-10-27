@@ -91,6 +91,14 @@ class WMPUInt
     WMPUInt<kSize> operator^(const WMPUInt<kSize>&) const;
     WMPUInt<kSize> operator^(std::uint64_t) const;
 
+    WMPUInt<kSize>& operator<<=(std::size_t);
+    WMPUInt<kSize> operator<<(std::size_t) const;
+    WMPUInt<kSize>& operator>>=(std::size_t);
+    WMPUInt<kSize> operator>>(std::size_t) const;
+
+    template<std::size_t> void shiftLeft();
+    template<std::size_t> void shiftRight();
+
     //------------------------------------------------------------------------
     // Arithmetic operators
     //------------------------------------------------------------------------
@@ -112,8 +120,8 @@ class WMPUInt
     WMPUInt<kSize> operator-() const;
     void neg();
 
-    void multiply(const WMPUInt<kSize>&, std::uint64_t* result, std::uint64_t* tempBuffer) const;
-    void multiply(std::uint64_t, std::uint64_t* result) const;
+    void multiply(const WMPUInt<kSize>&, WMPUInt<kSize>& result, std::uint64_t* tempBuffer) const;
+    void multiply(std::uint64_t, WMPUInt<kSize>& result) const;
 
     void fullMultiply(const WMPUInt<kSize>&, std::uint64_t* result,
                       std::uint64_t* tempBuffer) const;
@@ -125,6 +133,9 @@ class WMPUInt
  private:
 //----------------------------------------------------------------------------
     std::uint64_t mData[kSize];
+
+    void multiply(const WMPUInt<kSize>&, std::uint64_t* result, std::uint64_t* tempBuffer) const;
+    void multiply(std::uint64_t, std::uint64_t* result) const;
 };
 
 
@@ -157,6 +168,12 @@ class WMPUInt<1>
     WMPUInt<1> operator|(const WMPUInt<1>& rhs) const { return WMPUInt<1>(mValue | rhs.mValue); }
     WMPUInt<1>& operator^=(const WMPUInt<1>& rhs) { mValue ^= rhs.mValue; return *this; }
     WMPUInt<1> operator^(const WMPUInt<1>& rhs) const { return WMPUInt<1>(mValue ^ rhs.mValue); }
+    WMPUInt<1>& operator<<=(std::size_t bits) { mValue <<= bits; return *this; }
+    WMPUInt<1> operator<<(std::size_t bits) const { return mValue << bits; }
+    WMPUInt<1>& operator>>=(std::size_t bits) { mValue >>= bits; return *this; }
+    WMPUInt<1> operator>>(std::size_t bits) const { return mValue >> bits; }
+    template<std::size_t kBits> void shiftLeft() { mValue <<= kBits; }
+    template<std::size_t kBits> void shiftRight() { mValue >>= kBits; }
     WMPUInt<1>& operator+=(const WMPUInt<1>& rhs) { mValue += rhs.mValue; return *this; }
     WMPUInt<1> operator+(const WMPUInt<1>& rhs) const { return WMPUInt<1>(mValue + rhs.mValue); }
     WMPUInt<1>& operator-=(const WMPUInt<1>& rhs) { mValue -= rhs.mValue; return *this; }
@@ -681,6 +698,52 @@ inline WMPUInt<kSize> operator^(std::uint64_t lhs, const WMPUInt<kSize>& rhs)
 
 
 //----------------------------------------------------------------------------
+// Shift operators
+//----------------------------------------------------------------------------
+template<std::size_t kSize>
+inline WMPUInt<kSize>& WMPUInt<kSize>::operator<<=(std::size_t)
+{
+    static_assert(kSize < 2, "Not yet implemented");
+    return *this;
+}
+
+template<std::size_t kSize>
+inline WMPUInt<kSize> WMPUInt<kSize>::operator<<(std::size_t) const
+{
+    static_assert(kSize < 2, "Not yet implemented");
+    return {};
+}
+
+template<std::size_t kSize>
+inline WMPUInt<kSize>& WMPUInt<kSize>::operator>>=(std::size_t)
+{
+    static_assert(kSize < 2, "Not yet implemented");
+    return *this;
+}
+
+template<std::size_t kSize>
+inline WMPUInt<kSize> WMPUInt<kSize>::operator>>(std::size_t) const
+{
+    static_assert(kSize < 2, "Not yet implemented");
+    return {};
+}
+
+template<std::size_t kSize>
+template<std::size_t>
+inline void WMPUInt<kSize>::shiftLeft()
+{
+    static_assert(kSize < 2, "Not yet implemented");
+}
+
+template<std::size_t kSize>
+template<std::size_t>
+inline void WMPUInt<kSize>::shiftRight()
+{
+    static_assert(kSize < 2, "Not yet implemented");
+}
+
+
+//----------------------------------------------------------------------------
 // Addition
 //----------------------------------------------------------------------------
 template<std::size_t kSize>
@@ -1108,6 +1171,13 @@ inline void WMPUInt<kSize>::multiply
 }
 
 template<std::size_t kSize>
+inline void WMPUInt<kSize>::multiply(const WMPUInt<kSize>& rhs, WMPUInt<kSize>& result,
+                                     std::uint64_t* tempBuffer) const
+{
+    multiply(rhs, result.data(), tempBuffer);
+}
+
+template<std::size_t kSize>
 inline void WMPUInt<kSize>::fullMultiply(const WMPUInt<kSize>& rhs, std::uint64_t* result,
                                          std::uint64_t* tempBuffer) const
 {
@@ -1207,6 +1277,12 @@ inline void WMPUInt<kSize>::multiply(std::uint64_t rhs, std::uint64_t* result) c
              : [lhs]"r"(mData), [result]"r"(result), "m"(mData)
              : "rax", "rdx", "cc");
     }
+}
+
+template<std::size_t kSize>
+inline void WMPUInt<kSize>::multiply(std::uint64_t rhs, WMPUInt<kSize>& result) const
+{
+    multiply(rhs, result.data());
 }
 
 template<std::size_t kSize>

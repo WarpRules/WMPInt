@@ -55,7 +55,7 @@ li
 
 pre
 {
-  background-color: #E0E0E0;
+  background-color: #F0E8E0;
   padding-left: 1em;
   padding-top: 0.5em;
   padding-bottom: 0.5em;
@@ -63,6 +63,11 @@ pre
   border: solid;
   border-width: 1px;
   color: #004070;
+}
+
+.synopsis
+{
+  background-color: #E0E0F0;
 }
 
 code
@@ -74,6 +79,11 @@ code
 .comment
 {
   color: #008000;
+}
+
+.funcname
+{
+  color: #0050FF;
 }
 --> </style>
 </head>
@@ -97,22 +107,25 @@ WMPUInt&lt;16&gt; result = a + b * c;</pre>
 <p>Note that these classes use x86-64 inline asm, which means support is restricted
   to such targets, using compatible compilers (modern gcc and clang tested, icc may work).</p>
 
-<p>Table of contents:</p>
+<h4>Table of contents:</h4>
 
 <ul>
   <li><a href="#license">License</a></li>
   <li><a href="#summary">Feature and usage summary</a></li>
   <li><a href="#compatibility">Compiler and platform compatibility</a></li>
-  <li><a href="#initialization">Value initialization</a></li>
-  <li><a href="#functions">Supported math functions and operators</a></li>
+  <li>Function reference</li>
   <ul>
-    <li><a href="#data">Data retrieval</a></li>
-    <li><a href="#comparison">Comparison operators</a></li>
-    <li><a href="#bitwise">Bitwise operators</a></li>
-    <li><a href="#arithmetic">Arithmetic operators</a></li>
-    <li><a href="#multiply">Multiplying very large integers</a></li>
+    <li><a href="#initialization">Value initialization</a></li>
+    <li><a href="#functions">Supported math functions and operators</a></li>
+    <ul>
+      <li><a href="#data">Data retrieval</a></li>
+      <li><a href="#comparison">Comparison operators</a></li>
+      <li><a href="#bitwise">Bitwise operators</a></li>
+      <li><a href="#arithmetic">Arithmetic operators</a></li>
+      <li><a href="#multiply">Multiplying very large integers</a></li>
+    </ul>
+    <li><a href="#printing">ASCII output</a></li>
   </ul>
-  <li><a href="#printing">ASCII output</a></li>
   <li><a href="#notyetsupported">Not yet supported features</a></li>
   <li><a href="#tips">Efficiency tips</a></li>
   <ul>
@@ -195,21 +208,21 @@ b = a*a + b*b + c*c;</pre>
 
 <h3>Initialization with <code>std::uint64_t</code> values</h3>
 
-<p>Synopsis:</p>
+<p><b>Member functions:</b></p>
 
-<pre>WMPUInt();
+<pre class="synopsis">WMPUInt();
 
-explicit WMPUInt(std::uint64_t);
+explicit <span class="funcname">WMPUInt</span> (std::uint64_t);
 
 template&lt;typename... Values_t&gt;
-explicit WMPUInt(std::uint64_t, Values_t...);
+explicit <span class="funcname">WMPUInt</span> (std::uint64_t, Values_t...);
 
-explicit WMPUInt(std::initializer_list&lt;std::uint64_t&gt;);
+explicit <span class="funcname">WMPUInt</span> (std::initializer_list&lt;std::uint64_t&gt;);
 
 template&lttypename... Values_t&gt;
-void assign(std::uint64_t, Values_t...);
+void <span class="funcname">assign</span> (std::uint64_t, Values_t...);
 
-void assign(std::initializer_list&lt;std::uint64_t&gt;);</pre>
+void <span class="funcname">assign</span> (std::initializer_list&lt;std::uint64_t&gt;);</pre>
 
 <p>The default constructor will leave this object uninitialized (thus its value will
   be unspecified, just as with basic types.) To zero-initialize the object, simply
@@ -243,11 +256,11 @@ WMPUInt&lt;3&gt; v3(0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF);
 <p>Alternatively, the object can be initialized with an ASCII string containing a number
   in either decimal or hexadecimal.</p>
 
-<p>Synopsis:</p>
+<p><b>Member functions:</b></p>
 
-<pre>const char* assignFromHexStr(const char*);
-const char* assignFromDecStr(const char*);
-const char* assignFromDecStr(const char*, std::uint64_t* tempBuffer);</pre>
+<pre class="synopsis">const char* <span class="funcname">assignFromHexStr</span> (const char*);
+const char* <span class="funcname">assignFromDecStr</span> (const char*);
+const char* <span class="funcname">assignFromDecStr</span> (const char*, std::uint64_t* tempBuffer);</pre>
 
 <p>The functions will do very little sanity checks on the strings. They will simply
   scan the string until they find a non-hexadecimal (in the first case) or non-decimal
@@ -256,6 +269,21 @@ const char* assignFromDecStr(const char*, std::uint64_t* tempBuffer);</pre>
   a pointer to the position in the string where the scan was stopped.</p>
 
 <p>Currently a leading <code>'-'</code> character is not supported.</p>
+
+<p>If the string contains a value that's larger than fits the current object, its least-significant
+  part will be assigned (in other words, the value will be truncated, ie. taken modulo the maximum
+  value of this object). Currently no direct mechanism is implemented to know if this happens, but
+  this can be deduced in the following manner:</p>
+
+<ul>
+  <li>For hexadecimal strings: If the difference between the returned pointer and the original
+    pointer is larger than <code>maxHexadecimalDigits()</code>, then the value was truncated,
+    else it was not.</li>
+  <li>For decimal strings: If the difference between the pointers is larger than
+    <code>maxDecimalDigits()</code> then it was truncated. If it's smaller than that value then
+    it was not truncated. If it's exactly that value, then it might or might not have been
+    truncated. (Currently there is no mechanism implemented to know this for sure.)</p>
+</ul>
 
 <p>If possible, using <code>assignFromHexStr()</code> is recommended because it's
   <em>significantly</em> more efficient than <code>assignFromDecStr()</code>.</p>
@@ -278,10 +306,10 @@ v3.assignFromDecStr("6277101735386680763835789423207666416102355444464034512895"
 
 <h3>Initialization with another <code>WMPUInt</code> object</h3>
 
-<p>Synopsis:</p>
+<p><b>Member functions:</b></p>
 
-<pre>template&lt;std::size_t kSize2&gt;
-void assign(const WMPUInt&lt;kSize2&gt;&amp;);</pre>
+<pre class="synopsis">template&lt;std::size_t kSize2&gt;
+void <span class="funcname">assign</span> (const WMPUInt&lt;kSize2&gt;&amp;);</pre>
 
 <p>An object of one size can also be assigned with the value of an object of another size.
   If the size of the parameter is larger than the size of this object, the least-significant
@@ -294,12 +322,12 @@ void assign(const WMPUInt&lt;kSize2&gt;&amp;);</pre>
 
 <h3 id="data">Data retrieval</h3>
 
-<p>Synopsis:</p>
+<p><b>Member functions:</b></p>
 
-<pre>constexpr static std::size_t size();
-constexpr static std::size_t bits();
-std::uint64_t* data();
-const std::uint64_t* data() const;</pre>
+<pre class="synopsis">constexpr static std::size_t <span class="funcname">size</span>();
+constexpr static std::size_t <span class="funcname">bits</span>();
+std::uint64_t*               <span class="funcname">data</span>();
+const std::uint64_t*         <span class="funcname">data</span>() const;</pre>
 
 <p><code>size()</code> simply returns <code>kSize</code>.</p>
 
@@ -314,59 +342,81 @@ const std::uint64_t* data() const;</pre>
 
 <h3 id="comparison">Comparison operators</h3>
 
-<p>Synopsis:</p>
+<p><b>Member functions:</b></p>
 
-<pre>bool operator==(const WMPUInt&lt;kSize&gt;&amp;) const;
-bool operator==(std::uint64_t) const;
-bool operator!=(const WMPUInt&lt;kSize&gt;&amp;) const;
-bool operator!=(std::uint64_t) const;
-bool operator&lt;(const WMPUInt&lt;kSize&gt;&amp;) const;
-bool operator&lt;(std::uint64_t) const;
-bool operator&lt;=(const WMPUInt&lt;kSize&gt;&amp;) const;
-bool operator&lt;=(std::uint64_t) const;
-bool operator&gt;(const WMPUInt&lt;kSize&gt;&amp;) const;
-bool operator&gt;(std::uint64_t) const;
-bool operator&gt;=(const WMPUInt&lt;kSize&gt;&amp;) const;
-bool operator&gt;=(std::uint64_t) const;</pre>
+<pre class="synopsis">bool <span class="funcname">operator==</span> (const WMPUInt&lt;kSize&gt;&amp;) const;
+bool <span class="funcname">operator==</span> (std::uint64_t) const;
+bool <span class="funcname">operator!=</span> (const WMPUInt&lt;kSize&gt;&amp;) const;
+bool <span class="funcname">operator!=</span> (std::uint64_t) const;
+bool <span class="funcname">operator&lt;</span>  (const WMPUInt&lt;kSize&gt;&amp;) const;
+bool <span class="funcname">operator&lt;</span>  (std::uint64_t) const;
+bool <span class="funcname">operator&lt;=</span> (const WMPUInt&lt;kSize&gt;&amp;) const;
+bool <span class="funcname">operator&lt;=</span> (std::uint64_t) const;
+bool <span class="funcname">operator&gt;</span>  (const WMPUInt&lt;kSize&gt;&amp;) const;
+bool <span class="funcname">operator&gt;</span>  (std::uint64_t) const;
+bool <span class="funcname">operator&gt;=</span> (const WMPUInt&lt;kSize&gt;&amp;) const;
+bool <span class="funcname">operator&gt;=</span> (std::uint64_t) const;</pre>
+
+<p><b>Non-member functions:</b></p>
+
+<pre class="synopsis">bool <span class="funcname">operator==</span> (std::uint64_t, const WMPUInt&lt;kSize&gt;&amp;);
+bool <span class="funcname">operator!=</span> (std::uint64_t, const WMPUInt&lt;kSize&gt;&amp;);
+bool <span class="funcname">operator&lt;</span>  (std::uint64_t, const WMPUInt&lt;kSize&gt;&amp;);
+bool <span class="funcname">operator&lt;=</span> (std::uint64_t, const WMPUInt&lt;kSize&gt;&amp;);
+bool <span class="funcname">operator&gt;</span>  (std::uint64_t, const WMPUInt&lt;kSize&gt;&amp;);
+bool <span class="funcname">operator&gt;=</span> (std::uint64_t, const WMPUInt&lt;kSize&gt;&amp;);</pre>
 
 <h3 id="bitwise">Bitwise operators</h3>
 
-<p>Synopsis:</p>
+<p><b>Member functions:</b></p>
 
-<pre>WMPUInt&lt;kSize&gt;&amp; operator&amp;=(const WMPUInt&lt;kSize&gt;&amp;);
-WMPUInt&lt;kSize&gt;&amp; operator&amp;=(std::uint64_t);
-WMPUInt&lt;kSize&gt; operator&amp;(const WMPUInt&lt;kSize&gt;&amp;) const;
-WMPUInt&lt;kSize&gt; operator&amp;(std::uint64_t) const;
-WMPUInt&lt;kSize&gt;&amp; operator|=(const WMPUInt&lt;kSize&gt;&amp;);
-WMPUInt&lt;kSize&gt;&amp; operator|=(std::uint64_t);
-WMPUInt&lt;kSize&gt; operator|(const WMPUInt&lt;kSize&gt;&amp;) const;
-WMPUInt&lt;kSize&gt; operator|(std::uint64_t) const;
-WMPUInt&lt;kSize&gt;&amp; operator^=(const WMPUInt&lt;kSize&gt;&amp;);
-WMPUInt&lt;kSize&gt;&amp; operator^=(std::uint64_t);
-WMPUInt&lt;kSize&gt; operator^(const WMPUInt&lt;kSize&gt;&amp;) const;
-WMPUInt&lt;kSize&gt; operator^(std::uint64_t) const;</pre>
+<pre class="synopsis">WMPUInt&lt;kSize&gt;&amp; <span class="funcname">operator&amp;=</span> (const WMPUInt&lt;kSize&gt;&amp;);
+WMPUInt&lt;kSize&gt;&amp; <span class="funcname">operator&amp;=</span> (std::uint64_t);
+WMPUInt&lt;kSize&gt;  <span class="funcname">operator&amp;</span>  (const WMPUInt&lt;kSize&gt;&amp;) const;
+WMPUInt&lt;kSize&gt;  <span class="funcname">operator&amp;</span>  (std::uint64_t) const;
+WMPUInt&lt;kSize&gt;&amp; <span class="funcname">operator|=</span> (const WMPUInt&lt;kSize&gt;&amp;);
+WMPUInt&lt;kSize&gt;&amp; <span class="funcname">operator|=</span> (std::uint64_t);
+WMPUInt&lt;kSize&gt;  <span class="funcname">operator|</span>  (const WMPUInt&lt;kSize&gt;&amp;) const;
+WMPUInt&lt;kSize&gt;  <span class="funcname">operator|</span>  (std::uint64_t) const;
+WMPUInt&lt;kSize&gt;&amp; <span class="funcname">operator^=</span> (const WMPUInt&lt;kSize&gt;&amp;);
+WMPUInt&lt;kSize&gt;&amp; <span class="funcname">operator^=</span> (std::uint64_t);
+WMPUInt&lt;kSize&gt;  <span class="funcname">operator^</span>  (const WMPUInt&lt;kSize&gt;&amp;) const;
+WMPUInt&lt;kSize&gt;  <span class="funcname">operator^</span>  (std::uint64_t) const;</pre>
+
+<p><b>Non-member functions:</b></p>
+
+<pre class="synopsis">WMPUInt&lt;kSize&gt; <span class="funcname">operator&amp;</span> (std::uint64_t, const WMPUInt&lt;kSize&gt;&amp;);
+WMPUInt&lt;kSize&gt; <span class="funcname">operator|</span> (std::uint64_t, const WMPUInt&lt;kSize&gt;&amp;);
+WMPUInt&lt;kSize&gt; <span class="funcname">operator^</span> (std::uint64_t, const WMPUInt&lt;kSize&gt;&amp;);
+</pre>
 
 <h3 id="arithmetic">Arithmetic operators</h3>
 
-<p>Synopsis:</p>
+<p><b>Member functions:</b></p>
 
-<pre>WMPUInt&lt;kSize&gt;&amp; operator+=(const WMPUInt&lt;kSize&gt;&amp;);
-WMPUInt&lt;kSize&gt; operator+(const WMPUInt&lt;kSize&gt;&amp;) const;
-WMPUInt&lt;kSize&gt;&amp; operator+=(std::uint64_t);
-WMPUInt&lt;kSize&gt; operator+(std::uint64_t) const;
-WMPUInt&lt;kSize&gt;&amp; operator-=(const WMPUInt&lt;kSize&gt;&amp;);
-WMPUInt&lt;kSize&gt; operator-(const WMPUInt&lt;kSize&gt;&amp;) const;
-WMPUInt&lt;kSize&gt;&amp; operator-=(std::uint64_t);
-WMPUInt&lt;kSize&gt; operator-(std::uint64_t) const;
-WMPUInt&lt;kSize&gt;&amp; operator++();
-WMPUInt&lt;kSize&gt;&amp; operator--();
-WMPUInt&lt;kSize&gt;&amp; operator*=(const WMPUInt&lt;kSize&gt;&amp;);
-WMPUInt&lt;kSize&gt; operator*(const WMPUInt&lt;kSize&gt;&amp;) const;
-WMPUInt&lt;kSize&gt;&amp; operator*=(std::uint64_t);
-WMPUInt&lt;kSize&gt; operator*(std::uint64_t) const;
-WMPUInt&lt;kSize&gt; operator-() const;
+<pre class="synopsis">WMPUInt&lt;kSize&gt;&amp; <span class="funcname">operator+=</span> (const WMPUInt&lt;kSize&gt;&amp;);
+WMPUInt&lt;kSize&gt;  <span class="funcname">operator+</span>  (const WMPUInt&lt;kSize&gt;&amp;) const;
+WMPUInt&lt;kSize&gt;&amp; <span class="funcname">operator+=</span> (std::uint64_t);
+WMPUInt&lt;kSize&gt;  <span class="funcname">operator+</span>  (std::uint64_t) const;
+WMPUInt&lt;kSize&gt;&amp; <span class="funcname">operator-=</span> (const WMPUInt&lt;kSize&gt;&amp;);
+WMPUInt&lt;kSize&gt;  <span class="funcname">operator-</span>  (const WMPUInt&lt;kSize&gt;&amp;) const;
+WMPUInt&lt;kSize&gt;&amp; <span class="funcname">operator-=</span> (std::uint64_t);
+WMPUInt&lt;kSize&gt;  <span class="funcname">operator-</span>  (std::uint64_t) const;
+WMPUInt&lt;kSize&gt;&amp; <span class="funcname">operator++</span> ();
+WMPUInt&lt;kSize&gt;&amp; <span class="funcname">operator--</span> ();
+WMPUInt&lt;kSize&gt;&amp; <span class="funcname">operator*=</span> (const WMPUInt&lt;kSize&gt;&amp;);
+WMPUInt&lt;kSize&gt;  <span class="funcname">operator*</span>  (const WMPUInt&lt;kSize&gt;&amp;) const;
+WMPUInt&lt;kSize&gt;&amp; <span class="funcname">operator*=</span> (std::uint64_t);
+WMPUInt&lt;kSize&gt;  <span class="funcname">operator*</span>  (std::uint64_t) const;
+WMPUInt&lt;kSize&gt;  <span class="funcname">operator-</span>  () const;
 
-void neg();</pre>
+void neg ();</pre>
+
+<p><b>Non-member functions:</b></p>
+
+<pre class="synopsis">WMPUInt&lt;kSize&gt; <span class="funcname">operator+</span> (std::uint64_t, const WMPUInt&lt;kSize&gt;&amp;);
+WMPUInt&lt;kSize&gt; <span class="funcname">operator-</span> (std::uint64_t, const WMPUInt&lt;kSize&gt;&amp;);
+WMPUInt&lt;kSize&gt; <span class="funcname">operator*</span> (std::uint64_t, const WMPUInt&lt;kSize&gt;&amp;);</pre>
 
 <p>Note 1: The postfix versions of <code>operator++</code> and <code>operator--</code>
   are <em>deliberately</em> omitted because of their (needless) overhead.</p>
@@ -377,31 +427,32 @@ void neg();</pre>
 
 <h3 id="multiply">Multiplying very large integers</h3>
 
-<p>Synopsis:</p>
+<p><b>Member functions:</b></p>
 
-<pre>void multiply(const WMPUInt&lt;kSize&gt;&amp; rhs,
-              std::uint64_t* result,
-              std::uint64_t* tempBuffer) const;
+<pre class="synopsis">void <span class="funcname">multiply</span> (const WMPUInt&lt;kSize&gt;&amp; rhs,
+               WMPUInt&lt;kSize&gt;&amp; result,
+               std::uint64_t* tempBuffer) const;
 
-void multiply(std::uint64_t rhs, std::uint64_t* result) const;</pre>
+void <span class="funcname">multiply</span> (std::uint64_t rhs, WMPUInt&lt;kSize&gt;&amp; result) const;
+</pre>
 
 <p>Note that the multiplication operators <code>operator*()</code> and <code>operator*=()</code>
-  use internally two stack-allocated buffers of <code>kSize</code> <code>std::uint64_t</code>
-  values. For values of <code>kSize</code> up to the hundreds, perhaps even thousands, this
-  shouldn't pose a problem. However, if <code>kSize</code> is extremely large (in the tens
-  of thousands or more), this may pose a problem because in most platforms stack size is
-  limited, and this could cause a stack overflow. It might also potentially have some
-  efficiency implications (even when the stack does not overflow).</p>
+  use internally a stack-allocated <code>WMPUInt&lt;kSize&gt;</code> and a buffer of
+  <code>kSize</code> <code>std::uint64_t</code> values. For values of <code>kSize</code> up to
+  the hundreds, perhaps even thousands, this shouldn't pose a problem. However, if
+  <code>kSize</code> is extremely large (in the tens of thousands or more), this may pose
+  a problem because in most platforms stack size is limited, and this could cause a stack
+  overflow. It might also potentially have some efficiency implications (even when the stack
+  does not overflow).</p>
 
 <p>These two member functions are provided to circumvent this problem.</p>
 
-<p><code>result</code> and <code>tempBuffer</code> should both be (separate) arrays
-  of at least <code>kSize</code> <code>std::uint64_t</code> values. (These arrays
-  don't need to be initialized with anything.)</p>
+<p><code>tempBuffer</code> should be a (separate) array of at least <code>kSize</code>
+  <code>std::uint64_t</code> values. (This array doesn't need to be initialized with anything.)</p>
 
-<p><b>Important!</b> Neither <code>result</code> nor <code>tempBuffer</code> should
-  point to this object or to the <code>rhs</code> object, else the result will be
-  completely incorrect.</p>
+<p><b>Important!</b> <code>result</code> cannot be this object or the <code>rhs</code> object.
+  It must be a third, separate object, else the result will be completely incorrect. (Likewise
+  <code>tempBuffer</code> cannot point to any of those three objects.)</p>
 
 <p>The idea with these functions is that they can be used with temporary buffers that
   are statically or dynamically (but not stack) allocated, avoiding the problem of
@@ -418,7 +469,7 @@ void multiply(std::uint64_t rhs, std::uint64_t* result) const;</pre>
 void foo(const WMPUInt&lt;kSize&gt;&amp; value1,
          const WMPUInt&lt;kSize&gt;&amp; value2)
 {
-    value1.multiply(value2, multResult.data(), multTempBuf);
+    value1.multiply(value2, multResult, multTempBuf);
 
     <span class="comment">// The result of the multiplication will be in multResult</span>
 }</pre>
@@ -428,10 +479,10 @@ void foo(const WMPUInt&lt;kSize&gt;&amp; value1,
 <h2 id="printing">ASCII output</h2>
 <h3>Output in hexadecimal format</h3>
 
-<p>Synopsis:</p>
+<p><b>Member functions:</b></p>
 
-<pre>constexpr static std::size_t maxHexadecimalDigits();
-void printAsHexStr(char* destination) const;</pre>
+<pre class="synopsis">constexpr static std::size_t <span class="funcname">maxHexadecimalDigits</span> ();
+void <span class="funcname">printAsHexStr</span> (char* destination) const;</pre>
 
 <p><code>printAsHexStr()</code> can be used to print the value of this object as an
   ASCII string in hexadecimal format. The length of the output can be determined using
@@ -520,7 +571,7 @@ a -= e;</pre>
 
 <p>In other words, instead of:</p>
 
-<pre>WMPUInt&lt;256&gt; value1, value2, value2;
+<pre>WMPUInt&lt;256&gt; value1, value2, value3;
 WMPUInt&lt;256&gt; operand(10);
 
 value1 += operand;
@@ -529,7 +580,7 @@ value3 *= operand;</pre>
 
 <p>prefer:</p>
 
-<pre>WMPUInt&lt;256&gt; value1, value2, value2;
+<pre>WMPUInt&lt;256&gt; value1, value2, value3;
 std::uint64_t operand = 10;
 
 value1 += operand;
@@ -545,20 +596,20 @@ value3 *= 10;</pre>
 
 <p>Take note of the earlier section <a href="#multiply">Multiplying very large integers</a>.
   While this is important with very large objects, the copying that's happening with
-  <code>operator*()</code> and <code>operator*=()</code> may also be an efficiency concern even with
-  more moderately-sized objects. If this copying of objects turns out to have a negative impact on
-  efficiency, the <code>multiply()</code> member function can be used to elide this copying completely,
-  for example like this:</p>
+  <code>operator*()</code> and <code>operator*=()</code> may also be an efficiency concern even
+  with more moderately-sized objects. If this copying of objects turns out to have a negative
+  impact on efficiency, the <code>multiply()</code> member function can be used to elide this
+  copying completely, for example like this:</p>
 
 <pre>WMPUInt&lt;128&gt; v1, v2, result; <span class="comment">// 8192-bit integers</span>
 
 <span class="comment">// Multiply without any data copying:</span>
 std::uint64_t tempBuffer[128];
-v1.multiply(v2, result.data(), tempBuffer);</pre>
+v1.multiply(v2, result, tempBuffer);</pre>
 
-<p>(Note that <code>v1.data()</code> and <code>v2.data()</code> above can <em>not</em> be used as the second
-  (ie. result) parameter to the function, as this would simply give a completely incorrect result. The result
-  must always be calculated into a third object or array.)</p>
+<p>(Note that <code>v1</code> and <code>v2</code> above can <em>not</em> be used
+  as the second (ie. result) parameter to the function, as this would simply give a completely
+  incorrect result. The result must always be calculated into a third object.)</p>
 
 <h3 id="exproptimization">Expression optimizations</h3>
 
