@@ -2,17 +2,24 @@
 #include <random>
 #include <utility>
 #include <iostream>
+#include <iomanip>
 #include <chrono>
 #include <cstring>
 #include <cctype>
 
+//============================================================================
+// Output helper functions
+//============================================================================
 template<std::size_t kSize>
 std::ostream& operator<<(std::ostream& os, const WMPUInt<kSize>& value)
 {
-    os << '[' << std::hex << value.data()[0];
+    std::ios_base::fmtflags f = os.flags();
+    os << '[' << std::hex << std::uppercase << std::setw(16) << std::setfill('0')
+       << value.data()[0];
     for(std::size_t i = 1; i < kSize; ++i)
-        os << ',' << value.data()[i];
+        os << ',' << std::setw(16) << std::setfill('0') << value.data()[i];
     os << ']';
+    os.flags(f);
     return os;
 }
 
@@ -31,6 +38,10 @@ static bool dprint(T&& param, Rest&&... rest)
 #define DRET return DPRINT("Called from here.\n")
 #define DRETM return !DPRINT("Called from here.\n")
 
+
+//============================================================================
+// Test WMPUInt<1>
+//============================================================================
 static bool testSize1Operators()
 {
     WMPUInt<1> a(20), b({ 10 });
@@ -46,6 +57,10 @@ static bool testSize1Operators()
     return true;
 }
 
+
+//============================================================================
+// Test assignment from ASCII string
+//============================================================================
 template<typename... Values_t>
 static bool testAssignmentFromHexStr(const char* str, Values_t&&... values)
 {
@@ -140,6 +155,10 @@ static bool testAssignmentFromStr()
     return true;
 }
 
+
+//============================================================================
+// Addition, subtraction and multiplication testing helper functions
+//============================================================================
 template<typename Value_t1, typename Value_t2, std::size_t kSize>
 static bool checkAddition(const Value_t1& value1, const Value_t2& value2,
                           const WMPUInt<kSize>& expectedResult)
@@ -177,6 +196,10 @@ static bool checkMultiplication(const Value_t1& value1, const Value_t2& value2,
     return true;
 }
 
+
+//============================================================================
+// Test addition
+//============================================================================
 template<std::size_t kSize>
 static bool testAdditionWithSize()
 {
@@ -326,6 +349,10 @@ static bool testAddition()
     return true;
 }
 
+
+//============================================================================
+// Test multiplication
+//============================================================================
 static __uint128_t get_uint128(std::uint64_t lsw, std::uint64_t msw)
 {
     __uint128_t value = msw;
@@ -983,6 +1010,10 @@ static bool testMultiplication()
     return testMultiplicationAndStrInput();
 }
 
+
+//============================================================================
+// Test negation
+//============================================================================
 template<std::size_t kSize>
 static bool testNegationWithSize()
 {
@@ -1027,6 +1058,98 @@ static bool testNegation()
     return true;
 }
 
+
+//============================================================================
+// Test shifting
+//============================================================================
+template<std::size_t kSize, std::size_t kBits>
+static bool testShiftLeftWithBits(const WMPUInt<kSize>& value)
+{
+    WMPUInt<kSize> shiftedValue = value, multipliedValue = value;
+    shiftedValue.template shiftLeft<kBits>();
+    if constexpr(kBits < 64) multipliedValue *= (UINT64_C(1) << kBits);
+    else
+    {
+        WMPUInt<kSize> factor(0);
+        factor.data()[kSize-1 - kBits/64] = (UINT64_C(1) << (kBits%64));
+        multipliedValue *= factor;
+    }
+
+    if(shiftedValue != multipliedValue)
+        return DPRINT("Error: WMPUInt<", kSize, ">::shiftLeft<", kBits, ">() of\n",
+                      value, "\nresulted in\n", shiftedValue, "\ninstead of\n",
+                      multipliedValue, "\n");
+
+    return true;
+}
+
+template<std::size_t kSize>
+static bool testShiftLeftWithSize(std::mt19937_64& rngEngine)
+{
+    WMPUInt<kSize> value;
+    for(std::size_t i = 0; i < kSize; ++i) value.data()[i] = rngEngine();
+
+    if(!testShiftLeftWithBits<kSize, 1>(value)) DRET;
+    if(!testShiftLeftWithBits<kSize, 2>(value)) DRET;
+    if(!testShiftLeftWithBits<kSize, 3>(value)) DRET;
+    if(!testShiftLeftWithBits<kSize, 7>(value)) DRET;
+    if(!testShiftLeftWithBits<kSize, 11>(value)) DRET;
+    if(!testShiftLeftWithBits<kSize, 33>(value)) DRET;
+    if(!testShiftLeftWithBits<kSize, 63>(value)) DRET;
+    if constexpr(kSize > 1)
+    {
+        if(!testShiftLeftWithBits<kSize, 64>(value)) DRET;
+        if(!testShiftLeftWithBits<kSize, 65>(value)) DRET;
+        if(!testShiftLeftWithBits<kSize, 127>(value)) DRET;
+    }
+    if constexpr(kSize > 2)
+    {
+        if(!testShiftLeftWithBits<kSize, 128>(value)) DRET;
+        if(!testShiftLeftWithBits<kSize, 128+1>(value)) DRET;
+        if(!testShiftLeftWithBits<kSize, 158>(value)) DRET;
+        if(!testShiftLeftWithBits<kSize, 128+63>(value)) DRET;
+    }
+    if constexpr(kSize > 3)
+    {
+        if(!testShiftLeftWithBits<kSize, 192>(value)) DRET;
+        if(!testShiftLeftWithBits<kSize, 192+1>(value)) DRET;
+        if(!testShiftLeftWithBits<kSize, 221>(value)) DRET;
+        if(!testShiftLeftWithBits<kSize, 192+63>(value)) DRET;
+    }
+    if constexpr(kSize > 4)
+    {
+        if(!testShiftLeftWithBits<kSize, 256>(value)) DRET;
+        if(!testShiftLeftWithBits<kSize, 256+1>(value)) DRET;
+        if(!testShiftLeftWithBits<kSize, 287>(value)) DRET;
+        if(!testShiftLeftWithBits<kSize, 256+63>(value)) DRET;
+    }
+    return true;
+}
+
+static bool testShiftLeft(std::mt19937_64& rngEngine)
+{
+    if(!testShiftLeftWithSize<1>(rngEngine)) DRET;
+    if(!testShiftLeftWithSize<2>(rngEngine)) DRET;
+    if(!testShiftLeftWithSize<3>(rngEngine)) DRET;
+    if(!testShiftLeftWithSize<4>(rngEngine)) DRET;
+    if(!testShiftLeftWithSize<10>(rngEngine)) DRET;
+    if(!testShiftLeftWithSize<15>(rngEngine)) DRET;
+    if(!testShiftLeftWithSize<100>(rngEngine)) DRET;
+    return true;
+}
+
+static bool testShifting()
+{
+    std::cout << "Testing bitshift" << std::endl;
+    std::mt19937_64 rngEngine(0);
+    if(!testShiftLeft(rngEngine)) DRET;
+    return true;
+}
+
+
+//============================================================================
+// Benchmark
+//============================================================================
 struct Timer
 {
     std::chrono::time_point<std::chrono::high_resolution_clock> mStartTime =
@@ -1106,6 +1229,10 @@ static void runBenchmarks()
     runCombinedBenchmark();
 }
 
+
+//============================================================================
+// main()
+//============================================================================
 int main()
 {
     if(!testSize1Operators()) DRETM;
@@ -1113,6 +1240,7 @@ int main()
     if(!testAddition()) DRETM;
     if(!testMultiplication()) DRETM;
     if(!testNegation()) DRETM;
+    if(!testShifting()) DRETM;
     std::cout << "All tests OK.\n";
     runBenchmarks();
 }
