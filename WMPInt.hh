@@ -766,10 +766,41 @@ inline void WMPUInt<kSize>::shiftLeft()
 }
 
 template<std::size_t kSize>
-template<std::size_t>
+template<std::size_t kBits>
 inline void WMPUInt<kSize>::shiftRight()
 {
-    static_assert(kSize < 2, "Not yet implemented");
+    if constexpr(kBits == 0) {}
+    else if constexpr(kBits > kSize*64)
+    {
+        for(std::size_t i = 0; i < kSize; ++i) mData[i] = 0;
+    }
+    else
+    {
+        // kSize = 2, kBits = 65
+        constexpr std::size_t wordOffset = kBits / 64; // 1
+        constexpr std::size_t wordShiftBits = kBits % 64; // 1
+        constexpr std::size_t endInd = wordOffset; // 1
+        if constexpr(wordShiftBits == 0)
+        {
+            for(std::size_t i = kSize; i-- > endInd;) mData[i] = mData[i - wordOffset];
+            for(std::size_t i = 0; i < endInd; ++i) mData[i] = 0;
+        }
+        else if constexpr(endInd == 0)
+        {
+            for(std::size_t i = kSize; i-- > 1;)
+                mData[i] = (mData[i] >> wordShiftBits) | (mData[i-1] << (64-wordShiftBits));
+            mData[0] >>= wordShiftBits;
+        }
+        else
+        {
+            for(std::size_t destInd = kSize, srcInd = kSize-1-wordOffset;
+                destInd-- > endInd + 1; --srcInd)
+                mData[destInd] = ((mData[srcInd] >> wordShiftBits) |
+                                  (mData[srcInd - 1] << (64-wordShiftBits)));
+            mData[endInd] = mData[0] >> wordShiftBits;
+            for(std::size_t i = 0; i < endInd; ++i) mData[i] = 0;
+        }
+    }
 }
 
 

@@ -1062,8 +1062,34 @@ static bool testNegation()
 //============================================================================
 // Test shifting
 //============================================================================
+static std::uint64_t reverseValue(std::uint64_t value)
+{
+    value = ((value << 32) | (value >> 32));
+    value = (((value & UINT64_C(0x0000FFFF0000FFFF)) << 16) |
+             ((value & UINT64_C(0xFFFF0000FFFF0000)) >> 16));
+    value = (((value & UINT64_C(0x00FF00FF00FF00FF)) << 8) |
+             ((value & UINT64_C(0xFF00FF00FF00FF00)) >> 8));
+    value = (((value & UINT64_C(0x0F0F0F0F0F0F0F0F)) << 4) |
+             ((value & UINT64_C(0xF0F0F0F0F0F0F0F0)) >> 4));
+    value = (((value & UINT64_C(0x3333333333333333)) << 2) |
+             ((value & UINT64_C(0xCCCCCCCCCCCCCCCC)) >> 2));
+    return (((value & UINT64_C(0x5555555555555555)) << 1) |
+            ((value & UINT64_C(0xAAAAAAAAAAAAAAAA)) >> 1));
+}
+
+template<std::size_t kSize>
+static void reverseWMPUInt(WMPUInt<kSize>& number)
+{
+    for(std::size_t i = 0; i < (kSize+1)/2; ++i)
+    {
+        std::uint64_t component = number.data()[i];
+        number.data()[i] = reverseValue(number.data()[kSize-1-i]);
+        number.data()[kSize-1-i] = reverseValue(component);
+    }
+}
+
 template<std::size_t kSize, std::size_t kBits>
-static bool testShiftLeftWithBits(const WMPUInt<kSize>& value)
+static bool testShiftWithBits(const WMPUInt<kSize>& value)
 {
     WMPUInt<kSize> shiftedValue = value, multipliedValue = value;
     shiftedValue.template shiftLeft<kBits>();
@@ -1080,61 +1106,60 @@ static bool testShiftLeftWithBits(const WMPUInt<kSize>& value)
                       value, "\nresulted in\n", shiftedValue, "\ninstead of\n",
                       multipliedValue, "\n");
 
+    shiftedValue = value;
+    reverseWMPUInt(shiftedValue);
+    reverseWMPUInt(multipliedValue);
+
+    shiftedValue.template shiftRight<kBits>();
+
+    if(shiftedValue != multipliedValue)
+        return DPRINT("Error: WMPUInt<", kSize, ">::shiftRight<", kBits, ">() of\n",
+                      value, "\nresulted in\n", shiftedValue, "\ninstead of\n",
+                      multipliedValue, "\n");
+
     return true;
 }
 
 template<std::size_t kSize>
-static bool testShiftLeftWithSize(std::mt19937_64& rngEngine)
+static bool testShiftWithSize(std::mt19937_64& rngEngine)
 {
     WMPUInt<kSize> value;
     for(std::size_t i = 0; i < kSize; ++i) value.data()[i] = rngEngine();
 
-    if(!testShiftLeftWithBits<kSize, 1>(value)) DRET;
-    if(!testShiftLeftWithBits<kSize, 2>(value)) DRET;
-    if(!testShiftLeftWithBits<kSize, 3>(value)) DRET;
-    if(!testShiftLeftWithBits<kSize, 7>(value)) DRET;
-    if(!testShiftLeftWithBits<kSize, 11>(value)) DRET;
-    if(!testShiftLeftWithBits<kSize, 33>(value)) DRET;
-    if(!testShiftLeftWithBits<kSize, 63>(value)) DRET;
+    if(!testShiftWithBits<kSize, 1>(value)) DRET;
+    if(!testShiftWithBits<kSize, 2>(value)) DRET;
+    if(!testShiftWithBits<kSize, 3>(value)) DRET;
+    if(!testShiftWithBits<kSize, 7>(value)) DRET;
+    if(!testShiftWithBits<kSize, 11>(value)) DRET;
+    if(!testShiftWithBits<kSize, 33>(value)) DRET;
+    if(!testShiftWithBits<kSize, 63>(value)) DRET;
     if constexpr(kSize > 1)
     {
-        if(!testShiftLeftWithBits<kSize, 64>(value)) DRET;
-        if(!testShiftLeftWithBits<kSize, 65>(value)) DRET;
-        if(!testShiftLeftWithBits<kSize, 127>(value)) DRET;
+        if(!testShiftWithBits<kSize, 64>(value)) DRET;
+        if(!testShiftWithBits<kSize, 65>(value)) DRET;
+        if(!testShiftWithBits<kSize, 127>(value)) DRET;
     }
     if constexpr(kSize > 2)
     {
-        if(!testShiftLeftWithBits<kSize, 128>(value)) DRET;
-        if(!testShiftLeftWithBits<kSize, 128+1>(value)) DRET;
-        if(!testShiftLeftWithBits<kSize, 158>(value)) DRET;
-        if(!testShiftLeftWithBits<kSize, 128+63>(value)) DRET;
+        if(!testShiftWithBits<kSize, 128>(value)) DRET;
+        if(!testShiftWithBits<kSize, 128+1>(value)) DRET;
+        if(!testShiftWithBits<kSize, 158>(value)) DRET;
+        if(!testShiftWithBits<kSize, 128+63>(value)) DRET;
     }
     if constexpr(kSize > 3)
     {
-        if(!testShiftLeftWithBits<kSize, 192>(value)) DRET;
-        if(!testShiftLeftWithBits<kSize, 192+1>(value)) DRET;
-        if(!testShiftLeftWithBits<kSize, 221>(value)) DRET;
-        if(!testShiftLeftWithBits<kSize, 192+63>(value)) DRET;
+        if(!testShiftWithBits<kSize, 192>(value)) DRET;
+        if(!testShiftWithBits<kSize, 192+1>(value)) DRET;
+        if(!testShiftWithBits<kSize, 221>(value)) DRET;
+        if(!testShiftWithBits<kSize, 192+63>(value)) DRET;
     }
     if constexpr(kSize > 4)
     {
-        if(!testShiftLeftWithBits<kSize, 256>(value)) DRET;
-        if(!testShiftLeftWithBits<kSize, 256+1>(value)) DRET;
-        if(!testShiftLeftWithBits<kSize, 287>(value)) DRET;
-        if(!testShiftLeftWithBits<kSize, 256+63>(value)) DRET;
+        if(!testShiftWithBits<kSize, 256>(value)) DRET;
+        if(!testShiftWithBits<kSize, 256+1>(value)) DRET;
+        if(!testShiftWithBits<kSize, 287>(value)) DRET;
+        if(!testShiftWithBits<kSize, 256+63>(value)) DRET;
     }
-    return true;
-}
-
-static bool testShiftLeft(std::mt19937_64& rngEngine)
-{
-    if(!testShiftLeftWithSize<1>(rngEngine)) DRET;
-    if(!testShiftLeftWithSize<2>(rngEngine)) DRET;
-    if(!testShiftLeftWithSize<3>(rngEngine)) DRET;
-    if(!testShiftLeftWithSize<4>(rngEngine)) DRET;
-    if(!testShiftLeftWithSize<10>(rngEngine)) DRET;
-    if(!testShiftLeftWithSize<15>(rngEngine)) DRET;
-    if(!testShiftLeftWithSize<100>(rngEngine)) DRET;
     return true;
 }
 
@@ -1142,7 +1167,13 @@ static bool testShifting()
 {
     std::cout << "Testing bitshift" << std::endl;
     std::mt19937_64 rngEngine(0);
-    if(!testShiftLeft(rngEngine)) DRET;
+    if(!testShiftWithSize<1>(rngEngine)) DRET;
+    if(!testShiftWithSize<2>(rngEngine)) DRET;
+    if(!testShiftWithSize<3>(rngEngine)) DRET;
+    if(!testShiftWithSize<4>(rngEngine)) DRET;
+    if(!testShiftWithSize<10>(rngEngine)) DRET;
+    if(!testShiftWithSize<15>(rngEngine)) DRET;
+    if(!testShiftWithSize<100>(rngEngine)) DRET;
     return true;
 }
 

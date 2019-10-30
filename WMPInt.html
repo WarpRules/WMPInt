@@ -115,13 +115,17 @@ WMPUInt&lt;16&gt; result = a + b * c;</pre>
   <li>Function reference</li>
   <ul>
     <li><a href="#initialization">Value initialization</a></li>
-    <li><a href="#functions">Supported math functions and operators</a></li>
+    <li><a href="#data">Data retrieval</a></li>
+    <li><a href="#basicfunctions">Basic math operators</a></li>
     <ul>
-      <li><a href="#data">Data retrieval</a></li>
       <li><a href="#comparison">Comparison operators</a></li>
       <li><a href="#bitwise">Bitwise operators</a></li>
       <li><a href="#arithmetic">Arithmetic operators</a></li>
+    </ul>
+    <li><a href="#specialfunctions">Special math functions</a></li>
+    <ul>
       <li><a href="#multiply">Multiplying very large integers</a></li>
+      <li><a href="#bitshift">Bit-shifting by a compile-time constant</a></li>
     </ul>
     <li><a href="#printing">ASCII output</a></li>
   </ul>
@@ -329,9 +333,7 @@ void <span class="funcname">assign</span> (const WMPUInt&lt;kSize2&gt;&amp;);</p
 
 
 <!---------------------------------------------------------------------------->
-<h2 id="functions">Supported math functions and operators</h2>
-
-<h3 id="data">Data retrieval</h3>
+<h2 id="data">Data retrieval</h2>
 
 <p><b>Member functions:</b></p>
 
@@ -350,6 +352,9 @@ const std::uint64_t*         <span class="funcname">data</span>() const;</pre>
   the most-significant component, and <code>data()[kSize-1]</code> is the least-significant
   component.</p>
 
+
+<!---------------------------------------------------------------------------->
+<h2 id="basicfunctions">Basic math operators</h2>
 
 <h3 id="comparison">Comparison operators</h3>
 
@@ -436,6 +441,9 @@ WMPUInt&lt;kSize&gt; <span class="funcname">operator*</span> (std::uint64_t, con
   unary negation operator, as <code>neg()</code> negates the number in-place, while
   the unary negation operator will calculate the result into and return a temporary.</p>
 
+<!---------------------------------------------------------------------------->
+<h2 id="specialfunctions">Special math functions</h2>
+
 <h3 id="multiply">Multiplying very large integers</h3>
 
 <p><b>Member functions:</b></p>
@@ -484,6 +492,28 @@ void foo(const WMPUInt&lt;kSize&gt;&amp; value1,
 
     <span class="comment">// The result of the multiplication will be in multResult</span>
 }</pre>
+
+
+<h3 id="bitshift">Bit-shifting by a compile-time constant</h3>
+
+<p><b>Member functions:</b></p>
+
+<pre class="synopsis">template&lt;std::size_t kBits&gt; void <span class="funcname">shiftLeft</span> ();
+template&lt;std::size_t kBits&gt; void <span class="funcname">shiftRight</span> ();</pre>
+
+<p>These functions do essentially the same thing as <code>operator&lt;&lt;=</code> and
+  <code>operator&gt;&gt;=</code>, except that the amount of bits to shift is determined
+  at compile time, as a secondary template parameter. When this amount is known at compile
+  time, it may lead to more more efficient code.</p>
+
+<p>Note that unlike with the operators, with these functions shifting by an amount larger
+  than or equal to <code>bits()</code> is not undefined behavior (instead, the object will be
+  zeroed).</p>
+
+<p>Example:</p>
+
+<pre>WMPUInt&lt;64&gt; value;
+value.shiftLeft&lt;192&gt;(); <span class="comment">// Shift left by 192 bits</span></pre>
 
 
 <!---------------------------------------------------------------------------->
