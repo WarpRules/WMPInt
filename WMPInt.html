@@ -84,6 +84,14 @@ code
 {
   color: #0050FF;
 }
+
+.important
+{
+  background-color: #B00000;
+  color: #FFFFFF;
+  padding-left: 0.5em;
+  padding-right: 0.5em;
+}
 --> </style>
 </head>
 
@@ -386,25 +394,34 @@ bool <span class="funcname">operator&gt;=</span> (std::uint64_t, const WMPUInt&l
 
 <p><b>Member functions:</b></p>
 
-<pre class="synopsis">WMPUInt&lt;kSize&gt;&amp; <span class="funcname">operator&amp;=</span> (const WMPUInt&lt;kSize&gt;&amp;);
-WMPUInt&lt;kSize&gt;&amp; <span class="funcname">operator&amp;=</span> (std::uint64_t);
-WMPUInt&lt;kSize&gt;  <span class="funcname">operator&amp;</span>  (const WMPUInt&lt;kSize&gt;&amp;) const;
-WMPUInt&lt;kSize&gt;  <span class="funcname">operator&amp;</span>  (std::uint64_t) const;
-WMPUInt&lt;kSize&gt;&amp; <span class="funcname">operator|=</span> (const WMPUInt&lt;kSize&gt;&amp;);
-WMPUInt&lt;kSize&gt;&amp; <span class="funcname">operator|=</span> (std::uint64_t);
-WMPUInt&lt;kSize&gt;  <span class="funcname">operator|</span>  (const WMPUInt&lt;kSize&gt;&amp;) const;
-WMPUInt&lt;kSize&gt;  <span class="funcname">operator|</span>  (std::uint64_t) const;
-WMPUInt&lt;kSize&gt;&amp; <span class="funcname">operator^=</span> (const WMPUInt&lt;kSize&gt;&amp;);
-WMPUInt&lt;kSize&gt;&amp; <span class="funcname">operator^=</span> (std::uint64_t);
-WMPUInt&lt;kSize&gt;  <span class="funcname">operator^</span>  (const WMPUInt&lt;kSize&gt;&amp;) const;
-WMPUInt&lt;kSize&gt;  <span class="funcname">operator^</span>  (std::uint64_t) const;</pre>
+<pre class="synopsis">WMPUInt&lt;kSize&gt;&amp; <span class="funcname">operator&amp;=</span>  (const WMPUInt&lt;kSize&gt;&amp;);
+WMPUInt&lt;kSize&gt;&amp; <span class="funcname">operator&amp;=</span>  (std::uint64_t);
+WMPUInt&lt;kSize&gt;  <span class="funcname">operator&amp;</span>   (const WMPUInt&lt;kSize&gt;&amp;) const;
+WMPUInt&lt;kSize&gt;  <span class="funcname">operator&amp;</span>   (std::uint64_t) const;
+WMPUInt&lt;kSize&gt;&amp; <span class="funcname">operator|=</span>  (const WMPUInt&lt;kSize&gt;&amp;);
+WMPUInt&lt;kSize&gt;&amp; <span class="funcname">operator|=</span>  (std::uint64_t);
+WMPUInt&lt;kSize&gt;  <span class="funcname">operator|</span>   (const WMPUInt&lt;kSize&gt;&amp;) const;
+WMPUInt&lt;kSize&gt;  <span class="funcname">operator|</span>   (std::uint64_t) const;
+WMPUInt&lt;kSize&gt;&amp; <span class="funcname">operator^=</span>  (const WMPUInt&lt;kSize&gt;&amp;);
+WMPUInt&lt;kSize&gt;&amp; <span class="funcname">operator^=</span>  (std::uint64_t);
+WMPUInt&lt;kSize&gt;  <span class="funcname">operator^</span>   (const WMPUInt&lt;kSize&gt;&amp;) const;
+WMPUInt&lt;kSize&gt;  <span class="funcname">operator^</span>   (std::uint64_t) const;
+WMPUInt&lt;kSize&gt;&amp; <span class="funcname">operator&lt;&lt;=</span> (std::size_t);
+WMPUInt&lt;kSize&gt;  <span class="funcname">operator&lt;&lt;</span>  (std::size_t) const;
+WMPUInt&lt;kSize&gt;&amp; <span class="funcname">operator&gt;&gt;=</span> (std::size_t);
+WMPUInt&lt;kSize&gt;  <span class="funcname">operator&gt;&gt;</span>  (std::size_t) const;</pre>
 
 <p><b>Non-member functions:</b></p>
 
 <pre class="synopsis">WMPUInt&lt;kSize&gt; <span class="funcname">operator&amp;</span> (std::uint64_t, const WMPUInt&lt;kSize&gt;&amp;);
 WMPUInt&lt;kSize&gt; <span class="funcname">operator|</span> (std::uint64_t, const WMPUInt&lt;kSize&gt;&amp;);
-WMPUInt&lt;kSize&gt; <span class="funcname">operator^</span> (std::uint64_t, const WMPUInt&lt;kSize&gt;&amp;);
-</pre>
+WMPUInt&lt;kSize&gt; <span class="funcname">operator^</span> (std::uint64_t, const WMPUInt&lt;kSize&gt;&amp;);</pre>
+
+<p><b class="important">Important!</b> Calling the bit-shift operators
+  (<code>operator&lt;&lt;=</code> etc.) with a bit size equal to or larger than
+  <code>bits()</code> is undefined behavior (like it is with basic types), and will result
+  in an out-of-bounds access. If these functions might be called with an amount that exceeds
+  that limit, the calling code needs to check for this situation.</p>
 
 <h3 id="arithmetic">Arithmetic operators</h3>
 
@@ -469,9 +486,10 @@ void <span class="funcname">multiply</span> (std::uint64_t rhs, WMPUInt&lt;kSize
 <p><code>tempBuffer</code> should be a (separate) array of at least <code>kSize</code>
   <code>std::uint64_t</code> values. (This array doesn't need to be initialized with anything.)</p>
 
-<p><b>Important!</b> <code>result</code> cannot be this object or the <code>rhs</code> object.
-  It must be a third, separate object, else the result will be completely incorrect. (Likewise
-  <code>tempBuffer</code> cannot point to any of those three objects.)</p>
+<p><b class="important">Important!</b> <code>result</code> cannot be this object or the
+  <code>rhs</code> object. It must be a third, separate object, else the result will be
+  completely incorrect. (Likewise <code>tempBuffer</code> cannot point to any of those three
+  objects.)</p>
 
 <p>The idea with these functions is that they can be used with temporary buffers that
   are statically or dynamically (but not stack) allocated, avoiding the problem of

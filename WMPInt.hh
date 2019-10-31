@@ -701,31 +701,103 @@ inline WMPUInt<kSize> operator^(std::uint64_t lhs, const WMPUInt<kSize>& rhs)
 // Shift operators
 //----------------------------------------------------------------------------
 template<std::size_t kSize>
-inline WMPUInt<kSize>& WMPUInt<kSize>::operator<<=(std::size_t)
+inline WMPUInt<kSize>& WMPUInt<kSize>::operator<<=(std::size_t bits)
 {
-    static_assert(kSize < 2, "Not yet implemented");
+    const std::size_t wordOffset = bits / 64;
+    const std::size_t wordShiftBits = bits % 64;
+    const std::size_t endInd = kSize - wordOffset;
+
+    if(wordShiftBits == 0)
+    {
+        for(std::size_t i = 0; i < endInd; ++i) mData[i] = mData[i + wordOffset];
+        for(std::size_t i = endInd; i < kSize; ++i) mData[i] = 0;
+    }
+    else
+    {
+        for(std::size_t destInd = 0, srcInd = wordOffset;
+            destInd < endInd - 1; ++destInd, ++srcInd)
+            mData[destInd] = ((mData[srcInd] << wordShiftBits) |
+                              (mData[srcInd + 1] >> (64-wordShiftBits)));
+        mData[endInd - 1] = mData[kSize - 1] << wordShiftBits;
+        for(std::size_t i = endInd; i < kSize; ++i) mData[i] = 0;
+    }
+
     return *this;
 }
 
 template<std::size_t kSize>
-inline WMPUInt<kSize> WMPUInt<kSize>::operator<<(std::size_t) const
+inline WMPUInt<kSize> WMPUInt<kSize>::operator<<(std::size_t bits) const
 {
-    static_assert(kSize < 2, "Not yet implemented");
-    return {};
+    WMPUInt<kSize> result;
+    const std::size_t wordOffset = bits / 64;
+    const std::size_t wordShiftBits = bits % 64;
+    const std::size_t endInd = kSize - wordOffset;
+
+    if(wordShiftBits == 0)
+    {
+        for(std::size_t i = 0; i < endInd; ++i) result.mData[i] = mData[i + wordOffset];
+        for(std::size_t i = endInd; i < kSize; ++i) result.mData[i] = 0;
+    }
+    else
+    {
+        for(std::size_t destInd = 0, srcInd = wordOffset;
+            destInd < endInd - 1; ++destInd, ++srcInd)
+            result.mData[destInd] = ((mData[srcInd] << wordShiftBits) |
+                                     (mData[srcInd + 1] >> (64-wordShiftBits)));
+        result.mData[endInd - 1] = mData[kSize - 1] << wordShiftBits;
+        for(std::size_t i = endInd; i < kSize; ++i) result.mData[i] = 0;
+    }
+
+    return result;
 }
 
 template<std::size_t kSize>
-inline WMPUInt<kSize>& WMPUInt<kSize>::operator>>=(std::size_t)
+inline WMPUInt<kSize>& WMPUInt<kSize>::operator>>=(std::size_t bits)
 {
-    static_assert(kSize < 2, "Not yet implemented");
+    const std::size_t wordOffset = bits / 64;
+    const std::size_t wordShiftBits = bits % 64;
+    const std::size_t endInd = wordOffset;
+
+    if(wordShiftBits == 0)
+    {
+        for(std::size_t i = kSize; i-- > endInd;) mData[i] = mData[i - wordOffset];
+        for(std::size_t i = 0; i < endInd; ++i) mData[i] = 0;
+    }
+    else
+    {
+        for(std::size_t destInd = kSize, srcInd = kSize-1-wordOffset;
+            destInd-- > endInd + 1; --srcInd)
+            mData[destInd] = ((mData[srcInd] >> wordShiftBits) |
+                              (mData[srcInd - 1] << (64-wordShiftBits)));
+        mData[endInd] = mData[0] >> wordShiftBits;
+        for(std::size_t i = 0; i < endInd; ++i) mData[i] = 0;
+    }
     return *this;
 }
 
 template<std::size_t kSize>
-inline WMPUInt<kSize> WMPUInt<kSize>::operator>>(std::size_t) const
+inline WMPUInt<kSize> WMPUInt<kSize>::operator>>(std::size_t bits) const
 {
-    static_assert(kSize < 2, "Not yet implemented");
-    return {};
+    WMPUInt<kSize> result;
+    const std::size_t wordOffset = bits / 64;
+    const std::size_t wordShiftBits = bits % 64;
+    const std::size_t endInd = wordOffset;
+
+    if(wordShiftBits == 0)
+    {
+        for(std::size_t i = kSize; i-- > endInd;) result.mData[i] = mData[i - wordOffset];
+        for(std::size_t i = 0; i < endInd; ++i) result.mData[i] = 0;
+    }
+    else
+    {
+        for(std::size_t destInd = kSize, srcInd = kSize-1-wordOffset;
+            destInd-- > endInd + 1; --srcInd)
+            result.mData[destInd] = ((mData[srcInd] >> wordShiftBits) |
+                                     (mData[srcInd - 1] << (64-wordShiftBits)));
+        result.mData[endInd] = mData[0] >> wordShiftBits;
+        for(std::size_t i = 0; i < endInd; ++i) result.mData[i] = 0;
+    }
+    return result;
 }
 
 template<std::size_t kSize>
@@ -776,10 +848,9 @@ inline void WMPUInt<kSize>::shiftRight()
     }
     else
     {
-        // kSize = 2, kBits = 65
-        constexpr std::size_t wordOffset = kBits / 64; // 1
-        constexpr std::size_t wordShiftBits = kBits % 64; // 1
-        constexpr std::size_t endInd = wordOffset; // 1
+        constexpr std::size_t wordOffset = kBits / 64;
+        constexpr std::size_t wordShiftBits = kBits % 64;
+        constexpr std::size_t endInd = wordOffset;
         if constexpr(wordShiftBits == 0)
         {
             for(std::size_t i = kSize; i-- > endInd;) mData[i] = mData[i - wordOffset];

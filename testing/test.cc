@@ -1088,6 +1088,19 @@ static void reverseWMPUInt(WMPUInt<kSize>& number)
     }
 }
 
+template<std::size_t kSize>
+static bool testShiftedValues(const char* namePrefix, std::size_t bits, const char* namePostfix,
+                              const WMPUInt<kSize>& originalValue,
+                              const WMPUInt<kSize>& shiftedValue,
+                              const WMPUInt<kSize>& expectedResult)
+{
+    if(shiftedValue != expectedResult)
+        return DPRINT("Error: WMPUInt<", kSize, ">::", namePrefix, bits, namePostfix, " of\n",
+                      originalValue, "\nresulted in\n", shiftedValue, "\ninstead of\n",
+                      expectedResult, "\n");
+    return true;
+}
+
 template<std::size_t kSize, std::size_t kBits>
 static bool testShiftWithBits(const WMPUInt<kSize>& value)
 {
@@ -1101,21 +1114,34 @@ static bool testShiftWithBits(const WMPUInt<kSize>& value)
         multipliedValue *= factor;
     }
 
-    if(shiftedValue != multipliedValue)
-        return DPRINT("Error: WMPUInt<", kSize, ">::shiftLeft<", kBits, ">() of\n",
-                      value, "\nresulted in\n", shiftedValue, "\ninstead of\n",
-                      multipliedValue, "\n");
+    if(!testShiftedValues("shiftLeft<", kBits, ">()", value, shiftedValue, multipliedValue)) DRET;
 
     shiftedValue = value;
     reverseWMPUInt(shiftedValue);
     reverseWMPUInt(multipliedValue);
-
     shiftedValue.template shiftRight<kBits>();
+    if(!testShiftedValues("shiftRight<", kBits, ">()", value, shiftedValue, multipliedValue)) DRET;
 
-    if(shiftedValue != multipliedValue)
-        return DPRINT("Error: WMPUInt<", kSize, ">::shiftRight<", kBits, ">() of\n",
-                      value, "\nresulted in\n", shiftedValue, "\ninstead of\n",
-                      multipliedValue, "\n");
+    shiftedValue = value;
+    shiftedValue <<= kBits;
+    reverseWMPUInt(multipliedValue);
+    if(!testShiftedValues("operator<<=(", kBits, ")", value, shiftedValue, multipliedValue)) DRET;
+
+    shiftedValue = value;
+    reverseWMPUInt(shiftedValue);
+    shiftedValue >>= kBits;
+    reverseWMPUInt(multipliedValue);
+    if(!testShiftedValues("operator>>=(", kBits, ")", value, shiftedValue, multipliedValue)) DRET;
+
+    shiftedValue = value << kBits;
+    reverseWMPUInt(multipliedValue);
+    if(!testShiftedValues("operator<<(", kBits, ")", value, shiftedValue, multipliedValue)) DRET;
+
+    shiftedValue = value;
+    reverseWMPUInt(shiftedValue);
+    shiftedValue = shiftedValue >> kBits;
+    reverseWMPUInt(multipliedValue);
+    if(!testShiftedValues("operator>>(", kBits, ")", value, shiftedValue, multipliedValue)) DRET;
 
     return true;
 }
@@ -1124,41 +1150,46 @@ template<std::size_t kSize>
 static bool testShiftWithSize(std::mt19937_64& rngEngine)
 {
     WMPUInt<kSize> value;
-    for(std::size_t i = 0; i < kSize; ++i) value.data()[i] = rngEngine();
 
-    if(!testShiftWithBits<kSize, 1>(value)) DRET;
-    if(!testShiftWithBits<kSize, 2>(value)) DRET;
-    if(!testShiftWithBits<kSize, 3>(value)) DRET;
-    if(!testShiftWithBits<kSize, 7>(value)) DRET;
-    if(!testShiftWithBits<kSize, 11>(value)) DRET;
-    if(!testShiftWithBits<kSize, 33>(value)) DRET;
-    if(!testShiftWithBits<kSize, 63>(value)) DRET;
-    if constexpr(kSize > 1)
+    for(unsigned iteration = 0; iteration < 100; ++iteration)
     {
-        if(!testShiftWithBits<kSize, 64>(value)) DRET;
-        if(!testShiftWithBits<kSize, 65>(value)) DRET;
-        if(!testShiftWithBits<kSize, 127>(value)) DRET;
-    }
-    if constexpr(kSize > 2)
-    {
-        if(!testShiftWithBits<kSize, 128>(value)) DRET;
-        if(!testShiftWithBits<kSize, 128+1>(value)) DRET;
-        if(!testShiftWithBits<kSize, 158>(value)) DRET;
-        if(!testShiftWithBits<kSize, 128+63>(value)) DRET;
-    }
-    if constexpr(kSize > 3)
-    {
-        if(!testShiftWithBits<kSize, 192>(value)) DRET;
-        if(!testShiftWithBits<kSize, 192+1>(value)) DRET;
-        if(!testShiftWithBits<kSize, 221>(value)) DRET;
-        if(!testShiftWithBits<kSize, 192+63>(value)) DRET;
-    }
-    if constexpr(kSize > 4)
-    {
-        if(!testShiftWithBits<kSize, 256>(value)) DRET;
-        if(!testShiftWithBits<kSize, 256+1>(value)) DRET;
-        if(!testShiftWithBits<kSize, 287>(value)) DRET;
-        if(!testShiftWithBits<kSize, 256+63>(value)) DRET;
+        for(std::size_t i = 0; i < kSize; ++i) value.data()[i] = rngEngine();
+
+        if(!testShiftWithBits<kSize, 0>(value)) DRET;
+        if(!testShiftWithBits<kSize, 1>(value)) DRET;
+        if(!testShiftWithBits<kSize, 2>(value)) DRET;
+        if(!testShiftWithBits<kSize, 3>(value)) DRET;
+        if(!testShiftWithBits<kSize, 7>(value)) DRET;
+        if(!testShiftWithBits<kSize, 11>(value)) DRET;
+        if(!testShiftWithBits<kSize, 33>(value)) DRET;
+        if(!testShiftWithBits<kSize, 63>(value)) DRET;
+        if constexpr(kSize > 1)
+        {
+            if(!testShiftWithBits<kSize, 64>(value)) DRET;
+            if(!testShiftWithBits<kSize, 65>(value)) DRET;
+            if(!testShiftWithBits<kSize, 127>(value)) DRET;
+        }
+        if constexpr(kSize > 2)
+        {
+            if(!testShiftWithBits<kSize, 128>(value)) DRET;
+            if(!testShiftWithBits<kSize, 128+1>(value)) DRET;
+            if(!testShiftWithBits<kSize, 158>(value)) DRET;
+            if(!testShiftWithBits<kSize, 128+63>(value)) DRET;
+        }
+        if constexpr(kSize > 3)
+        {
+            if(!testShiftWithBits<kSize, 192>(value)) DRET;
+            if(!testShiftWithBits<kSize, 192+1>(value)) DRET;
+            if(!testShiftWithBits<kSize, 221>(value)) DRET;
+            if(!testShiftWithBits<kSize, 192+63>(value)) DRET;
+        }
+        if constexpr(kSize > 4)
+        {
+            if(!testShiftWithBits<kSize, 256>(value)) DRET;
+            if(!testShiftWithBits<kSize, 256+1>(value)) DRET;
+            if(!testShiftWithBits<kSize, 287>(value)) DRET;
+            if(!testShiftWithBits<kSize, 256+63>(value)) DRET;
+        }
     }
     return true;
 }
