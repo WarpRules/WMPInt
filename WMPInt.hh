@@ -1,8 +1,8 @@
 #ifndef WMPINT_INCLUDE_GUARD
 #define WMPINT_INCLUDE_GUARD
 
-#define WMPINT_VERSION 0x000100
-#define WMPINT_VERSION_STRING "0.1.0"
+#define WMPINT_VERSION 0x000200
+#define WMPINT_VERSION_STRING "0.2.0"
 #define WMPINT_COPYRIGHT_STRING "WMPInt v" WMPINT_VERSION_STRING " (C)2019 Juha Nieminen"
 
 #include <cstdint>
@@ -243,17 +243,18 @@ inline void WMPUInt<1>::fullMultiply(const WMPUInt<kSize2>& rhs, WMPUInt<1+kSize
              : "a"(mValue), [rhs]"rm"(rhs.mValue) : "cc");
     else if constexpr(kSize2 == 2)
     {
-        result.mData[2] = 0;
+        result.mData[0] = 0;
         asm ("movq %[rhs1], %%rax\n\t"
              "mulq %[lhs]\n\t"
-             "movq %%rax, (%[result])\n\t"
+             "movq %%rax, 16(%[result])\n\t"
              "movq %%rdx, 8(%[result])\n\t"
              "movq %[rhs0], %%rax\n\t"
              "mulq %[lhs]\n\t"
              "addq %%rax, 8(%[result])\n\t"
-             "adcq %%rdx, 16(%[result])\n\t"
-             : "+m"(result.mData), [result]"r"(result.mData)
-             : [lhs]"rm"(mValue), [rhs0]"rm"(rhs.mData[0]), [rhs1]"rm"(rhs.mData[1]): "cc");
+             "adcq %%rdx, (%[result])\n\t"
+             : "+m"(result.mData)
+             : [lhs]"rm"(mValue), [result]"r"(result.mData),
+               [rhs0]"rm"(rhs.mData[0]), [rhs1]"rm"(rhs.mData[1]): "cc");
     }
 }
 
@@ -983,7 +984,7 @@ inline WMPUInt<kSize>& WMPUInt<kSize>::operator+=(const WMPUInt<kSize>& rhs)
              "incq (%[lhsBegin],%[dataInd],8)\n\t"
              "jz loop2%=\n"
              "end%=:"
-             : "+m"(mData), [dataInd]"+c"(dataInd),
+             : "+m"(mData), [dataInd]"+&c"(dataInd),
                [tempReg1]"=&r"(tempReg), [tempReg2]"=&r"(tempReg2)
              : [lhsHalf]"r"(lhsHalfPoint), [rhsHalf]"r"(rhsHalfPoint),
                [lhsBegin]"r"(mData), [rhsBegin]"r"(rhs.mData), [kSizeP2]"i"(kSize/2),
@@ -1002,7 +1003,7 @@ inline WMPUInt<kSize>& WMPUInt<kSize>::operator+=(const WMPUInt<kSize>& rhs)
              "adcq %[tempReg], -8(%[lhs],%[dataInd],8)\n\t"
              "decq %[dataInd]\n\t"
              "jnz loop%="
-             : "+m"(mData), [dataInd]"+r"(dataInd), [tempReg]"=&r"(tempReg)
+             : "+m"(mData), [dataInd]"+&r"(dataInd), [tempReg]"=&r"(tempReg)
              : [lhs]"r"(mData), [rhs]"r"(rhs.mData), "m"(rhs.mData) : "cc");
     }
 
@@ -1057,7 +1058,7 @@ inline WMPUInt<kSize>& WMPUInt<kSize>::operator+=(std::uint64_t value)
              "decq %[dataInd]\n\t"
              "jns loop%=\n"
              "exitLoop%=:"
-             : "+m"(mData), [dataInd]"+r"(dataInd)
+             : "+m"(mData), [dataInd]"+&r"(dataInd)
              : [lhs]"r"(mData), [value]"r"(value), [zero]"r"(zero) : "cc");
     }
     else
@@ -1072,7 +1073,7 @@ inline WMPUInt<kSize>& WMPUInt<kSize>::operator+=(std::uint64_t value)
              "decq %[dataInd]\n\t"
              "jns loop%=\n"
              "exitLoop%=:"
-             : "+m"(mData), [dataInd]"+r"(dataInd)
+             : "+m"(mData), [dataInd]"+&r"(dataInd)
              : [lhs]"r"(mData), [value]"r"(value), [zero]"r"(zero) : "cc");
     }
 
@@ -1153,7 +1154,7 @@ inline WMPUInt<kSize>& WMPUInt<kSize>::operator-=(const WMPUInt<kSize>& rhs)
              "sbbq %[tempReg], (%[lhs],%[dataInd],8)\n\t"
              "decq %[dataInd]\n\t"
              "jns loop%="
-             : "+m"(mData), [tempReg]"=&r"(tempReg), [dataInd]"+r"(dataInd)
+             : "+m"(mData), [tempReg]"=&r"(tempReg), [dataInd]"+&r"(dataInd)
              : [lhs]"r"(mData), [rhs]"r"(rhs.mData), "m"(rhs.mData) : "cc");
     }
 
@@ -1201,7 +1202,7 @@ inline WMPUInt<kSize>& WMPUInt<kSize>::operator-=(std::uint64_t value)
              "decq %[dataInd]\n\t"
              "jns loop%=\n"
              "exitLoop%=:"
-             : "+m"(mData), [dataInd]"+r"(dataInd)
+             : "+m"(mData), [dataInd]"+&r"(dataInd)
              : [lhs]"r"(mData), [value]"r"(value), [zero]"r"(zero) : "cc");
     }
     else
@@ -1216,7 +1217,7 @@ inline WMPUInt<kSize>& WMPUInt<kSize>::operator-=(std::uint64_t value)
              "decq %[dataInd]\n\t"
              "jns loop%=\n"
              "exitLoop%=:"
-             : "+m"(mData), [dataInd]"+r"(dataInd)
+             : "+m"(mData), [dataInd]"+&r"(dataInd)
              : [lhs]"r"(mData), [value]"r"(value), [zero]"r"(zero) : "cc");
     }
 
@@ -1287,69 +1288,8 @@ inline void WMPUInt<kSize>::multiply
              : "rax", "rdx", "cc");
     }
     else
-#if 0
         WMPIntImplementations::doLongMultiplication
             (kSize, mData, rhs.mData, result.mData, tempBuffer);
-#else
-    {
-        std::uint64_t lhsInd = kSize - 1, rhsInd = kSize - 1, rhsIndCounter,
-            lhsValue = mData[kSize - 1];
-        for(std::size_t i = 0; i < kSize; ++i) result.mData[i] = 0;
-
-        asm (/* Multiplication by [L0] */
-             /* Loop: rhsInd = [kSize-1, 1] */
-             "\nL1%=:\n\t"
-             "movq (%[rhs],%[rhsInd],8),%%rax\n\t" // rax = rhs[rhsInd]
-             "mulq %[lhsValue]\n\t" // (rdx,rax) = rax * lhsValue
-             "addq %%rax,(%[result],%[rhsInd],8)\n\t" // result[rhsInd] += rax
-             "adcq %%rdx,-8(%[result],%[rhsInd],8)\n\t" // result[rhsInd-1] = rdx
-             "decq %[rhsInd]\n\t" // --rhsInd
-             "jnz L1%=\n\t" // if(lhsInd > 0) goto L1
-             "imulq (%[rhs]),%[lhsValue]\n\t" // lhsValue = rhs[0] * lhsValue
-             "addq %[lhsValue],(%[result])\n\t" // result[0] += lhsValue
-             /* Multiplication by the remaining of lhs. */
-             "decq %[lhsInd]\n" // --lhsInd
-             /* Outer loop: lhsInd = [kSize-2, 0] */
-             "L2%=:\n\t"
-             /* tempBuf has to be zeroed: */
-             "xorq %[lhsValue],%[lhsValue]\n\t" // lhsValue = 0
-             "movq %[lhsInd],%[rhsIndCounter]\n" // rhsIndCounter = lhsInd
-             "movq %[lhsValue],8(%[tempBuf],%[lhsInd],8)\n\t" // tempBuf[lhsInd+1]=0
-             "L5%=:\n\t"
-             "movq %[lhsValue],(%[tempBuf],%[rhsIndCounter],8)\n\t" // tempBuf[rhsIndCounter]=0
-             "decq %[rhsIndCounter]\n\t" // --rhsIndCounter
-             "jns L5%=\n\t" // if(rhsIndCounter >= 0) goto L5
-             /* Inner loop 1: rhsIndCounter = [lhsInd, 0] */
-             "movq %[lhsInd],%[rhsIndCounter]\n\t" // rhsIndCounter = lhsInd
-             "movq %[kSizeM1],%[rhsInd]\n\t" // rhsInd = kSize-1
-             "movq (%[lhs],%[lhsInd],8),%[lhsValue]\n\t" // lhsValue = lhs[lhsInd]
-             "L3%=:\n\t"
-             "movq (%[rhs],%[rhsInd],8),%%rax\n\t" // rax = rhs[rhsInd]
-             "mulq %[lhsValue]\n\t" // (rdx,rax) = rax * lhsValue
-             "decq %[rhsInd]\n\t" // --rhsInd
-             "addq %%rax,8(%[tempBuf],%[rhsIndCounter],8)\n\t" // tempBuf[rhsIndCounter+1] += rax
-             "adcq %%rdx,(%[tempBuf],%[rhsIndCounter],8)\n\t" // tmpBuf[rhsIndCounter] = rdx
-             "decq %[rhsIndCounter]\n\t" // -rhsIndCounter
-             "jns L3%=\n\t" // if(rhsIndCounter >= 0) goto L3
-             /* Inner loop 2: rhsIndCounter = [lhsInd, 0] */
-             "movq %[lhsInd],%[rhsIndCounter]\n\t" // rhsIndCounter = lhsInd
-             "clc\n"
-             "L4%=:\n\t"
-             "movq 8(%[tempBuf],%[rhsIndCounter],8),%%rax\n\t" // rax = tempBuf[rhsIndCounter+1]
-             "adcq %%rax,(%[result],%[rhsIndCounter],8)\n\t" // result[rhsIndCounter] += rax
-             "decq %[rhsIndCounter]\n\t" // --rhsIndCounter
-             "jns L4%=\n\t" // if(rhsIndCounter >= 0) goto L4
-             "decq %[lhsInd]\n\t" // --lhsInd
-             "jns L2%=" // if(lhsInd >= 0) goto L2
-             : "+m"(result.mData), "=m"(*(std::uint64_t(*)[kSize])tempBuffer),
-               [lhsInd]"+r"(lhsInd), [rhsInd]"+r"(rhsInd),
-               [rhsIndCounter]"=&r"(rhsIndCounter), [lhsValue]"+r"(lhsValue)
-             : [lhs]"r"(mData), [rhs]"r"(rhs.mData), [result]"r"(result.mData),
-               [tempBuf]"r"(tempBuffer), [kSizeM1]"i"(kSize - 1),
-               "m"(mData), "m"(rhs.mData)
-             : "rax", "rdx", "cc");
-    }
-#endif
 }
 
 template<std::size_t kSize>
@@ -1441,7 +1381,7 @@ inline void WMPUInt<kSize>::multiply(std::uint64_t rhs, std::uint64_t* result) c
              "movq %%rdx,(%[result])\n\t"
              "imulq (%[lhs]),%[rhs]\n\t"
              "addq %[rhs],(%[result])"
-             : "=m"(*(std::uint64_t(*)[kSize])result), [rhs]"+r"(rhs)
+             : "=m"(*(std::uint64_t(*)[kSize])result), [rhs]"+&r"(rhs)
              : [lhs]"r"(mData), [result]"r"(result), "m"(mData)
              : "rax", "rdx", "cc");
     }
@@ -1458,7 +1398,7 @@ inline void WMPUInt<kSize>::multiply(std::uint64_t rhs, std::uint64_t* result) c
              "jnz loop%=\n\t" // if(lhsInd > 0) goto loop
              "imulq (%[lhs]),%[rhs]\n\t" // rhs = lhs[0] * rhs
              "addq %[rhs],(%[result])" // result[0] += rhs
-             : "+m"(*(std::uint64_t(*)[kSize])result), [rhs]"+r"(rhs), [lhsInd]"+r"(lhsInd)
+             : "+m"(*(std::uint64_t(*)[kSize])result), [rhs]"+&r"(rhs), [lhsInd]"+&r"(lhsInd)
              : [lhs]"r"(mData), [result]"r"(result), "m"(mData)
              : "rax", "rdx", "cc");
     }
@@ -1584,7 +1524,7 @@ inline void WMPUInt<kSize>::addTo(WMPUInt<kSize>& target1, WMPUInt<kSize>& targe
              "jmp loop%=\n"
              "done%=:"
              : "+m"(target1.mData), "+m"(target2.mData),
-               [dataInd]"+c"(dataInd),
+               [dataInd]"+&c"(dataInd),
                [tempReg1]"=&r"(tempReg1), [tempReg2]"=&r"(tempReg2),
                [tempReg3]"=&r"(tempReg3), [tempReg4]"=&r"(tempReg4)
              : [self]"r"(mData), [target1]"r"(target1.mData), [target2]"r"(target2.mData),
@@ -1606,7 +1546,7 @@ inline void WMPUInt<kSize>::addTo(WMPUInt<kSize>& target1, WMPUInt<kSize>& targe
              "jmp loop%=\n"
              "done%=:"
              : "+m"(target1.mData), "+m"(target2.mData),
-               [dataInd]"+c"(dataInd), [tempReg1]"=&r"(tempReg1), [tempReg2]"=&r"(tempReg2)
+               [dataInd]"+&c"(dataInd), [tempReg1]"=&r"(tempReg1), [tempReg2]"=&r"(tempReg2)
              : [self]"r"(mData), [target1]"r"(target1.mData), [target2]"r"(target2.mData),
                "m"(mData) : "cc");
     }
@@ -1662,7 +1602,7 @@ inline void addWMPPair(WMPUInt<kSize>& lhs1, const WMPUInt<kSize>& rhs1,
              "done%=:"
              : "+m"(*(std::uint64_t(*)[kSize])lhs1.data()),
                "+m"(*(std::uint64_t(*)[kSize])lhs2.data()),
-               [dataInd]"+c"(dataInd), [tempReg1]"=&r"(tempReg1), [tempReg2]"=&r"(tempReg2)
+               [dataInd]"+&c"(dataInd), [tempReg1]"=&r"(tempReg1), [tempReg2]"=&r"(tempReg2)
              : [lhs1]"r"(lhs1.data()), [lhs2]"r"(lhs2.data()),
                [rhs1]"r"(rhs1.data()), [rhs2]"r"(rhs2.data()),
                "m"(*(std::uint64_t(*)[kSize])rhs1.data()),

@@ -40,18 +40,18 @@ int main()
     std::printf("Benchmarks for WMPUInt::multiply():\n");
 
     runMultiplicationBenchmark<2>(1050000000);
-    runMultiplicationBenchmark<3>(134000000);
-    runMultiplicationBenchmark<4>(76000000);
-    runMultiplicationBenchmark<5>(48000000);
-    runMultiplicationBenchmark<6>(35000000);
-    runMultiplicationBenchmark<7>(25000000);
+    runMultiplicationBenchmark<3>(100000000);
+    runMultiplicationBenchmark<4>(64000000);
+    runMultiplicationBenchmark<5>(42000000);
+    runMultiplicationBenchmark<6>(30000000);
+    runMultiplicationBenchmark<7>(23000000);
     runMultiplicationBenchmark<8>(19000000);
     runMultiplicationBenchmark<10>(12000000);
     runMultiplicationBenchmark<16>(4800000);
     runMultiplicationBenchmark<24>(2000000);
     runMultiplicationBenchmark<32>(1100000);
-    runMultiplicationBenchmark<50>(420000);
-    runMultiplicationBenchmark<150>(45000);
+    runMultiplicationBenchmark<50>(430000);
+    runMultiplicationBenchmark<150>(49000);
     runMultiplicationBenchmark<256>(16000);
     runMultiplicationBenchmark<1024>(1000);
     runMultiplicationBenchmark<1024*16>(4);

@@ -1,6 +1,6 @@
 # WMPInt
-WMPInt v0.1.0 is a small header-only library for multi-precision integer ("bignum")
-calculations for x86-64 platforms, in C++17 and inline asm.
+WMPInt v0.2.0 is a small library for multi-precision integer ("bignum") calculations for x86-64
+platforms, in C++17 and inline asm, consisting of one header and one source file.
 
 The `WMPInt` (not yet implemented) and `WMPUInt` classes are template classes with a compile-time
 size template parameter, ie. similar to `std::array<std::uint64_t, size>`. (The data is stored
