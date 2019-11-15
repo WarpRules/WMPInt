@@ -7,6 +7,18 @@ class Timer
     std::chrono::time_point<std::chrono::high_resolution_clock> mStartTime =
         std::chrono::high_resolution_clock::now();
 
+    void printTime(double seconds)
+    {
+        if(seconds < 1.0e-6)
+            std::printf("%.2f ns", seconds * 1.0e9);
+        else if(seconds < 1.0e-3)
+            std::printf("%.2f us", seconds * 1.0e6);
+        else if(seconds < 1.0)
+            std::printf("%.2f ms", seconds * 1.0e3);
+        else
+            std::printf("%.2f s", seconds);
+    }
+
 
  public:
     double getElapsedSeconds() const
@@ -19,7 +31,8 @@ class Timer
     void printResult(std::size_t kSize, std::size_t iterationCount)
     {
         const double seconds = getElapsedSeconds();
-        std::printf("WMPUInt<%zu>: %.3f s (%zu iterations, %.3f us)\n",
-                    kSize, seconds, iterationCount, seconds * 1.0e6 / iterationCount);
+        std::printf("WMPUInt<%zu>: %.3f s (%zu iterations, ", kSize, seconds, iterationCount);
+        printTime(seconds / iterationCount);
+        std::printf(")\n");
     }
 };

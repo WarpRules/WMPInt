@@ -26,7 +26,7 @@ void runMultiplicationBenchmark(std::size_t totalIterations)
 
     for(std::size_t i = 0; i < totalIterations; ++i)
     {
-        value1.multiply(value2, result.data(), tempBuffer);
+        value1.multiply(value2, result, tempBuffer);
         resultSumMSW += result.data()[0];
         resultSumLSW += result.data()[kSize-1];
     }
@@ -39,19 +39,20 @@ int main()
 {
     std::printf("Benchmarks for WMPUInt::multiply():\n");
 
-    runMultiplicationBenchmark<2>(540000000);
-    runMultiplicationBenchmark<3>(68000000);
-    runMultiplicationBenchmark<4>(40000000);
-    runMultiplicationBenchmark<5>(25000000);
-    runMultiplicationBenchmark<6>(18000000);
-    runMultiplicationBenchmark<7>(13000000);
-    runMultiplicationBenchmark<8>(9500000);
-    runMultiplicationBenchmark<10>(6500000);
-    runMultiplicationBenchmark<16>(2500000);
-    runMultiplicationBenchmark<24>(1000000);
-    runMultiplicationBenchmark<32>(520000);
-    runMultiplicationBenchmark<50>(220000);
-    runMultiplicationBenchmark<150>(22000);
-    runMultiplicationBenchmark<256>(7800);
-    runMultiplicationBenchmark<1024>(500);
+    runMultiplicationBenchmark<2>(1050000000);
+    runMultiplicationBenchmark<3>(134000000);
+    runMultiplicationBenchmark<4>(76000000);
+    runMultiplicationBenchmark<5>(48000000);
+    runMultiplicationBenchmark<6>(35000000);
+    runMultiplicationBenchmark<7>(25000000);
+    runMultiplicationBenchmark<8>(19000000);
+    runMultiplicationBenchmark<10>(12000000);
+    runMultiplicationBenchmark<16>(4800000);
+    runMultiplicationBenchmark<24>(2000000);
+    runMultiplicationBenchmark<32>(1100000);
+    runMultiplicationBenchmark<50>(420000);
+    runMultiplicationBenchmark<150>(45000);
+    runMultiplicationBenchmark<256>(16000);
+    runMultiplicationBenchmark<1024>(1000);
+    runMultiplicationBenchmark<1024*16>(4);
 }

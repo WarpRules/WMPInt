@@ -120,11 +120,20 @@ class WMPUInt
     WMPUInt<kSize> operator-() const;
     void neg();
 
+    constexpr static std::size_t multiplyBufferSize() { return kSize; }
+
     void multiply(const WMPUInt<kSize>&, WMPUInt<kSize>& result, std::uint64_t* tempBuffer) const;
     void multiply(std::uint64_t, WMPUInt<kSize>& result) const;
 
-    void fullMultiply(const WMPUInt<kSize>&, std::uint64_t* result,
+    template<std::size_t kSize2>
+    constexpr static std::size_t fullMultiplyBufferSize() { return kSize+kSize2; }
+
+    template<std::size_t kSize2>
+    void fullMultiply(const WMPUInt<kSize2>&, WMPUInt<kSize+kSize2>& result,
                       std::uint64_t* tempBuffer) const;
+
+    template<std::size_t kSize2>
+    void fullMultiply(const WMPUInt<kSize2>&, WMPUInt<kSize+kSize2>& result) const;
 
     void addTo(WMPUInt<kSize>& target1, WMPUInt<kSize>& target2) const;
 
@@ -134,9 +143,15 @@ class WMPUInt
 //----------------------------------------------------------------------------
     std::uint64_t mData[kSize];
 
-    void multiply(const WMPUInt<kSize>&, std::uint64_t* result, std::uint64_t* tempBuffer) const;
     void multiply(std::uint64_t, std::uint64_t* result) const;
+    template<std::size_t> friend class WMPUInt;
 };
+
+namespace WMPIntImplementations
+{
+    void doLongMultiplication(std::size_t, const std::uint64_t*, const std::uint64_t*,
+                              std::uint64_t*, std::uint64_t*);
+}
 
 
 //============================================================================
@@ -184,10 +199,20 @@ class WMPUInt<1>
     WMPUInt<1> operator*(const WMPUInt<1>& rhs) const { return WMPUInt<1>(mValue * rhs.mValue); }
     WMPUInt<1> operator-() const { return WMPUInt<1>(-mValue); }
     void neg() { mValue = -mValue; }
+
+    constexpr static std::size_t multiplyBufferSize() { return 1; }
     void multiply(const WMPUInt<1>& rhs, std::uint64_t* result, std::uint64_t*) const
     { *result = mValue * rhs.mValue; }
     void multiply(std::uint64_t rhs, std::uint64_t* result) const { *result = mValue * rhs; }
-    void fullMultiply(const WMPUInt<1>&, std::uint64_t* result, std::uint64_t* tempBuffer) const;
+
+    template<std::size_t kSize2>
+    constexpr static std::size_t fullMultiplyBufferSize() { return 1+kSize2; }
+    template<std::size_t kSize2>
+    void fullMultiply(const WMPUInt<kSize2>&, WMPUInt<1+kSize2>& result,
+                      std::uint64_t* tempBuffer) const;
+    template<std::size_t kSize2>
+    void fullMultiply(const WMPUInt<kSize2>&, WMPUInt<1+kSize2>& result) const;
+
     void addTo(WMPUInt<1>& target1, WMPUInt<1>& target2) const;
 
  private:
@@ -209,12 +234,34 @@ inline void WMPUInt<1>::assign(std::initializer_list<std::uint64_t> values)
     mValue = values.size() ? *values.begin() : 0;
 }
 
-inline void WMPUInt<1>::fullMultiply
-(const WMPUInt<1>& rhs, std::uint64_t* result, std::uint64_t*) const
+template<std::size_t kSize2>
+inline void WMPUInt<1>::fullMultiply(const WMPUInt<kSize2>& rhs, WMPUInt<1+kSize2>& result) const
 {
-    asm ("mulq %[rhs]"
-         : "=a"(result[1]), "=d"(result[0])
-         : "a"(mValue), [rhs]"rm"(rhs.mValue) : "cc");
+    if constexpr(kSize2 == 1)
+        asm ("mulq %[rhs]"
+             : "=a"(result.mData[1]), "=d"(result.mData[0])
+             : "a"(mValue), [rhs]"rm"(rhs.mValue) : "cc");
+    else if constexpr(kSize2 == 2)
+    {
+        result.mData[2] = 0;
+        asm ("movq %[rhs1], %%rax\n\t"
+             "mulq %[lhs]\n\t"
+             "movq %%rax, (%[result])\n\t"
+             "movq %%rdx, 8(%[result])\n\t"
+             "movq %[rhs0], %%rax\n\t"
+             "mulq %[lhs]\n\t"
+             "addq %%rax, 8(%[result])\n\t"
+             "adcq %%rdx, 16(%[result])\n\t"
+             : "+m"(result.mData), [result]"r"(result.mData)
+             : [lhs]"rm"(mValue), [rhs0]"rm"(rhs.mData[0]), [rhs1]"rm"(rhs.mData[1]): "cc");
+    }
+}
+
+template<std::size_t kSize2>
+inline void WMPUInt<1>::fullMultiply
+(const WMPUInt<kSize2>& rhs, WMPUInt<1+kSize2>& result, std::uint64_t*) const
+{
+    fullMultiply(rhs, result);
 }
 
 inline void WMPUInt<1>::addTo(WMPUInt<1>& target1, WMPUInt<1>& target2) const
@@ -390,7 +437,7 @@ inline const char* WMPUInt<kSize>::assignFromDecStr(const char* ptr, std::uint64
 template<std::size_t kSize>
 inline const char* WMPUInt<kSize>::assignFromDecStr(const char* ptr)
 {
-    std::uint64_t tempBuffer[kSize];
+    std::uint64_t tempBuffer[multiplyBufferSize()];
     return assignFromDecStr(ptr, tempBuffer);
 }
 
@@ -1207,7 +1254,7 @@ inline WMPUInt<kSize>& WMPUInt<kSize>::operator--()
 //----------------------------------------------------------------------------
 template<std::size_t kSize>
 inline void WMPUInt<kSize>::multiply
-(const WMPUInt<kSize>& rhs, std::uint64_t* result, std::uint64_t* tempBuffer) const
+(const WMPUInt<kSize>& rhs, WMPUInt<kSize>& result, std::uint64_t* tempBuffer) const
 {
     /* Long multiplication algorithm in base 2^64 (eg. kSize == 5)
        -----------------------------------------------------------
@@ -1234,17 +1281,20 @@ inline void WMPUInt<kSize>::multiply
              "addq %[tmp2],%%rdx\n\t" // rdx += tmp2
              "movq %%rax,8(%[result])\n\t" // result[1] = rax
              "movq %%rdx,(%[result])" // result[0] = rdx;
-             : "+m"(*(std::uint64_t(*)[kSize])result),
-               [tmp1]"=&r"(tmp1), [tmp2]"=&r"(tmp2)
-             : [lhs]"r"(mData), [rhs]"r"(rhs.mData), [result]"r"(result),
+             : "+m"(result.mData), [tmp1]"=&r"(tmp1), [tmp2]"=&r"(tmp2)
+             : [lhs]"r"(mData), [rhs]"r"(rhs.mData), [result]"r"(result.mData),
                "m"(mData), "m"(rhs.mData)
              : "rax", "rdx", "cc");
     }
     else
+#if 0
+        WMPIntImplementations::doLongMultiplication
+            (kSize, mData, rhs.mData, result.mData, tempBuffer);
+#else
     {
         std::uint64_t lhsInd = kSize - 1, rhsInd = kSize - 1, rhsIndCounter,
             lhsValue = mData[kSize - 1];
-        for(std::size_t i = 0; i < kSize; ++i) result[i] = 0;
+        for(std::size_t i = 0; i < kSize; ++i) result.mData[i] = 0;
 
         asm (/* Multiplication by [L0] */
              /* Loop: rhsInd = [kSize-1, 1] */
@@ -1291,30 +1341,24 @@ inline void WMPUInt<kSize>::multiply
              "jns L4%=\n\t" // if(rhsIndCounter >= 0) goto L4
              "decq %[lhsInd]\n\t" // --lhsInd
              "jns L2%=" // if(lhsInd >= 0) goto L2
-             : "+m"(*(std::uint64_t(*)[kSize])result),
-               "=m"(*(std::uint64_t(*)[kSize])tempBuffer),
+             : "+m"(result.mData), "=m"(*(std::uint64_t(*)[kSize])tempBuffer),
                [lhsInd]"+r"(lhsInd), [rhsInd]"+r"(rhsInd),
                [rhsIndCounter]"=&r"(rhsIndCounter), [lhsValue]"+r"(lhsValue)
-             : [lhs]"r"(mData), [rhs]"r"(rhs.mData), [result]"r"(result),
+             : [lhs]"r"(mData), [rhs]"r"(rhs.mData), [result]"r"(result.mData),
                [tempBuf]"r"(tempBuffer), [kSizeM1]"i"(kSize - 1),
                "m"(mData), "m"(rhs.mData)
              : "rax", "rdx", "cc");
     }
+#endif
 }
 
 template<std::size_t kSize>
-inline void WMPUInt<kSize>::multiply(const WMPUInt<kSize>& rhs, WMPUInt<kSize>& result,
-                                     std::uint64_t* tempBuffer) const
+template<std::size_t kSize2>
+inline void WMPUInt<kSize>::fullMultiply
+(const WMPUInt<kSize2>& rhs, WMPUInt<kSize+kSize2>& result, std::uint64_t* tempBuffer) const
 {
-    multiply(rhs, result.data(), tempBuffer);
-}
-
-template<std::size_t kSize>
-inline void WMPUInt<kSize>::fullMultiply(const WMPUInt<kSize>& rhs, std::uint64_t* result,
-                                         std::uint64_t* tempBuffer) const
-{
-    static_assert(kSize == 2, "Not yet implemented");
-    if constexpr(kSize == 2)
+    static_assert(kSize == 2 && kSize2 == 2, "Not yet implemented");
+    if constexpr(kSize == 2 && kSize2 == 2)
     {
         /* Multiplication of two 2-digit numbers (AB*CD) can be done with the algorithm:
              A*C = EF, B*D = GH, A*D = IJ, B*C = KL,
@@ -1342,9 +1386,9 @@ inline void WMPUInt<kSize>::fullMultiply(const WMPUInt<kSize>& rhs, std::uint64_
              "addq %%rax, 16(%[result])\n\t" // result[2] += rax
              "adcq %%rdx, 8(%[result])\n\t" // result[1] += rdx
              "adcq %[zero], (%[result])" // result[0] += 0
-             : "=m"(*(std::uint64_t(*)[kSize])result)
-             : [lhs]"r"(mData), [rhs]"r"(rhs.mData), [result]"r"(result), [zero]"r"(zero),
-               "m"(mData), "m"(rhs.mData)
+             : "=m"(result.mData)
+             : [lhs]"r"(mData), [rhs]"r"(rhs.mData), [result]"r"(result.mData),
+               [zero]"r"(zero), "m"(mData), "m"(rhs.mData)
              : "rax", "rdx", "cc");
     }
     else
@@ -1353,17 +1397,26 @@ inline void WMPUInt<kSize>::fullMultiply(const WMPUInt<kSize>& rhs, std::uint64_
 }
 
 template<std::size_t kSize>
+template<std::size_t kSize2>
+inline void WMPUInt<kSize>::fullMultiply
+(const WMPUInt<kSize2>& rhs, WMPUInt<kSize+kSize2>& result) const
+{
+    std::uint64_t tempBuf[fullMultiplyBufferSize<kSize2>()];
+    fullMultiply(rhs, result, tempBuf);
+}
+
+template<std::size_t kSize>
 inline WMPUInt<kSize> WMPUInt<kSize>::operator*(const WMPUInt<kSize>& rhs) const
 {
     WMPUInt<kSize> result;
     if constexpr(kSize == 2)
     {
-        multiply(rhs, result.mData, nullptr);
+        multiply(rhs, result, nullptr);
     }
     else
     {
         std::uint64_t tempBuf[kSize];
-        multiply(rhs, result.mData, tempBuf);
+        multiply(rhs, result, tempBuf);
     }
     return result;
 }

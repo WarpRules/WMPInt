@@ -323,7 +323,7 @@ v3.assignFromDecStr("6277101735386680763835789423207666416102355444464034512895"
 
 <p>Note that since <code>assignFromDecStr()</code> involves multiplication, a version
   of the function is provided that can be given a user-provided temporary buffer
-  (containing at least <code>kSize</code> <code>std::uint64_t</code> values) for
+  (containing at least <code>multiplyBufferSize()</code> <code>std::uint64_t</code> values) for
   the multiplication operation. Consult the section <a href="#multiply">Multiplying very
     large integers</a> for the reason for this.</p>
 
@@ -465,7 +465,9 @@ WMPUInt&lt;kSize&gt; <span class="funcname">operator*</span> (std::uint64_t, con
 
 <p><b>Member functions:</b></p>
 
-<pre class="synopsis">void <span class="funcname">multiply</span> (const WMPUInt&lt;kSize&gt;&amp; rhs,
+<pre class="synopsis">constexpr static std::size_t <span class="funcname">multiplyBufferSize</span> ();
+
+void <span class="funcname">multiply</span> (const WMPUInt&lt;kSize&gt;&amp; rhs,
                WMPUInt&lt;kSize&gt;&amp; result,
                std::uint64_t* tempBuffer) const;
 
@@ -474,17 +476,18 @@ void <span class="funcname">multiply</span> (std::uint64_t rhs, WMPUInt&lt;kSize
 
 <p>Note that the multiplication operators <code>operator*()</code> and <code>operator*=()</code>
   use internally a stack-allocated <code>WMPUInt&lt;kSize&gt;</code> and a buffer of
-  <code>kSize</code> <code>std::uint64_t</code> values. For values of <code>kSize</code> up to
-  the hundreds, perhaps even thousands, this shouldn't pose a problem. However, if
-  <code>kSize</code> is extremely large (in the tens of thousands or more), this may pose
-  a problem because in most platforms stack size is limited, and this could cause a stack
+  <code>multiplyBufferSize()</code> <code>std::uint64_t</code> values. For values of
+  <code>kSize</code> up to the hundreds, perhaps even thousands, this shouldn't pose a problem.
+  However, if <code>kSize</code> is extremely large (in the tens of thousands or more), this
+  may pose a problem because in most platforms stack size is limited, and this could cause a stack
   overflow. It might also potentially have some efficiency implications (even when the stack
   does not overflow).</p>
 
 <p>These two member functions are provided to circumvent this problem.</p>
 
-<p><code>tempBuffer</code> should be a (separate) array of at least <code>kSize</code>
-  <code>std::uint64_t</code> values. (This array doesn't need to be initialized with anything.)</p>
+<p><code>tempBuffer</code> should be a (separate) array of at least
+  <code>multiplyBufferSize()</code> <code>std::uint64_t</code> values. (This array doesn't
+  need to be initialized with anything.)</p>
 
 <p><b class="important">Important!</b> <code>result</code> cannot be this object or the
   <code>rhs</code> object. It must be a third, separate object, else the result will be
@@ -500,7 +503,8 @@ void <span class="funcname">multiply</span> (std::uint64_t rhs, WMPUInt&lt;kSize
     const std::size_t kSize = 10000;
 
     thread_local WMPUInt&lt;kSize&gt; multResult;
-    thread_local std::uint64_t multTempBuf[kSize];
+    thread_local std::uint64_t multTempBuf
+    [WMPUInt&lt;kSize&gt;::multiplyBufferSize()];
 }
 
 void foo(const WMPUInt&lt;kSize&gt;&amp; value1,
@@ -663,7 +667,7 @@ value3 *= 10;</pre>
 <pre>WMPUInt&lt;128&gt; v1, v2, result; <span class="comment">// 8192-bit integers</span>
 
 <span class="comment">// Multiply without any data copying:</span>
-std::uint64_t tempBuffer[128];
+std::uint64_t tempBuffer[WMPUInt&lt;128&gt;::multiplyBufferSize()];
 v1.multiply(v2, result, tempBuffer);</pre>
 
 <p>(Note that <code>v1</code> and <code>v2</code> above can <em>not</em> be used

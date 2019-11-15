@@ -405,7 +405,7 @@ static bool testMultiplicationWithSize2()
 
         const WMPUInt<1> input1(rngEngine()), input2(rngEngine());
         const __uint128_t testValue1 = *input1.data(), testValue2 = *input2.data();
-        input1.fullMultiply(input2, result.data(), nullptr);
+        input1.fullMultiply(input2, result, nullptr);
         const __uint128_t resultValue = testValue1 * testValue2;
         const std::uint64_t resultValue_lsw = resultValue;
         const std::uint64_t resultValue_msw = resultValue >> 64;
@@ -551,7 +551,7 @@ static bool checkFullMultiplication
     {
         WMPUInt<kSize*2> result3;
         std::uint64_t tempBuffer[kSize];
-        value1.fullMultiply(value2, result3.data(), tempBuffer);
+        value1.fullMultiply(value2, result3, tempBuffer);
         if(result3 != result2)
             return DPRINT("Error: fullMultiply of values\n", value1, "\nand\n", value2,
                           "\nresulted in ", result3,

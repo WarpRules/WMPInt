@@ -45,4 +45,5 @@ int main()
     runAdditionBenchmark<150>(7500000);
     runAdditionBenchmark<256>(4500000);
     runAdditionBenchmark<1024>(1200000);
+    runAdditionBenchmark<1024*16>(100000);
 }
