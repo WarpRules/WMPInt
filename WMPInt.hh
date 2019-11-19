@@ -126,7 +126,7 @@ class WMPUInt
     void multiply(std::uint64_t, WMPUInt<kSize>& result) const;
 
     template<std::size_t kSize2>
-    constexpr static std::size_t fullMultiplyBufferSize() { return kSize+kSize2; }
+    constexpr static std::size_t fullMultiplyBufferSize() { return kSize2+1; }
 
     template<std::size_t kSize2>
     void fullMultiply(const WMPUInt<kSize2>&, WMPUInt<kSize+kSize2>& result,
@@ -146,12 +146,6 @@ class WMPUInt
     void multiply(std::uint64_t, std::uint64_t* result) const;
     template<std::size_t> friend class WMPUInt;
 };
-
-namespace WMPIntImplementations
-{
-    void doLongMultiplication(std::size_t, const std::uint64_t*, const std::uint64_t*,
-                              std::uint64_t*, std::uint64_t*);
-}
 
 
 //============================================================================
@@ -256,6 +250,20 @@ inline void WMPUInt<1>::fullMultiply(const WMPUInt<kSize2>& rhs, WMPUInt<1+kSize
              : [lhs]"rm"(mValue), [result]"r"(result.mData),
                [rhs0]"rm"(rhs.mData[0]), [rhs1]"rm"(rhs.mData[1]): "cc");
     }
+    else
+    {
+        for(std::size_t i = 0; i < 1+kSize2; ++i) result.mData[i] = 0;
+        std::uint64_t rhsInd = kSize2 - 1;
+        asm ("L1%=:\n\t"
+             "movq (%[rhs],%[rhsInd],8), %%rax\n\t"
+             "mulq %[lhs]\n\t"
+             "addq %%rax, 8(%[result],%[rhsInd],8)\n\t"
+             "adcq %%rdx, (%[result],%[rhsInd],8)\n\t"
+             "decq %[rhsInd]\n\t"
+             "jns L1%="
+             : "+m"(result.mData), [rhsInd]"+&r"(rhsInd)
+             : [lhs]"r"(mValue), [rhs]"r"(rhs.mValue) : "cc");
+    }
 }
 
 template<std::size_t kSize2>
@@ -269,6 +277,19 @@ inline void WMPUInt<1>::addTo(WMPUInt<1>& target1, WMPUInt<1>& target2) const
 {
     target1.mValue += mValue;
     target2.mValue += mValue;
+}
+
+
+//----------------------------------------------------------------------------
+// Functions with large implementations.
+//----------------------------------------------------------------------------
+namespace WMPIntImplementations
+{
+    void doLongMultiplication
+    (std::size_t, const std::uint64_t*, const std::uint64_t*, std::uint64_t*, std::uint64_t*);
+    void doFullLongMultiplication
+    (const std::uint64_t*, std::size_t, const std::uint64_t*, std::size_t,
+     std::uint64_t*, std::uint64_t*);
 }
 
 //----------------------------------------------------------------------------
@@ -1297,8 +1318,10 @@ template<std::size_t kSize2>
 inline void WMPUInt<kSize>::fullMultiply
 (const WMPUInt<kSize2>& rhs, WMPUInt<kSize+kSize2>& result, std::uint64_t* tempBuffer) const
 {
-    static_assert(kSize == 2 && kSize2 == 2, "Not yet implemented");
-    if constexpr(kSize == 2 && kSize2 == 2)
+    static_assert(kSize2 == 1 || (kSize == 2 && kSize2 == 2), "Not yet implemented");
+    if constexpr(kSize2 == 1)
+        rhs.fullMultiply(*this, result, tempBuffer);
+    else if constexpr(kSize == 2 && kSize2 == 2)
     {
         /* Multiplication of two 2-digit numbers (AB*CD) can be done with the algorithm:
              A*C = EF, B*D = GH, A*D = IJ, B*C = KL,
@@ -1333,6 +1356,8 @@ inline void WMPUInt<kSize>::fullMultiply
     }
     else
     {
+        WMPIntImplementations::doFullLongMultiplication
+            (mData, kSize, rhs.mData, kSize2, result.mData, tempBuffer);
     }
 }
 

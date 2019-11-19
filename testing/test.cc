@@ -1,43 +1,9 @@
-#include "../WMPInt.hh"
+#include "test.hh"
 #include <random>
 #include <utility>
-#include <iostream>
-#include <iomanip>
 #include <chrono>
 #include <cstring>
 #include <cctype>
-
-//============================================================================
-// Output helper functions
-//============================================================================
-template<std::size_t kSize>
-std::ostream& operator<<(std::ostream& os, const WMPUInt<kSize>& value)
-{
-    std::ios_base::fmtflags f = os.flags();
-    os << '[' << std::hex << std::uppercase << std::setw(16) << std::setfill('0')
-       << value.data()[0];
-    for(std::size_t i = 1; i < kSize; ++i)
-        os << ',' << std::setw(16) << std::setfill('0') << value.data()[i];
-    os << ']';
-    os.flags(f);
-    return os;
-}
-
-static bool dprint() { return false; }
-
-template<typename T, typename... Rest>
-static bool dprint(T&& param, Rest&&... rest)
-{
-    std::cout << param;
-    return dprint(std::forward<Rest>(rest)...);
-}
-
-#define STRINGIFY_HLP(x) #x
-#define STRINGIFY(x) STRINGIFY_HLP(x)
-#define DPRINT(...) dprint("[" STRINGIFY(__LINE__) "]: ", __VA_ARGS__)
-#define DRET return DPRINT("Called from here.\n")
-#define DRETM return !DPRINT("Called from here.\n")
-
 
 //============================================================================
 // Test WMPUInt<1>
@@ -1291,6 +1257,7 @@ static void runBenchmarks()
     runCombinedBenchmark();
 }
 
+bool testFullMultiplication();
 
 //============================================================================
 // main()
@@ -1301,6 +1268,7 @@ int main()
     if(!testAssignmentFromStr()) DRETM;
     if(!testAddition()) DRETM;
     if(!testMultiplication()) DRETM;
+    //if(!testFullMultiplication()) DRETM;
     if(!testNegation()) DRETM;
     if(!testShifting()) DRETM;
     std::cout << "All tests OK.\n";
