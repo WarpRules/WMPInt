@@ -1321,7 +1321,7 @@ inline void WMPUInt<kSize>::fullMultiply
 (const WMPUInt<kSize2>& rhs, WMPUInt<kSize+kSize2>& result, std::uint64_t* tempBuffer) const
 {
     if constexpr(kSize2 == 1)
-        rhs.fullMultiply(*this, result, tempBuffer);
+        rhs.fullMultiply(*this, result);
     else if constexpr(kSize == 2 && kSize2 == 2)
     {
         /* Multiplication of two 2-digit numbers (AB*CD) can be done with the algorithm:
@@ -1330,29 +1330,31 @@ inline void WMPUInt<kSize>::fullMultiply
                EFGH
                +IJ0
                +KL0
+           (This is about 4 times faster than calling doFullLongMultiplication().)
         */
         std::uint64_t zero = 0;
-        asm ("movq (%[rhs]), %%rax\n\t" // rax = rhs[0]
-             "mulq (%[lhs])\n\t" // (rdx,rax) = lhs[0] * rax
+        asm ("movq %[rhs0], %%rax\n\t" // rax = rhs[0]
+             "mulq %[lhs0]\n\t" // (rdx,rax) = lhs[0] * rax
              "movq %%rdx, (%[result])\n\t" // result[0] = rdx
              "movq %%rax, 8(%[result])\n\t" // result[1] = rax
-             "movq 8(%[rhs]), %%rax\n\t" // rax = rhs[1]
-             "mulq 8(%[lhs])\n\t" // (rdx,rax) = lhs[1] * rax
+             "movq %[rhs1], %%rax\n\t" // rax = rhs[1]
+             "mulq %[lhs1]\n\t" // (rdx,rax) = lhs[1] * rax
              "movq %%rdx, 16(%[result])\n\t" // result[2] = rdx
              "movq %%rax, 24(%[result])\n\t" // result[3] = rax
-             "movq (%[rhs]), %%rax\n\t" // rax = rhs[0]
-             "mulq 8(%[lhs])\n\t" // (rdx,rax) = lhs[1] * rax
+             "movq %[rhs0], %%rax\n\t" // rax = rhs[0]
+             "mulq %[lhs1]\n\t" // (rdx,rax) = lhs[1] * rax
              "addq %%rax, 16(%[result])\n\t" // result[2] += rax
              "adcq %%rdx, 8(%[result])\n\t" // result[1] += rdx
              "adcq %[zero], (%[result])\n\t" // result[0] += 0
-             "movq 8(%[rhs]), %%rax\n\t" // rax = rhs[1]
-             "mulq (%[lhs])\n\t" // (rdx,rax) = lhs[0] * rax
+             "movq %[rhs1], %%rax\n\t" // rax = rhs[1]
+             "mulq %[lhs0]\n\t" // (rdx,rax) = lhs[0] * rax
              "addq %%rax, 16(%[result])\n\t" // result[2] += rax
              "adcq %%rdx, 8(%[result])\n\t" // result[1] += rdx
              "adcq %[zero], (%[result])" // result[0] += 0
              : "=m"(result.mData)
-             : [lhs]"r"(mData), [rhs]"r"(rhs.mData), [result]"r"(result.mData),
-               [zero]"r"(zero), "m"(mData), "m"(rhs.mData)
+             : [lhs0]"rm"(mData[0]), [lhs1]"rm"(mData[1]),
+               [rhs0]"rm"(rhs.mData[0]), [rhs1]"rm"(rhs.mData[1]),
+               [result]"r"(result.mData), [zero]"r"(zero)
              : "rax", "rdx", "cc");
     }
     else

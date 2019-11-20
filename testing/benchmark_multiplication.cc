@@ -13,7 +13,7 @@ template<std::size_t kSize>
 void runMultiplicationBenchmark(std::size_t totalIterations)
 {
     WMPUInt<kSize> value1, value2, result;
-    std::uint64_t tempBuffer[kSize];
+    std::uint64_t tempBuffer[value1.multiplyBufferSize()];
     std::uint64_t resultSumMSW = 0, resultSumLSW = 0;
 
     for(std::size_t i = 0; i < kSize; ++i)
