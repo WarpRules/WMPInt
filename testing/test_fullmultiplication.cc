@@ -199,12 +199,16 @@ static void initWMPUIntWithUint32Array(WMPUInt<kSize>& dest, const std::uint32_t
 template<std::size_t kSize1, std::size_t kSize2>
 static bool testFullMultiplication(std::mt19937& rng)
 {
-    const std::size_t kIterations = 1000;
+    const std::size_t kIterations = 100000;
 
     WMPUInt<kSize1> lhs;
     WMPUInt<kSize2> rhs;
     WMPUInt<kSize1 + kSize2> result, expectedResult;
-    std::uint64_t tempBuffer[lhs.template fullMultiplyBufferSize<kSize2>()];
+    const std::size_t tempBufferSize1 = lhs.template fullMultiplyBufferSize<kSize2>();
+    const std::size_t tempBufferSize2 = rhs.template fullMultiplyBufferSize<kSize1>();
+    const std::size_t tempBufferSize =
+        tempBufferSize1 > tempBufferSize2 ? tempBufferSize1 : tempBufferSize2;
+    std::uint64_t tempBuffer[tempBufferSize];
     std::uint32_t lhsArray[kSize1*2], rhsArray[kSize2*2];
     std::uint32_t resultArray[kSize1*2+kSize2*2], tempBuffer2[kSize2*2+1];
 
@@ -212,20 +216,8 @@ static bool testFullMultiplication(std::mt19937& rng)
     {
         for(std::size_t i = 0; i < kSize1*2; ++i) lhsArray[i] = rng();
         for(std::size_t i = 0; i < kSize2*2; ++i) rhsArray[i] = rng();
-        multiply(lhsArray, kSize1*2, rhsArray, kSize2*2, resultArray, tempBuffer2);
 
-        /*
-        std::cout << "{" << std::hex;
-        for(unsigned i = 0; i < kSize1*2; ++i)
-            std::cout << (i==0?"":",") << lhsArray[i];
-        std::cout << "}\n{";
-        for(unsigned i = 0; i < kSize2*2; ++i)
-            std::cout << (i==0?"":",") << rhsArray[i];
-        std::cout << "}\n{";
-        for(unsigned i = 0; i < kSize1*2+kSize2*2; ++i)
-            std::cout << (i==0?"":",") << resultArray[i];
-        std::cout << "}\n";
-        */
+        multiply(lhsArray, kSize1*2, rhsArray, kSize2*2, resultArray, tempBuffer2);
 
         initWMPUIntWithUint32Array(lhs, lhsArray);
         initWMPUIntWithUint32Array(rhs, rhsArray);
@@ -235,6 +227,12 @@ static bool testFullMultiplication(std::mt19937& rng)
 
         if(result != expectedResult)
             return DPRINT("Error: fullMultiply of\n", lhs, " and\n", rhs,
+                          "\nresulted in\n", result, "\ninstead of\n", expectedResult, "\n");
+
+        rhs.fullMultiply(lhs, result, tempBuffer);
+
+        if(result != expectedResult)
+            return DPRINT("Error: fullMultiply of\n", rhs, " and\n", lhs,
                           "\nresulted in\n", result, "\ninstead of\n", expectedResult, "\n");
     }
 
@@ -249,5 +247,28 @@ bool testFullMultiplication()
     std::mt19937 rng(1234);
     if(!testFullMultiplication<1, 1>(rng)) DRET;
     if(!testFullMultiplication<2, 1>(rng)) DRET;
+    if(!testFullMultiplication<3, 1>(rng)) DRET;
+    if(!testFullMultiplication<4, 1>(rng)) DRET;
+    if(!testFullMultiplication<5, 1>(rng)) DRET;
+    if(!testFullMultiplication<32, 1>(rng)) DRET;
+    if(!testFullMultiplication<2, 2>(rng)) DRET;
+    if(!testFullMultiplication<3, 2>(rng)) DRET;
+    if(!testFullMultiplication<4, 2>(rng)) DRET;
+    if(!testFullMultiplication<5, 2>(rng)) DRET;
+    if(!testFullMultiplication<32, 2>(rng)) DRET;
+    if(!testFullMultiplication<3, 3>(rng)) DRET;
+    if(!testFullMultiplication<4, 3>(rng)) DRET;
+    if(!testFullMultiplication<5, 3>(rng)) DRET;
+    if(!testFullMultiplication<32, 3>(rng)) DRET;
+    if(!testFullMultiplication<4, 4>(rng)) DRET;
+    if(!testFullMultiplication<5, 4>(rng)) DRET;
+    if(!testFullMultiplication<32, 4>(rng)) DRET;
+    if(!testFullMultiplication<5, 5>(rng)) DRET;
+    if(!testFullMultiplication<6, 5>(rng)) DRET;
+    if(!testFullMultiplication<32, 5>(rng)) DRET;
+    if(!testFullMultiplication<6, 6>(rng)) DRET;
+    if(!testFullMultiplication<7, 6>(rng)) DRET;
+    if(!testFullMultiplication<32, 6>(rng)) DRET;
+    if(!testFullMultiplication<32, 32>(rng)) DRET;
     return true;
 }

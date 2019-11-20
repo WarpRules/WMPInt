@@ -1,8 +1,8 @@
 #ifndef WMPINT_INCLUDE_GUARD
 #define WMPINT_INCLUDE_GUARD
 
-#define WMPINT_VERSION 0x000200
-#define WMPINT_VERSION_STRING "0.2.0"
+#define WMPINT_VERSION 0x000300
+#define WMPINT_VERSION_STRING "0.3.0"
 #define WMPINT_COPYRIGHT_STRING "WMPInt v" WMPINT_VERSION_STRING " (C)2019 Juha Nieminen"
 
 #include <cstdint>
@@ -248,7 +248,8 @@ inline void WMPUInt<1>::fullMultiply(const WMPUInt<kSize2>& rhs, WMPUInt<1+kSize
              "adcq %%rdx, (%[result])\n\t"
              : "+m"(result.mData)
              : [lhs]"rm"(mValue), [result]"r"(result.mData),
-               [rhs0]"rm"(rhs.mData[0]), [rhs1]"rm"(rhs.mData[1]): "cc");
+               [rhs0]"rm"(rhs.mData[0]), [rhs1]"rm"(rhs.mData[1])
+             : "rax", "rdx", "cc");
     }
     else
     {
@@ -262,7 +263,8 @@ inline void WMPUInt<1>::fullMultiply(const WMPUInt<kSize2>& rhs, WMPUInt<1+kSize
              "decq %[rhsInd]\n\t"
              "jns L1%="
              : "+m"(result.mData), [rhsInd]"+&r"(rhsInd)
-             : [lhs]"r"(mValue), [rhs]"r"(rhs.mValue) : "cc");
+             : [lhs]"r"(mValue), [rhs]"r"(rhs.mData), [result]"r"(result.mData)
+             : "rax", "rdx", "cc");
     }
 }
 
@@ -1318,7 +1320,6 @@ template<std::size_t kSize2>
 inline void WMPUInt<kSize>::fullMultiply
 (const WMPUInt<kSize2>& rhs, WMPUInt<kSize+kSize2>& result, std::uint64_t* tempBuffer) const
 {
-    static_assert(kSize2 == 1 || (kSize == 2 && kSize2 == 2), "Not yet implemented");
     if constexpr(kSize2 == 1)
         rhs.fullMultiply(*this, result, tempBuffer);
     else if constexpr(kSize == 2 && kSize2 == 2)

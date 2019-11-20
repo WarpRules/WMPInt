@@ -1192,6 +1192,7 @@ struct Timer
 };
 
 template<std::size_t kSize>
+[[maybe_unused]]
 static void printBenchmarkResult
 (const char* title, const WMPUInt<kSize>& resultValue, double seconds)
 {
@@ -1200,6 +1201,7 @@ static void printBenchmarkResult
               << "]: " << seconds << " seconds" << std::endl;
 }
 
+[[maybe_unused]]
 static void runAdditionBenchmarks()
 {
     const std::size_t kSize = 128;
@@ -1219,6 +1221,7 @@ static void runAdditionBenchmarks()
     printBenchmarkResult("operator+=(uint64_t)", value1, timer2.getTimeIntervalNow());
 }
 
+[[maybe_unused]]
 static void runMultiplicationBenchmarks()
 {
     const std::size_t kSize = 128;
@@ -1232,6 +1235,7 @@ static void runMultiplicationBenchmarks()
     printBenchmarkResult("operator*=(WMPUInt)", value2, timer.getTimeIntervalNow());
 }
 
+[[maybe_unused]]
 static void runCombinedBenchmark()
 {
     const std::size_t kSize = 64;
@@ -1249,6 +1253,7 @@ static void runCombinedBenchmark()
     printBenchmarkResult("combined +*", value2, timer.getTimeIntervalNow());
 }
 
+[[maybe_unused]]
 static void runBenchmarks()
 {
     std::cout << "Running benchmarks..." << std::endl;
@@ -1268,9 +1273,9 @@ int main()
     if(!testAssignmentFromStr()) DRETM;
     if(!testAddition()) DRETM;
     if(!testMultiplication()) DRETM;
-    //if(!testFullMultiplication()) DRETM;
+    if(!testFullMultiplication()) DRETM;
     if(!testNegation()) DRETM;
     if(!testShifting()) DRETM;
     std::cout << "All tests OK.\n";
-    runBenchmarks();
+    //runBenchmarks();
 }

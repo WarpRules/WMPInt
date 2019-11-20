@@ -133,6 +133,7 @@ WMPUInt&lt;16&gt; result = a + b * c;</pre>
     <li><a href="#specialfunctions">Special math functions</a></li>
     <ul>
       <li><a href="#multiply">Multiplying very large integers</a></li>
+      <li><a href="#fullmultiply">Full multiplication</a></li>
       <li><a href="#bitshift">Bit-shifting by a compile-time constant</a></li>
     </ul>
     <li><a href="#printing">ASCII output</a></li>
@@ -172,7 +173,7 @@ WMPUInt&lt;16&gt; result = a + b * c;</pre>
 
 <p>Class declaration:</p>
 
-<pre>template&lt;std::size_t kSize&gt;
+<pre class="synopsis">template&lt;std::size_t kSize&gt;
 class WMPUInt;</pre>
 
 <p>The classes work very similarly to <code>std::array&lt;std::uint64_t, kSize&gt;</code>,
@@ -185,7 +186,7 @@ class WMPUInt;</pre>
 <p>Instances of these classes can be used like unsigned and signed integers respectively.
   For example:</p>
 
-<pre>WMPUInt<16> a(10), b(20), c(30); <span class="comment">// 1024-bit integers</span>
+<pre>WMPUInt&lt;16&gt; a(10), b(20), c(30); <span class="comment">// 1024-bit integers</span>
 c += b;
 c -= a;
 a *= c;
@@ -296,7 +297,7 @@ const char* <span class="funcname">assignFromDecStr</span> (const char*, std::ui
   <li>For decimal strings: If the difference between the pointers is larger than
     <code>maxDecimalDigits()</code> then it was truncated. If it's smaller than that value then
     it was not truncated. If it's exactly that value, then it might or might not have been
-    truncated. (Currently there is no mechanism implemented to know this for sure.)</p>
+    truncated. (Currently there is no mechanism implemented to know this for sure.)</li>
 </ul>
 
 <p>Note, however, that this does not take into account possible leading <code>'0'</code> characters
@@ -518,6 +519,54 @@ void foo(const WMPUInt&lt;kSize&gt;&amp; value1,
     <span class="comment">// The result of the multiplication will be in multResult</span>
 }</pre>
 
+
+<h3 id="fullmultiply">Full multiplication</h3>
+
+<p><b>Member functions:</b></p>
+
+<pre class="synopsis">template&lt;std::size_t kSize2&gt;
+constexpr static std::size_t <span class="funcname">fullMultiplyBufferSize</span> ();
+
+template&lt;std::size_t kSize2&gt;
+void <span class="funcname">fullMultiply</span> (const WMPUInt&lt;kSize2&gt;&amp;,
+                   WMPUInt&lt;kSize+kSize2&gt;&amp; result) const;
+
+template&lt;std::size_t kSize2&gt;
+void <span class="funcname">fullMultiply</span> (const WMPUInt&lt;kSize2&gt;&amp; rhs,
+                   WMPUInt&lt;kSize+kSize2&gt;&amp; result,
+                   std::uint64_t* tempBuffer) const;</pre>
+
+<p>The multiplication operators (<code>operator*()</code> and <code>operator*=()</code>)
+  and the <code>multiply()</code> function will return the result of the multiplication
+  clamped to the same size as the input operands. The <code>fullMultiply()</code> function
+  can be used to get the full result of the multiplication of two values of any size.</p>
+
+<p>Given two values <code>WMPUInt&lt;size1&gt;</code> and <code>WMPUInt&lt;size2&gt;</code>,
+  the result of their product will be an object of type
+  <code>WMPUInt&lt;size1+size2&gt;</code>.</p>
+
+<p>Example usage:</p>
+
+<pre>WMPUInt&lt;64&gt; value1, value2;
+WMPUInt&lt;128&gt; result;
+
+value1.fullMultiply(value2, result);</pre>
+
+<p>The second version of the function takes a temporary buffer for intermediate result
+  calculations (like the regular <code>multiply()</code> function does), which may be necessary
+  for very large values, or in some cases for efficiency. The size of the buffer can be retrieved
+  with <code>fullMultiplyBufferSize()</code>, which is a template function taking the size of the
+  second operand as parameter. Example usage:</p>
+
+<pre>WMPUInt&lt;512&gt; value1;
+WMPUInt&lt;1000&gt; value2;
+WMPUInt&lt;512+1000&gt; result;
+
+const std::size_t kTempBufferSize =
+    value1.fullMultiplyBufferSize&lt;value2.size()&gt;();
+std::uint64_t tempBuffer[kTempBufferSize];
+
+value1.fullMultiply(value2, result, tempBuffer);</pre>
 
 <h3 id="bitshift">Bit-shifting by a compile-time constant</h3>
 
