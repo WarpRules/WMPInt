@@ -229,11 +229,32 @@ static bool testFullMultiplication(std::mt19937& rng)
             return DPRINT("Error: fullMultiply of\n", lhs, " and\n", rhs,
                           "\nresulted in\n", result, "\ninstead of\n", expectedResult, "\n");
 
+        result.assign(0);
         rhs.fullMultiply(lhs, result, tempBuffer);
 
         if(result != expectedResult)
             return DPRINT("Error: fullMultiply of\n", rhs, " and\n", lhs,
                           "\nresulted in\n", result, "\ninstead of\n", expectedResult, "\n");
+
+        result.assign(0);
+        WMPIntImplementations::doFullLongMultiplication
+            (lhs.data(), kSize1, rhs.data(), kSize2, result.data(), tempBuffer);
+
+        if(result != expectedResult)
+            return DPRINT("Error: doFullLongMultiplication of\n", rhs, " and\n", lhs,
+                          "\nresulted in\n", result, "\ninstead of\n", expectedResult, "\n");
+
+        if constexpr(kSize1 > 1 && kSize1 == kSize2)
+        {
+            std::uint64_t tempBuffer2[(kSize1+2)*4];
+            result.assign(0);
+            WMPIntImplementations::doFullKaratsubaMultiplication
+                (lhs.data(), kSize1, rhs.data(), kSize2, result.data(), tempBuffer2);
+
+            if(result != expectedResult)
+                return DPRINT("Error: doFullKaratsubaMultiplication of\n", rhs, " and\n", lhs,
+                              "\nresulted in\n", result, "\ninstead of\n", expectedResult, "\n");
+        }
     }
 
     return true;

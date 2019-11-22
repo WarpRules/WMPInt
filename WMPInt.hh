@@ -120,13 +120,12 @@ class WMPUInt
     WMPUInt<kSize> operator-() const;
     void neg();
 
-    constexpr static std::size_t multiplyBufferSize() { return kSize; }
-
+    constexpr static std::size_t multiplyBufferSize();
     void multiply(const WMPUInt<kSize>&, WMPUInt<kSize>& result, std::uint64_t* tempBuffer) const;
     void multiply(std::uint64_t, WMPUInt<kSize>& result) const;
 
     template<std::size_t kSize2>
-    constexpr static std::size_t fullMultiplyBufferSize() { return kSize2+1; }
+    constexpr static std::size_t fullMultiplyBufferSize();
 
     template<std::size_t kSize2>
     void fullMultiply(const WMPUInt<kSize2>&, WMPUInt<kSize+kSize2>& result,
@@ -287,11 +286,35 @@ inline void WMPUInt<1>::addTo(WMPUInt<1>& target1, WMPUInt<1>& target2) const
 //----------------------------------------------------------------------------
 namespace WMPIntImplementations
 {
+    constexpr std::size_t longMultiplicationBufferSize(std::size_t lhsSize)
+    { return lhsSize; }
+
+    constexpr std::size_t fullLongMultiplicationBufferSize(std::size_t, std::size_t rhsSize)
+    { return rhsSize + 1; }
+
     void doLongMultiplication
     (std::size_t, const std::uint64_t*, const std::uint64_t*, std::uint64_t*, std::uint64_t*);
+
     void doFullLongMultiplication
     (const std::uint64_t*, std::size_t, const std::uint64_t*, std::size_t,
      std::uint64_t*, std::uint64_t*);
+
+    void doFullKaratsubaMultiplication
+    (const std::uint64_t*, std::size_t, const std::uint64_t*, std::size_t,
+     std::uint64_t*, std::uint64_t*);
+}
+
+template<std::size_t kSize>
+constexpr inline std::size_t WMPUInt<kSize>::multiplyBufferSize()
+{
+    return WMPIntImplementations::longMultiplicationBufferSize(kSize);
+}
+
+template<std::size_t kSize>
+template<std::size_t kSize2>
+constexpr inline std::size_t WMPUInt<kSize>::fullMultiplyBufferSize()
+{
+    return WMPIntImplementations::fullLongMultiplicationBufferSize(kSize, kSize2);
 }
 
 //----------------------------------------------------------------------------

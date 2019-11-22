@@ -119,3 +119,180 @@ void WMPIntImplementations::doFullLongMultiplication
            "m"(*(std::uint64_t(*)[kSize1])lhs), "m"(*(std::uint64_t(*)[kSize2])rhs)
          : "rax", "rdx", "cc");
 }
+
+
+//----------------------------------------------------------------------------
+// Karatsuba algorithm helper functions
+//----------------------------------------------------------------------------
+/* This assumes 1 < lhsSize <= rhsSize. */
+static void doFullAddition(const std::uint64_t* lhs, std::size_t lhsSize,
+                           const std::uint64_t* rhs, std::size_t rhsSize,
+                           std::uint64_t* result)
+{
+    if(lhsSize == rhsSize)
+    {
+        std::size_t srcInd = lhsSize - 1;
+        std::uint64_t value, zero = 0;
+        asm ("clc\n"
+             "L1%=:\n\t"
+             "movq (%[lhs],%[srcInd],8), %[value]\n\t"
+             "adcq (%[rhs],%[srcInd],8), %[value]\n\t"
+             "movq %[value], 8(%[result],%[srcInd],8)\n\t"
+             "decq %[srcInd]\n\t"
+             "jns L1%=\n\t"
+             "adcq %[zero], (%[result])"
+             : "=m"(*(std::uint64_t(*)[lhsSize+1])result),
+               [srcInd]"+&r"(srcInd), [value]"=&r"(value)
+             : [lhs]"r"(lhs), [rhs]"r"(rhs), [result]"r"(result), [zero]"r"(zero),
+               "m"(*(std::uint64_t(*)[lhsSize])lhs), "m"(*(std::uint64_t(*)[rhsSize])rhs)
+             : "cc");
+    }
+    else
+    {
+        for(std::size_t i = 0; i < rhsSize - lhsSize; ++i) result[i] = 0;
+        std::size_t lhsInd = lhsSize-1, rhsInd = rhsSize-1;
+        std::uint64_t value, zero = 0;
+        asm ("clc\n"
+             "L1%=:\n\t"
+             "movq (%[lhs],%[lhsInd],8), %[value]\n\t"
+             "adcq (%[rhs],%[rhsInd],8), %[value]\n\t"
+             "movq %[value], 8(%[result],%[rhsInd],8)\n\t"
+             "decq %[rhsInd]\n\t"
+             "decq %[lhsInd]\n\t"
+             "jns L1%=\n"
+             "L2%=:\n\t"
+             "movq (%[rhs],%[rhsInd],8), %[value]\n\t"
+             "adcq %[value], 8(%[result],%[rhsInd],8)\n\t"
+             "decq %[rhsInd]\n\t"
+             "jns L2%=\n\t"
+             "adcq %[zero], (%[result])"
+             : "=m"(*(std::uint64_t(*)[rhsSize+1])result),
+               [lhsInd]"+&r"(lhsInd), [rhsInd]"+&r"(rhsInd), [value]"=&r"(value)
+             : [lhs]"r"(lhs), [rhs]"r"(rhs), [result]"r"(result), [zero]"r"(zero),
+               "m"(*(std::uint64_t(*)[lhsSize])lhs), "m"(*(std::uint64_t(*)[rhsSize])rhs)
+             : "cc");
+    }
+}
+
+static void doAddition(std::uint64_t* lhs, std::size_t lhsSize,
+                       const std::uint64_t* rhs, std::size_t rhsSize)
+{
+    std::size_t lhsInd = lhsSize - 1, rhsInd = rhsSize - 1;
+    std::uint64_t value;
+    if(lhsSize <= rhsSize)
+    {
+        asm ("clc\n"
+             "L1%=:\n\t"
+             "movq (%[rhs],%[rhsInd],8), %[value]\n\t"
+             "adcq %[value], (%[lhs],%[lhsInd],8)\n\t"
+             "decq %[rhsInd]\n\t"
+             "decq %[lhsInd]\n\t"
+             "jns L1%="
+             : "+m"(*(std::uint64_t(*)[lhsSize])lhs),
+               [lhsInd]"+&r"(lhsInd), [rhsInd]"+&r"(rhsInd), [value]"=&r"(value)
+             : [lhs]"r"(lhs), [rhs]"r"(rhs), "m"(*(std::uint64_t(*)[rhsSize])rhs)
+             : "cc");
+    }
+    else
+    {
+        std::uint64_t zero = 0;
+        asm ("clc\n"
+             "L1%=:\n\t"
+             "movq (%[rhs],%[rhsInd],8), %[value]\n\t"
+             "adcq %[value], (%[lhs],%[lhsInd],8)\n\t"
+             "decq %[lhsInd]\n\t"
+             "decq %[rhsInd]\n\t"
+             "jns L1%=\n"
+             "L2%=:\n\t"
+             "adcq %[zero], (%[lhs],%[lhsInd],8)\n\t"
+             "decq %[lhsInd]\n\t"
+             "jns L2%="
+             : "+m"(*(std::uint64_t(*)[lhsSize])lhs),
+               [lhsInd]"+&r"(lhsInd), [rhsInd]"+&r"(rhsInd), [value]"=&r"(value)
+             : [lhs]"r"(lhs), [rhs]"r"(rhs), [zero]"r"(zero),
+               "m"(*(std::uint64_t(*)[rhsSize])rhs)
+             : "cc");
+    }
+}
+
+/* Assumes that lhsSize > rhsSize */
+static void doSubtraction(std::uint64_t* lhs, std::size_t lhsSize,
+                          const std::uint64_t* rhs, std::size_t rhsSize)
+{
+    std::size_t lhsInd = lhsSize - 1, rhsInd = rhsSize - 1;
+    std::uint64_t value, zero = 0;
+    asm ("clc\n"
+         "L1%=:\n\t"
+         "movq (%[rhs],%[rhsInd],8), %[value]\n\t"
+         "sbbq %[value], (%[lhs],%[lhsInd],8)\n\t"
+         "decq %[lhsInd]\n\t"
+         "decq %[rhsInd]\n\t"
+         "jns L1%=\n"
+         "L2%=:\n\t"
+         "sbbq %[zero], (%[lhs],%[lhsInd],8)\n\t"
+         "decq %[lhsInd]\n\t"
+         "jns L2%="
+         : "+m"(*(std::uint64_t(*)[lhsSize])lhs),
+           [lhsInd]"+&r"(lhsInd), [rhsInd]"+&r"(rhsInd), [value]"=&r"(value)
+         : [lhs]"r"(lhs), [rhs]"r"(rhs), [zero]"r"(zero),
+           "m"(*(std::uint64_t(*)[rhsSize])rhs)
+         : "cc");
+}
+
+
+//----------------------------------------------------------------------------
+// Karatsuba long multiplication
+//----------------------------------------------------------------------------
+/* This assumes that lhsSize <= rhsSize. (If that's not so, it will go out of bounds.) */
+void WMPIntImplementations::doFullKaratsubaMultiplication
+(const std::uint64_t* lhs, std::size_t lhsSize,
+ const std::uint64_t* rhs, std::size_t rhsSize,
+ std::uint64_t* result, std::uint64_t* tempBuffer)
+{
+    const std::size_t kSplitSize = (rhsSize+1) / 2;
+    const std::size_t resultSize = lhsSize + rhsSize;
+
+    const std::size_t lhsHighSize = lhsSize - kSplitSize;
+    const std::uint64_t* lhsLow = lhs + lhsHighSize;
+    const std::size_t rhsHighSize = rhsSize - kSplitSize;
+    const std::uint64_t* rhsLow = rhs + rhsHighSize;
+
+    const std::size_t z0Size = kSplitSize * 2;
+    std::uint64_t* z0 = result + (resultSize - z0Size);
+    WMPIntImplementations::doFullLongMultiplication
+        (lhsLow, kSplitSize, rhsLow, kSplitSize, z0, tempBuffer);
+
+    const std::size_t z2Size = lhsHighSize + rhsHighSize;
+    std::uint64_t* z2 = result;
+    WMPIntImplementations::doFullLongMultiplication
+        (lhs, lhsHighSize, rhs, rhsHighSize, z2, tempBuffer);
+
+    const std::size_t highPlusLowSize = kSplitSize + 1;
+    std::uint64_t* lhsHighPlusLow = tempBuffer;
+    doFullAddition(lhs, lhsHighSize, lhsLow, kSplitSize, lhsHighPlusLow);
+
+    std::uint64_t* rhsHighPlusLow = tempBuffer + highPlusLowSize;
+    doFullAddition(rhs, rhsHighSize, rhsLow, kSplitSize, rhsHighPlusLow);
+
+    const std::size_t z1Size = highPlusLowSize * 2;
+    std::uint64_t* z1 = tempBuffer + z1Size;
+    WMPIntImplementations::doFullLongMultiplication
+        (lhsHighPlusLow, highPlusLowSize, rhsHighPlusLow, highPlusLowSize, z1, z1 + z1Size);
+
+    doSubtraction(z1, z1Size, z2, z2Size);
+    doSubtraction(z1, z1Size, z0, z0Size);
+
+    doAddition(result, resultSize - kSplitSize, z1, z1Size);
+
+    /* lhsSize = 12, rhsSize = 21
+       kSplitSize = (21+1)/2 = 11
+       resultSize = 12+21 = 33
+       lhsHighSize = 12-11 = 1
+       rhsHighSize = 21-11 = 10
+       z0Size = 11*2 = 22
+       z2Size = 1+10 = 11
+       highPlusLowSize = 11+1 = 12
+       z1Size = 12*2 = 24
+       resultSize-kSplitSize = 33-11 = 22
+    */
+}
