@@ -196,12 +196,11 @@ static void initWMPUIntWithUint32Array(WMPUInt<kSize>& dest, const std::uint32_t
                           static_cast<std::uint64_t>(values[i*2+1]));
 }
 
+extern std::size_t gWMPInt_karatsuba_max_temp_buffer_size;
+
 template<std::size_t kSize1, std::size_t kSize2, std::size_t kIterations>
 static bool testFullMultiplication(std::mt19937& rng)
 {
-    if constexpr(kSize2 > 1 && kSize1 >= kSize2 && (kSize1+1)/2 < kSize2)
-        std::cout << "lhsSize=" << kSize2 << ", rhsSize=" << kSize1 << "\n";
-
     WMPUInt<kSize1> lhs;
     WMPUInt<kSize2> rhs;
     WMPUInt<kSize1 + kSize2> result, expectedResult;
@@ -210,6 +209,7 @@ static bool testFullMultiplication(std::mt19937& rng)
     const std::size_t tempBufferSize =
         tempBufferSize1 > tempBufferSize2 ? tempBufferSize1 : tempBufferSize2;
     std::uint64_t tempBuffer[tempBufferSize];
+    std::uint64_t karatsubaTempBuffer[kSize1*10];
     std::uint32_t lhsArray[kSize1*2], rhsArray[kSize2*2];
     std::uint32_t resultArray[kSize1*2+kSize2*2], tempBuffer2[kSize2*2+1];
 
@@ -245,18 +245,20 @@ static bool testFullMultiplication(std::mt19937& rng)
             return DPRINT("Error: doFullLongMultiplication of\n", rhs, " and\n", lhs,
                           "\nresulted in\n", result, "\ninstead of\n", expectedResult, "\n");
 
-        if constexpr(kSize2 > 1 && kSize1 >= kSize2 && (kSize1+1)/2 < kSize2)
+        if constexpr(kSize1 >= kSize2)
         {
-            std::uint64_t tempBuffer2[(kSize1+2)*4];
             result.assign(0);
             WMPIntImplementations::doFullKaratsubaMultiplication
-                (rhs.data(), kSize2, lhs.data(), kSize1, result.data(), tempBuffer2);
+                (rhs.data(), kSize2, lhs.data(), kSize1, result.data(), karatsubaTempBuffer);
 
             if(result != expectedResult)
                 return DPRINT("Error: doFullKaratsubaMultiplication of\n", rhs, " and\n", lhs,
                               "\nresulted in\n", result, "\ninstead of\n", expectedResult, "\n");
         }
     }
+
+    std::cout << "kSize1=" << kSize1 << ", kSize2=" << kSize2
+              << ", tempBuffer size=" << gWMPInt_karatsuba_max_temp_buffer_size << "\n";
 
     return true;
 }

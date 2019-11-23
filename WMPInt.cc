@@ -1,5 +1,11 @@
 #include "WMPInt.hh"
 
+#define DEBUG_MODE
+#ifdef DEBUG_MODE
+std::size_t gWMPInt_karatsuba_max_temp_buffer_size = 0;
+static std::uint64_t* gWMPInt_tempBuffer_max_position = 0;
+#endif
+
 //----------------------------------------------------------------------------
 // Long multiplication
 //----------------------------------------------------------------------------
@@ -72,6 +78,11 @@ void WMPIntImplementations::doFullLongMultiplication
 (const std::uint64_t* lhs, std::size_t kSize1, const std::uint64_t* rhs, std::size_t kSize2,
  std::uint64_t* result, std::uint64_t* tempBuffer)
 {
+#ifdef DEBUG_MODE
+    if(tempBuffer + (kSize2+1) > gWMPInt_tempBuffer_max_position)
+        gWMPInt_tempBuffer_max_position = tempBuffer + (kSize2+1);
+#endif
+
     // tempBuffer size is kSize2+1, result size is kSize1+kSize2
     const std::size_t resultSize = kSize1 + kSize2;
     std::uint64_t resultStartInd = resultSize - 1, resultInd;
@@ -244,14 +255,88 @@ static void doSubtraction(std::uint64_t* lhs, std::size_t lhsSize,
 //----------------------------------------------------------------------------
 // Karatsuba long multiplication
 //----------------------------------------------------------------------------
-#include <cstdio>
-[[maybe_unused]]
-static void printValue(const std::uint64_t* value, std::size_t size)
+static void doFullKaratsubaMultiplicationForSameSizes
+(const std::uint64_t* lhs, const std::uint64_t* rhs, std::size_t size,
+ std::uint64_t* result, std::uint64_t* tempBuffer)
 {
-    std::putchar('[');
-    for(std::size_t i = 0; i < size; ++i)
-        std::printf("%s%08llX", i?",":"", value[i]);
-    std::putchar(']');
+    if(size <= 4)
+        return WMPIntImplementations::doFullLongMultiplication
+            (lhs, size, rhs, size, result, tempBuffer);
+
+    const std::size_t lowSize = (size+1) / 2;
+    const std::size_t resultSize = size * 2;
+    const std::size_t highSize = size - lowSize;
+    const std::uint64_t* lhsLow = lhs + highSize;
+    const std::uint64_t* rhsLow = rhs + highSize;
+
+    const std::size_t z0Size = lowSize * 2;
+    std::uint64_t* z0 = result + (resultSize - z0Size);
+    doFullKaratsubaMultiplicationForSameSizes(lhsLow, rhsLow, lowSize, z0, tempBuffer);
+
+    const std::size_t z2Size = highSize * 2;
+    std::uint64_t* z2 = result;
+    doFullKaratsubaMultiplicationForSameSizes(lhs, rhs, highSize, z2, tempBuffer);
+
+    const std::size_t highPlusLowSize = lowSize + 1;
+    std::uint64_t* lhsHighPlusLow = tempBuffer;
+    doFullAddition(lhs, highSize, lhsLow, lowSize, lhsHighPlusLow);
+
+    std::uint64_t* rhsHighPlusLow = lhsHighPlusLow + highPlusLowSize;
+    doFullAddition(rhs, highSize, rhsLow, lowSize, rhsHighPlusLow);
+
+    const std::size_t z1Size = highPlusLowSize * 2;
+    std::uint64_t* z1 = rhsHighPlusLow + highPlusLowSize;
+    doFullKaratsubaMultiplicationForSameSizes
+        (lhsHighPlusLow, rhsHighPlusLow, highPlusLowSize, z1, z1 + z1Size);
+
+    doSubtraction(z1, z1Size, z2, z2Size);
+    doSubtraction(z1, z1Size, z0, z0Size);
+    doAddition(result, resultSize - lowSize, z1, z1Size);
+}
+
+static void doFullKaratsubaMultiplicationForDifferentSizes
+(const std::uint64_t* lhs, std::size_t lhsSize,
+ const std::uint64_t* rhs, std::size_t rhsSize,
+ std::uint64_t* result, std::uint64_t* tempBuffer)
+{
+    if(lhsSize <= 2)
+        return WMPIntImplementations::doFullLongMultiplication
+            (rhs, rhsSize, lhs, lhsSize, result, tempBuffer);
+
+    const std::size_t lowSize = lhsSize;
+    const std::size_t resultSize = lhsSize + rhsSize;
+    const std::size_t rhsHighSize = rhsSize - lowSize;
+    const std::uint64_t* rhsLow = rhs + rhsHighSize;
+
+    const std::size_t z0Size = lowSize * 2;
+    std::uint64_t* z0 = result + (resultSize - z0Size);
+    doFullKaratsubaMultiplicationForSameSizes(lhs, rhsLow, lowSize, z0, tempBuffer);
+
+    const std::size_t z2Size = rhsHighSize;
+    std::uint64_t* z2 = result;
+    for(std::size_t i = 0; i < z2Size; ++i) z2[i] = 0;
+
+    const std::size_t highPlusLowSize = (rhsHighSize > lowSize ? rhsHighSize : lowSize) + 1;
+    std::uint64_t* rhsHighPlusLow = tempBuffer;
+    if(rhsHighSize > lowSize)
+        doFullAddition(rhsLow, lowSize, rhs, rhsHighSize, rhsHighPlusLow);
+    else
+        doFullAddition(rhs, rhsHighSize, rhsLow, lowSize, rhsHighPlusLow);
+
+    std::uint64_t* lhsHighPlusLow = rhsHighPlusLow + highPlusLowSize;
+    const std::size_t zerosAmount = highPlusLowSize - lowSize;
+    for(std::size_t i = 0; i < zerosAmount; ++i)
+        lhsHighPlusLow[i] = 0;
+    for(std::size_t srcInd = 0, destInd=zerosAmount; srcInd < lhsSize; ++srcInd, ++destInd)
+        lhsHighPlusLow[destInd] = lhs[srcInd];
+
+    const std::size_t z1Size = highPlusLowSize * 2;
+    std::uint64_t* z1 = lhsHighPlusLow + highPlusLowSize;
+    doFullKaratsubaMultiplicationForSameSizes
+        (lhsHighPlusLow, rhsHighPlusLow, highPlusLowSize, z1, z1 + z1Size);
+
+    doSubtraction(z1, z1Size, z0, z0Size);
+    doAddition(result, resultSize - lowSize, z1, z1Size);
 }
 
 /* This assumes that lhsSize <= rhsSize. (If that's not so, it will go out of bounds.) */
@@ -260,120 +345,18 @@ void WMPIntImplementations::doFullKaratsubaMultiplication
  const std::uint64_t* rhs, std::size_t rhsSize,
  std::uint64_t* result, std::uint64_t* tempBuffer)
 {
-    if(lhsSize <= 2)
-        return WMPIntImplementations::doFullLongMultiplication
+#ifdef DEBUG_MODE
+    gWMPInt_tempBuffer_max_position = tempBuffer;
+#endif
+
+    if(lhsSize < rhsSize)
+        doFullKaratsubaMultiplicationForDifferentSizes
             (lhs, lhsSize, rhs, rhsSize, result, tempBuffer);
+    else
+        doFullKaratsubaMultiplicationForSameSizes
+            (lhs, rhs, lhsSize, result, tempBuffer);
 
-    const std::size_t kSplitSize = (rhsSize+1) / 2;
-
-    if(lhsSize <= kSplitSize)
-        return doFullKaratsubaMultiplicationForSmallLHS
-            (lhs, lhsSize, rhs, rhsSize, result, tempBuffer);
-
-    const std::size_t resultSize = lhsSize + rhsSize;
-    const std::size_t lhsHighSize = lhsSize - kSplitSize;
-    const std::uint64_t* lhsLow = lhs + lhsHighSize;
-    const std::size_t rhsHighSize = rhsSize - kSplitSize;
-    const std::uint64_t* rhsLow = rhs + rhsHighSize;
-
-//#define DEBUG_OUTPUT
-#ifdef DEBUG_OUTPUT
-    std::puts("----------------------------------");
-    std::printf("lhs="); printValue(lhs, lhsSize);
-    std::printf("\nrhs="); printValue(rhs, rhsSize);
-    std::printf("\nkSplitSize=%zu, resultSize=%zu, lhsHighSize=%zu, rhsHighSize=%zu\n",
-                kSplitSize, resultSize, lhsHighSize, rhsHighSize);
-    std::printf("lhsHigh="); printValue(lhs, lhsHighSize);
-    std::printf(" lhsLow="); printValue(lhsLow, kSplitSize);
-    std::printf("\nrhsHigh="); printValue(rhs, rhsHighSize);
-    std::printf(" rhsLow="); printValue(rhsLow, kSplitSize);
-    std::puts("");
+#ifdef DEBUG_MODE
+    gWMPInt_karatsuba_max_temp_buffer_size = gWMPInt_tempBuffer_max_position - tempBuffer;
 #endif
-
-    const std::size_t z0Size = kSplitSize * 2;
-    std::uint64_t* z0 = result + (resultSize - z0Size);
-    WMPIntImplementations::doFullLongMultiplication
-        (lhsLow, kSplitSize, rhsLow, kSplitSize, z0, tempBuffer);
-
-#ifdef DEBUG_OUTPUT
-    std::printf("z0Size=%zu, z0=", z0Size); printValue(z0, z0Size);
-    std::puts("");
-#endif
-
-    const std::size_t z2Size = lhsHighSize + rhsHighSize;
-    std::uint64_t* z2 = result;
-    WMPIntImplementations::doFullLongMultiplication
-        (lhs, lhsHighSize, rhs, rhsHighSize, z2, tempBuffer);
-
-#ifdef DEBUG_OUTPUT
-    std::printf("z2Size=%zu, z2=", z2Size); printValue(z2, z2Size);
-    std::puts("");
-#endif
-
-    const std::size_t highPlusLowSize = kSplitSize + 1;
-    std::uint64_t* lhsHighPlusLow = tempBuffer;
-    doFullAddition(lhs, lhsHighSize, lhsLow, kSplitSize, lhsHighPlusLow);
-
-#ifdef DEBUG_OUTPUT
-    std::printf("highPlusLowSize=%zu\nlhsHighPlusLow=", highPlusLowSize);
-    printValue(lhsHighPlusLow, highPlusLowSize);
-    std::puts("");
-#endif
-
-    std::uint64_t* rhsHighPlusLow = tempBuffer + highPlusLowSize;
-    doFullAddition(rhs, rhsHighSize, rhsLow, kSplitSize, rhsHighPlusLow);
-
-#ifdef DEBUG_OUTPUT
-    std::printf("rhsHighPlusLow=");
-    printValue(rhsHighPlusLow, highPlusLowSize);
-    std::puts("");
-#endif
-
-    const std::size_t z1Size = highPlusLowSize * 2;
-    std::uint64_t* z1 = tempBuffer + z1Size;
-    WMPIntImplementations::doFullLongMultiplication
-        (lhsHighPlusLow, highPlusLowSize, rhsHighPlusLow, highPlusLowSize, z1, z1 + z1Size);
-
-#ifdef DEBUG_OUTPUT
-    std::printf("z1Size=%zu, z1=", z1Size); printValue(z1, z1Size);
-    std::puts("");
-#endif
-
-    doSubtraction(z1, z1Size, z2, z2Size);
-#ifdef DEBUG_OUTPUT
-    std::printf("-> z1="); printValue(z1, z1Size);
-    std::puts("");
-#endif
-    doSubtraction(z1, z1Size, z0, z0Size);
-#ifdef DEBUG_OUTPUT
-    std::printf("-> z1="); printValue(z1, z1Size);
-    std::printf("\nresult="); printValue(result, resultSize);
-    std::printf("\nresultSize-kSplitSize=%zu\n", resultSize - kSplitSize);
-#endif
-
-    doAddition(result, resultSize - kSplitSize, z1, z1Size);
-
-#ifdef DEBUG_OUTPUT
-    std::printf("-> result="); printValue(result, resultSize);
-    std::puts("\n----------------------------------");
-#endif
-
-    /* lhsSize = 12, rhsSize = 21
-       kSplitSize = (21+1)/2 = 11
-       resultSize = 12+21 = 33
-       lhsHighSize = 12-11 = 1
-       rhsHighSize = 21-11 = 10
-       z0Size = 11*2 = 22
-       z2Size = 1+10 = 11
-       highPlusLowSize = 11+1 = 12
-       z1Size = 12*2 = 24
-       resultSize-kSplitSize = 33-11 = 22
-    */
-}
-
-static void doFullKaratsubaMultiplicationForSmallLHS
-(const std::uint64_t* lhs, std::size_t lhsSize,
- const std::uint64_t* rhs, std::size_t rhsSize,
- std::uint64_t* result, std::uint64_t* tempBuffer)
-{
 }
