@@ -297,7 +297,7 @@ static void doFullKaratsubaMultiplicationForSameSizes
 (const std::uint64_t* lhs, const std::uint64_t* rhs, std::size_t size,
  std::uint64_t* result, std::uint64_t* tempBuffer)
 {
-    if(size <= 4)
+    if(size <= 12)
         return WMPIntImplementations::doFullLongMultiplication
             (lhs, size, rhs, size, result, tempBuffer);
 
@@ -342,7 +342,7 @@ static void doFullKaratsubaMultiplicationForSmallLHS
  const std::uint64_t* rhs, std::size_t rhsSize,
  std::uint64_t* result, std::uint64_t* tempBuffer)
 {
-    if(lhsSize <= 2 || rhsSize <= 4)
+    if(lhsSize <= 2 || rhsSize <= 12)
         return WMPIntImplementations::doFullLongMultiplication
             (rhs, rhsSize, lhs, lhsSize, result, tempBuffer);
 
@@ -380,7 +380,7 @@ static void doFullKaratsubaMultiplicationForLargeLHS
  const std::uint64_t* rhs, std::size_t rhsSize,
  std::uint64_t* result, std::uint64_t* tempBuffer)
 {
-    if(rhsSize <= 4)
+    if(rhsSize <= 12)
         return WMPIntImplementations::doFullLongMultiplication
             (rhs, rhsSize, lhs, lhsSize, result, tempBuffer);
 

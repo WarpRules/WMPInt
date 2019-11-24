@@ -312,7 +312,7 @@ namespace WMPIntImplementations
 constexpr std::size_t WMPIntImplementations::fullKaratsubaMultiplicationBufferSizeForSameSizes
 (std::size_t size)
 {
-    if(size <= 4) return fullLongMultiplicationBufferSize(size, size);
+    if(size <= 12) return fullLongMultiplicationBufferSize(size, size);
     const std::size_t lowSize = (size+1) / 2;
     const std::size_t highPlusLowSize = lowSize + 1;
     return highPlusLowSize*4 + fullKaratsubaMultiplicationBufferSizeForSameSizes(highPlusLowSize);
@@ -321,7 +321,7 @@ constexpr std::size_t WMPIntImplementations::fullKaratsubaMultiplicationBufferSi
 constexpr std::size_t WMPIntImplementations::fullKaratsubaMultiplicationBufferSizeForSmallLHS
 (std::size_t lhsSize, std::size_t rhsSize)
 {
-    if(lhsSize <= 2 || rhsSize <= 4) return fullLongMultiplicationBufferSize(rhsSize, lhsSize);
+    if(lhsSize <= 2 || rhsSize <= 12) return fullLongMultiplicationBufferSize(rhsSize, lhsSize);
     const std::size_t rhsLowSize = (rhsSize+1) / 2;
     const std::size_t bufferSize1 =
         fullKaratsubaMultiplicationBufferSize(lhsSize, rhsLowSize);
@@ -335,7 +335,7 @@ constexpr std::size_t WMPIntImplementations::fullKaratsubaMultiplicationBufferSi
 constexpr std::size_t WMPIntImplementations::fullKaratsubaMultiplicationBufferSizeForLargeLHS
 (std::size_t lhsSize, std::size_t rhsSize)
 {
-    if(rhsSize <= 4) return fullLongMultiplicationBufferSize(rhsSize, lhsSize);
+    if(rhsSize <= 12) return fullLongMultiplicationBufferSize(rhsSize, lhsSize);
     const std::size_t lowSize = (rhsSize+1) / 2;
     const std::size_t rhsHighSize = rhsSize - lowSize;
     const std::size_t lhsHighSize = lhsSize - lowSize;

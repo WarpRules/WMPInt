@@ -202,7 +202,7 @@ static void initWMPUIntWithUint32Array(WMPUInt<kSize>& dest, const std::uint32_t
 
 extern std::size_t gWMPInt_karatsuba_max_temp_buffer_size;
 static unsigned gTestCounter = 0;
-static const unsigned kTestsAmount = 42;
+static const unsigned kTestsAmount = 46;
 
 template<std::size_t kSize1, std::size_t kSize2, std::size_t kIterations>
 static bool testFullMultiplication(std::mt19937& rng)
@@ -312,12 +312,16 @@ bool testFullMultiplication()
     if(!testFullMultiplication<32, 5, 50000>(rng)) DRET;
     if(!testFullMultiplication<6, 6, 50000>(rng)) DRET;
     if(!testFullMultiplication<7, 6, 50000>(rng)) DRET;
-    if(!testFullMultiplication<32, 6, 10000>(rng)) DRET;
-    if(!testFullMultiplication<32, 10, 10000>(rng)) DRET;
-    if(!testFullMultiplication<32, 15, 10000>(rng)) DRET;
-    if(!testFullMultiplication<32, 17, 10000>(rng)) DRET;
-    if(!testFullMultiplication<32, 22, 10000>(rng)) DRET;
-    if(!testFullMultiplication<32, 32, 10000>(rng)) DRET;
+    if(!testFullMultiplication<35, 6, 10000>(rng)) DRET;
+    if(!testFullMultiplication<35, 10, 10000>(rng)) DRET;
+    if(!testFullMultiplication<35, 15, 10000>(rng)) DRET;
+    if(!testFullMultiplication<35, 17, 10000>(rng)) DRET;
+    if(!testFullMultiplication<35, 22, 10000>(rng)) DRET;
+    if(!testFullMultiplication<35, 32, 10000>(rng)) DRET;
+    if(!testFullMultiplication<35, 35, 10000>(rng)) DRET;
+    if(!testFullMultiplication<50, 20, 10000>(rng)) DRET;
+    if(!testFullMultiplication<50, 40, 10000>(rng)) DRET;
+    if(!testFullMultiplication<50, 50, 10000>(rng)) DRET;
     if(!testFullMultiplication<100, 10, 5000>(rng)) DRET;
     if(!testFullMultiplication<100, 40, 5000>(rng)) DRET;
     if(!testFullMultiplication<100, 50, 4000>(rng)) DRET;
