@@ -273,13 +273,28 @@ static bool testFullMultiplication(std::mt19937& rng)
         }
     }
 
-    /*
-    std::cout << "kSize1=" << kSize1 << ", kSize2=" << kSize2
-              << ", tempBuffer size=" << gWMPInt_karatsuba_max_temp_buffer_size
-              << ", reported size="
-              << WMPIntImplementations::fullKaratsubaMultiplicationBufferSize(kSize2, kSize1)
-              << "\n";
-    */
+    if constexpr(kSize1 > 1 && kSize2 > 1)
+    {
+        static_assert(WMPUInt<kSize1>::template fullMultiply_longMultiplicationBufferSize<kSize2>()
+                      ==
+                      WMPIntImplementations::fullLongMultiplicationBufferSize(kSize1, kSize2));
+        static_assert(WMPUInt<kSize1>::template fullMultiply_karatsubaBufferSize<kSize2>()
+                      ==
+                      WMPIntImplementations::fullKaratsubaMultiplicationBufferSize(kSize2, kSize1));
+    }
+
+    result.assign(0);
+    lhs.fullMultiply_longMultiplication(rhs, result, tempBuffer);
+    if(result != expectedResult)
+        return DPRINT("Error: fullMultiply_longMultiplication of\n", rhs, " and\n", lhs,
+                      "\nresulted in\n", result, "\ninstead of\n", expectedResult, "\n");
+
+    result.assign(0);
+    lhs.fullMultiply_karatsuba(rhs, result, karatsubaTempBuffer);
+    if(result != expectedResult)
+        return DPRINT("Error: fullMultiply_karatsuba of\n", rhs, " and\n", lhs,
+                      "\nresulted in\n", result, "\ninstead of\n", expectedResult, "\n");
+
     return true;
 }
 

@@ -9,31 +9,46 @@ namespace
 
     constexpr SizeData kSizes[] =
     {
-        { 12, 12, 4000000 },
-        { 16, 16, 2500000 },
-        { 14, 16, 2500000 },
-        { 10, 16, 2500000 },
-        { 25, 25, 900000 },
-        { 20, 25, 900000 },
-        { 15, 25, 900000 },
-        { 10, 25, 900000 },
-        { 50, 50, 220000 },
-        { 40, 50, 220000 },
-        { 30, 50, 220000 },
-        { 20, 50, 220000 },
-        { 10, 50, 220000 },
-        { 100, 100, 52000 },
+        { 12, 12, 2000000 },
+        { 16, 16, 1200000 },
+        { 14, 16, 1100000 },
+        { 10, 16, 1700000 },
+        { 8, 16, 2000000 },
+        { 5, 16, 3000000 },
+        { 25, 25, 450000 },
+        { 20, 25, 600000 },
+        { 15, 25, 700000 },
+        { 10, 25, 1000000 },
+        { 5, 25, 2000000 },
+        { 30, 30, 300000 },
+        { 25, 30, 400000 },
+        { 20, 30, 450000 },
+        { 15, 30, 700000 },
+        { 10, 30, 1000000 },
+        { 5, 30, 2000000 },
+        { 50, 50, 110000 },
+        { 40, 50, 140000 },
+        { 30, 50, 180000 },
+        { 20, 50, 250000 },
+        { 15, 50, 320000 },
+        { 10, 50, 450000 },
+        { 100, 100, 25000 },
         { 50, 100, 52000 },
-        { 25, 100, 52000 },
-        { 10, 100, 52000 },
-        { 200, 200, 14000 },
-        { 150, 200, 14000 },
+        { 25, 100, 100000 },
+        { 18, 100, 160000 },
+        { 10, 100, 230000 },
+        { 200, 200, 7000 },
+        { 150, 200, 10000 },
         { 100, 200, 14000 },
-        { 50, 200, 14000 },
-        { 20, 200, 14000 },
-        { 300, 300, 6000 },
-        { 400, 400, 3500 },
-        { 1000, 1000, 550 },
+        { 50, 200, 25000 },
+        { 20, 200, 65000 },
+        { 10, 200, 130000 },
+        { 300, 300, 3000 },
+        { 200, 300, 4000 },
+        { 150, 300, 6000 },
+        { 100, 300, 8000 },
+        { 50, 300, 17000 },
+        { 25, 300, 35000 },
     };
 
     constexpr std::size_t kSizesAmount = sizeof(kSizes)/sizeof(*kSizes);
@@ -86,11 +101,12 @@ void runMultiplicationBenchmark
     gValueSink1 = resultSumMSW;
     const double seconds2 = timer2.getElapsedSeconds();
 
-    std::printf("lhs:%zu, rhs:%zu -> long: %.3f s (", lhsSize, rhsSize, seconds1);
+    std::printf("lhs:%2zu, rhs:%2zu %c long: %.3f s (", lhsSize, rhsSize,
+                seconds1<seconds2?'-':'+', seconds1);
     Timer::printTime(seconds1 / totalIterations);
     std::printf("), karatsuba: %.3f s (", seconds2);
     Timer::printTime(seconds2 / totalIterations);
-    std::printf(") %c %zu/%zu\n", seconds1<seconds2?'<':'>',
+    std::printf(") | %zu/%zu\n",
                 WMPIntImplementations::fullLongMultiplicationBufferSize(lhsSize, rhsSize),
                 WMPIntImplementations::fullKaratsubaMultiplicationBufferSize(lhsSize, rhsSize));
 }

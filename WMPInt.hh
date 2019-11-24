@@ -1,8 +1,8 @@
 #ifndef WMPINT_INCLUDE_GUARD
 #define WMPINT_INCLUDE_GUARD
 
-#define WMPINT_VERSION 0x000300
-#define WMPINT_VERSION_STRING "0.3.0"
+#define WMPINT_VERSION 0x000400
+#define WMPINT_VERSION_STRING "0.4.0"
 #define WMPINT_COPYRIGHT_STRING "WMPInt v" WMPINT_VERSION_STRING " (C)2019 Juha Nieminen"
 
 #include <cstdint>
@@ -134,6 +134,20 @@ class WMPUInt
     template<std::size_t kSize2>
     void fullMultiply(const WMPUInt<kSize2>&, WMPUInt<kSize+kSize2>& result) const;
 
+    template<std::size_t kSize2>
+    constexpr static std::size_t fullMultiply_longMultiplicationBufferSize();
+
+    template<std::size_t kSize2>
+    void fullMultiply_longMultiplication(const WMPUInt<kSize2>&, WMPUInt<kSize+kSize2>& result,
+                                         std::uint64_t* tempBuffer) const;
+
+    template<std::size_t kSize2>
+    constexpr static std::size_t fullMultiply_karatsubaBufferSize();
+
+    template<std::size_t kSize2>
+    void fullMultiply_karatsuba(const WMPUInt<kSize2>&, WMPUInt<kSize+kSize2>& result,
+                                std::uint64_t* tempBuffer) const;
+
     void addTo(WMPUInt<kSize>& target1, WMPUInt<kSize>& target2) const;
 
 
@@ -199,12 +213,22 @@ class WMPUInt<1>
     void multiply(std::uint64_t rhs, std::uint64_t* result) const { *result = mValue * rhs; }
 
     template<std::size_t kSize2>
-    constexpr static std::size_t fullMultiplyBufferSize() { return 1+kSize2; }
+    constexpr static std::size_t fullMultiplyBufferSize() { return 1; }
     template<std::size_t kSize2>
     void fullMultiply(const WMPUInt<kSize2>&, WMPUInt<1+kSize2>& result,
                       std::uint64_t* tempBuffer) const;
     template<std::size_t kSize2>
     void fullMultiply(const WMPUInt<kSize2>&, WMPUInt<1+kSize2>& result) const;
+
+    template<std::size_t kSize2>
+    constexpr static std::size_t fullMultiply_longMultiplicationBufferSize() { return 1; }
+    template<std::size_t kSize2> void fullMultiply_longMultiplication
+    (const WMPUInt<kSize2>&, WMPUInt<1+kSize2>&, std::uint64_t*) const;
+
+    template<std::size_t kSize2>
+    constexpr static std::size_t fullMultiply_karatsubaBufferSize() { return 1; }
+    template<std::size_t kSize2> void fullMultiply_karatsuba
+    (const WMPUInt<kSize2>&, WMPUInt<1+kSize2>&, std::uint64_t*) const;
 
     void addTo(WMPUInt<1>& target1, WMPUInt<1>& target2) const;
 
@@ -269,6 +293,20 @@ inline void WMPUInt<1>::fullMultiply(const WMPUInt<kSize2>& rhs, WMPUInt<1+kSize
 
 template<std::size_t kSize2>
 inline void WMPUInt<1>::fullMultiply
+(const WMPUInt<kSize2>& rhs, WMPUInt<1+kSize2>& result, std::uint64_t*) const
+{
+    fullMultiply(rhs, result);
+}
+
+template<std::size_t kSize2>
+inline void WMPUInt<1>::fullMultiply_longMultiplication
+(const WMPUInt<kSize2>& rhs, WMPUInt<1+kSize2>& result, std::uint64_t*) const
+{
+    fullMultiply(rhs, result);
+}
+
+template<std::size_t kSize2>
+inline void WMPUInt<1>::fullMultiply_karatsuba
 (const WMPUInt<kSize2>& rhs, WMPUInt<1+kSize2>& result, std::uint64_t*) const
 {
     fullMultiply(rhs, result);
@@ -371,8 +409,31 @@ template<std::size_t kSize>
 template<std::size_t kSize2>
 constexpr inline std::size_t WMPUInt<kSize>::fullMultiplyBufferSize()
 {
+    if((kSize == kSize2 && kSize < 16) || kSize < kSize2/2 || kSize2 < kSize/2)
+        return WMPIntImplementations::fullLongMultiplicationBufferSize(kSize, kSize2);
+    else if(kSize <= kSize2)
+        return WMPIntImplementations::fullKaratsubaMultiplicationBufferSize(kSize, kSize2);
+    else
+        return WMPIntImplementations::fullKaratsubaMultiplicationBufferSize(kSize2, kSize);
+}
+
+template<std::size_t kSize>
+template<std::size_t kSize2>
+constexpr inline std::size_t WMPUInt<kSize>::fullMultiply_longMultiplicationBufferSize()
+{
     return WMPIntImplementations::fullLongMultiplicationBufferSize(kSize, kSize2);
 }
+
+template<std::size_t kSize>
+template<std::size_t kSize2>
+constexpr inline std::size_t WMPUInt<kSize>::fullMultiply_karatsubaBufferSize()
+{
+    if(kSize <= kSize2)
+        return WMPIntImplementations::fullKaratsubaMultiplicationBufferSize(kSize, kSize2);
+    else
+        return WMPIntImplementations::fullKaratsubaMultiplicationBufferSize(kSize2, kSize);
+}
+
 
 //----------------------------------------------------------------------------
 // Constructors
@@ -1437,10 +1498,20 @@ inline void WMPUInt<kSize>::fullMultiply
                [result]"r"(result.mData), [zero]"r"(zero)
              : "rax", "rdx", "cc");
     }
-    else
+    else if constexpr((kSize == kSize2 && kSize < 16) || kSize < kSize2/2 || kSize2 < kSize/2)
     {
         WMPIntImplementations::doFullLongMultiplication
             (mData, kSize, rhs.mData, kSize2, result.mData, tempBuffer);
+    }
+    else if constexpr(kSize <= kSize2)
+    {
+        WMPIntImplementations::doFullKaratsubaMultiplication
+            (mData, kSize, rhs.mData, kSize2, result.mData, tempBuffer);
+    }
+    else
+    {
+        WMPIntImplementations::doFullKaratsubaMultiplication
+            (rhs.mData, kSize2, mData, kSize, result.mData, tempBuffer);
     }
 }
 
@@ -1449,8 +1520,44 @@ template<std::size_t kSize2>
 inline void WMPUInt<kSize>::fullMultiply
 (const WMPUInt<kSize2>& rhs, WMPUInt<kSize+kSize2>& result) const
 {
-    std::uint64_t tempBuf[fullMultiplyBufferSize<kSize2>()];
-    fullMultiply(rhs, result, tempBuf);
+    if constexpr(kSize2 == 1)
+        rhs.fullMultiply(*this, result);
+    else
+    {
+        std::uint64_t tempBuf[fullMultiplyBufferSize<kSize2>()];
+        fullMultiply(rhs, result, tempBuf);
+    }
+}
+
+template<std::size_t kSize>
+template<std::size_t kSize2>
+inline void WMPUInt<kSize>::fullMultiply_longMultiplication
+(const WMPUInt<kSize2>& rhs, WMPUInt<kSize+kSize2>& result, std::uint64_t* tempBuffer) const
+{
+    if constexpr(kSize2 == 1)
+        rhs.fullMultiply(*this, result);
+    else
+        WMPIntImplementations::doFullLongMultiplication
+            (mData, kSize, rhs.mData, kSize2, result.mData, tempBuffer);
+}
+
+template<std::size_t kSize>
+template<std::size_t kSize2>
+inline void WMPUInt<kSize>::fullMultiply_karatsuba
+(const WMPUInt<kSize2>& rhs, WMPUInt<kSize+kSize2>& result, std::uint64_t* tempBuffer) const
+{
+    if constexpr(kSize2 == 1)
+        rhs.fullMultiply(*this, result);
+    else if constexpr(kSize <= kSize2)
+    {
+        WMPIntImplementations::doFullKaratsubaMultiplication
+            (mData, kSize, rhs.mData, kSize2, result.mData, tempBuffer);
+    }
+    else
+    {
+        WMPIntImplementations::doFullKaratsubaMultiplication
+            (rhs.mData, kSize2, mData, kSize, result.mData, tempBuffer);
+    }
 }
 
 template<std::size_t kSize>

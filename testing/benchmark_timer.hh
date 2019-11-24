@@ -20,7 +20,7 @@ class Timer
         if(seconds < 1.0e-6)
             std::printf("%.2f ns", seconds * 1.0e9);
         else if(seconds < 1.0e-3)
-            std::printf("%.2f us", seconds * 1.0e6);
+            std::printf("%.2f μs", seconds * 1.0e6);
         else if(seconds < 1.0)
             std::printf("%.2f ms", seconds * 1.0e3);
         else
