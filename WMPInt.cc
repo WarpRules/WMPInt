@@ -1,7 +1,6 @@
 #include "WMPInt.hh"
 
-#define DEBUG_MODE
-#ifdef DEBUG_MODE
+#ifdef WMPINT_DEBUG_MODE
 std::size_t gWMPInt_karatsuba_max_temp_buffer_size = 0;
 static std::uint64_t* gWMPInt_tempBuffer_max_position = 0;
 #endif
@@ -78,7 +77,7 @@ void WMPIntImplementations::doFullLongMultiplication
 (const std::uint64_t* lhs, std::size_t kSize1, const std::uint64_t* rhs, std::size_t kSize2,
  std::uint64_t* result, std::uint64_t* tempBuffer)
 {
-#ifdef DEBUG_MODE
+#ifdef WMPINT_DEBUG_MODE
     if(tempBuffer + (kSize2+1) > gWMPInt_tempBuffer_max_position)
         gWMPInt_tempBuffer_max_position = tempBuffer + (kSize2+1);
 #endif
@@ -398,7 +397,7 @@ static void doFullKaratsubaMultiplicationForLargeLHS
 
     const std::size_t z2Size = lhsHighSize + rhsHighSize;
     std::uint64_t* z2 = result;
-    doFullKaratsubaMultiplication(lhs, lhsHighSize, rhs, rhsHighSize, z2, tempBuffer);
+    ::doFullKaratsubaMultiplication(lhs, lhsHighSize, rhs, rhsHighSize, z2, tempBuffer);
 
     const std::size_t highPlusLowSize = lowSize + 1;
     std::uint64_t* lhsHighPlusLow = tempBuffer;
@@ -439,13 +438,13 @@ void WMPIntImplementations::doFullKaratsubaMultiplication
  const std::uint64_t* rhs, std::size_t rhsSize,
  std::uint64_t* result, std::uint64_t* tempBuffer)
 {
-#ifdef DEBUG_MODE
+#ifdef WMPINT_DEBUG_MODE
     gWMPInt_tempBuffer_max_position = tempBuffer;
 #endif
 
     ::doFullKaratsubaMultiplication(lhs, lhsSize, rhs, rhsSize, result, tempBuffer);
 
-#ifdef DEBUG_MODE
+#ifdef WMPINT_DEBUG_MODE
     gWMPInt_karatsuba_max_temp_buffer_size = gWMPInt_tempBuffer_max_position - tempBuffer;
 #endif
 }

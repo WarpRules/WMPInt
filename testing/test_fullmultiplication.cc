@@ -1,6 +1,10 @@
 #include "test.hh"
 #include <random>
 
+#ifndef WMPINT_DEBUG_MODE
+#error "Define WMPINT_DEBUG_MODE to compile the project (with -DWMPINT_DEBUG_MODE)"
+#endif
+
 static void multiply(const std::uint32_t* lhs, std::size_t size1,
                      const std::uint32_t* rhs, std::size_t size2,
                      std::uint32_t* result, std::uint32_t* tempBuffer)
@@ -212,7 +216,9 @@ static bool testFullMultiplication(std::mt19937& rng)
     const std::size_t tempBufferSize =
         tempBufferSize1 > tempBufferSize2 ? tempBufferSize1 : tempBufferSize2;
     std::uint64_t tempBuffer[tempBufferSize];
-    std::uint64_t karatsubaTempBuffer[kSize1*10];
+    const std::size_t karatsubaTempBufferSize =
+        WMPIntImplementations::fullKaratsubaMultiplicationBufferSize(kSize2, kSize1);
+    std::uint64_t karatsubaTempBuffer[karatsubaTempBufferSize];
     std::uint32_t lhsArray[kSize1*2], rhsArray[kSize2*2];
     std::uint32_t resultArray[kSize1*2+kSize2*2], tempBuffer2[kSize2*2+1];
 
@@ -254,6 +260,13 @@ static bool testFullMultiplication(std::mt19937& rng)
             WMPIntImplementations::doFullKaratsubaMultiplication
                 (rhs.data(), kSize2, lhs.data(), kSize1, result.data(), karatsubaTempBuffer);
 
+            if(gWMPInt_karatsuba_max_temp_buffer_size != karatsubaTempBufferSize)
+                return DPRINT
+                    ("Error: WMPIntImplementations::fullKaratsubaMultiplicationBufferSize(",
+                     kSize2, ", ", kSize1, ")\nreturned the value ", karatsubaTempBufferSize,
+                     "\nbut the calculation used a buffer size of ",
+                     gWMPInt_karatsuba_max_temp_buffer_size, ".\n");
+
             if(result != expectedResult)
                 return DPRINT("Error: doFullKaratsubaMultiplication of\n", rhs, " and\n", lhs,
                               "\nresulted in\n", result, "\ninstead of\n", expectedResult, "\n");
@@ -262,7 +275,10 @@ static bool testFullMultiplication(std::mt19937& rng)
 
     /*
     std::cout << "kSize1=" << kSize1 << ", kSize2=" << kSize2
-              << ", tempBuffer size=" << gWMPInt_karatsuba_max_temp_buffer_size << "\n";
+              << ", tempBuffer size=" << gWMPInt_karatsuba_max_temp_buffer_size
+              << ", reported size="
+              << WMPIntImplementations::fullKaratsubaMultiplicationBufferSize(kSize2, kSize1)
+              << "\n";
     */
     return true;
 }
