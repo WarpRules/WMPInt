@@ -255,6 +255,45 @@ static void doSubtraction(std::uint64_t* lhs, std::size_t lhsSize,
 //----------------------------------------------------------------------------
 // Karatsuba long multiplication
 //----------------------------------------------------------------------------
+/* If only multiplication between same-sized operands were supported, then
+   the implementation of doFullKaratsubaMultiplicationForSameSizes() below
+   would be enough (and make this much simpler). However, since we are supporting
+   operands of different sizes, it becomes more complicated to do it optimally.
+
+   We could expand the smaller operand to the size of the larger one by adding
+   zeros, but this would not be optimal in terms of speed, as it would perform
+   more operations that would be needed (essentially lots of multiplications by
+   zero). The larger the difference in sizes, the less optimal this would be.
+   If the smaller operand is less than half the size of the larger one, a slightly
+   more optimal solution would be to expand the smaller to half the size of the
+   larger, and create a specialized first-stage implementation that deals with
+   this situation, and then calls the implementation for same-sized operands for
+   the halves. However, while a bit better, it would still not be optimal. Again,
+   the larger the difference in sizes, the less optimal it would be.
+
+   The next better approach would be, if the sizes of the operands differ, to split
+   the operands at the size of the smaller one, and perform the first iteration of
+   the algorithm with that division, which ought to incur only a negligible penalty.
+   A curious side-effect of doing this is that it can drastically increase the size
+   requirement for the tempBuffer. Ironically, and unintuitively, the smaller one
+   of the operands is, and the larger the other, the larger the tempBuffer size
+   requirement. Much larger than if both operands were of that larger size.
+   Also, ironically, the implementation of this isn't significantly simpler than the
+   optimal implementation, so nothing is really saved in terms of code complexity.
+
+   The optimal Karatsuba algorithm always splits from the middle of the larger operand.
+   But with different-sized operands this means that three versions of the algorithm
+   are needed, which may call each other recursively:
+    - a version that handles operands of the same size (only needs to call itself),
+    - a version for when lhsSize <= (rhsSize+1)/2,
+    - a version for when lhsSize > (rhsSize+1)/2 and < rhsSize.
+   The latter two may call any of the three recursively.
+   The advantage of the second version is that it can skip one of the recursive calls
+   completely (because it would just be a multiplication by zero), as well as one of the
+   subtractions (likewise because it would just be subtraction with zero).
+*/
+
+/* This must only be called when rhs and lhs are of the same size */
 static void doFullKaratsubaMultiplicationForSameSizes
 (const std::uint64_t* lhs, const std::uint64_t* rhs, std::size_t size,
  std::uint64_t* result, std::uint64_t* tempBuffer)
@@ -263,8 +302,8 @@ static void doFullKaratsubaMultiplicationForSameSizes
         return WMPIntImplementations::doFullLongMultiplication
             (lhs, size, rhs, size, result, tempBuffer);
 
-    const std::size_t lowSize = (size+1) / 2;
     const std::size_t resultSize = size * 2;
+    const std::size_t lowSize = (size+1) / 2;
     const std::size_t highSize = size - lowSize;
     const std::uint64_t* lhsLow = lhs + highSize;
     const std::uint64_t* rhsLow = rhs + highSize;
@@ -294,49 +333,104 @@ static void doFullKaratsubaMultiplicationForSameSizes
     doAddition(result, resultSize - lowSize, z1, z1Size);
 }
 
-static void doFullKaratsubaMultiplicationForDifferentSizes
+static void doFullKaratsubaMultiplication
+(const std::uint64_t*, std::size_t, const std::uint64_t*, std::size_t,
+ std::uint64_t*, std::uint64_t*);
+
+/* This must only be called when lhsSize <= (rhsSize+1)/2 */
+static void doFullKaratsubaMultiplicationForSmallLHS
 (const std::uint64_t* lhs, std::size_t lhsSize,
  const std::uint64_t* rhs, std::size_t rhsSize,
  std::uint64_t* result, std::uint64_t* tempBuffer)
 {
-    if(lhsSize <= 2)
+    if(lhsSize <= 2 || rhsSize <= 4)
         return WMPIntImplementations::doFullLongMultiplication
             (rhs, rhsSize, lhs, lhsSize, result, tempBuffer);
 
-    const std::size_t lowSize = lhsSize;
     const std::size_t resultSize = lhsSize + rhsSize;
-    const std::size_t rhsHighSize = rhsSize - lowSize;
+    const std::size_t rhsLowSize = (rhsSize+1) / 2;
+    const std::size_t rhsHighSize = rhsSize - rhsLowSize;
     const std::uint64_t* rhsLow = rhs + rhsHighSize;
+
+    const std::size_t z0Size = rhsLowSize + lhsSize;
+    const std::size_t z0Position = resultSize - z0Size;
+    std::uint64_t* z0 = result + z0Position;
+
+    for(std::size_t i = 0; i < z0Position; ++i)
+        result[i] = 0;
+
+    ::doFullKaratsubaMultiplication(lhs, lhsSize, rhsLow, rhsLowSize, z0, tempBuffer);
+
+    const std::size_t rhsHighPlusLowSize = rhsLowSize + 1;
+    std::uint64_t* rhsHighPlusLow = tempBuffer;
+    doFullAddition(rhs, rhsHighSize, rhsLow, rhsLowSize, rhsHighPlusLow);
+
+    const std::size_t z1Size = rhsHighPlusLowSize + lhsSize;
+    std::uint64_t* z1 = rhsHighPlusLow + rhsHighPlusLowSize;
+    ::doFullKaratsubaMultiplication
+          (lhs, lhsSize, rhsHighPlusLow, rhsHighPlusLowSize, z1, z1 + z1Size);
+
+    // z2 is 0 (because lhsHigh is 0, and z2 = rhsHigh*lhsHigh), so no need to subtract it
+    doSubtraction(z1, z1Size, z0, z0Size);
+    doAddition(result, resultSize - rhsLowSize, z1, z1Size);
+}
+
+/* This must only be called when lhsSize > (rhsSize+1)/2 and lhsSize < rhsSize */
+static void doFullKaratsubaMultiplicationForLargeLHS
+(const std::uint64_t* lhs, std::size_t lhsSize,
+ const std::uint64_t* rhs, std::size_t rhsSize,
+ std::uint64_t* result, std::uint64_t* tempBuffer)
+{
+    if(rhsSize <= 4)
+        return WMPIntImplementations::doFullLongMultiplication
+            (rhs, rhsSize, lhs, lhsSize, result, tempBuffer);
+
+    const std::size_t resultSize = lhsSize + rhsSize;
+    const std::size_t lowSize = (rhsSize+1) / 2;
+    const std::size_t rhsHighSize = rhsSize - lowSize;
+    const std::size_t lhsHighSize = lhsSize - lowSize;
+    const std::uint64_t* rhsLow = rhs + rhsHighSize;
+    const std::uint64_t* lhsLow = lhs + lhsHighSize;
 
     const std::size_t z0Size = lowSize * 2;
     std::uint64_t* z0 = result + (resultSize - z0Size);
-    doFullKaratsubaMultiplicationForSameSizes(lhs, rhsLow, lowSize, z0, tempBuffer);
+    doFullKaratsubaMultiplicationForSameSizes(lhsLow, rhsLow, lowSize, z0, tempBuffer);
 
-    const std::size_t z2Size = rhsHighSize;
+    const std::size_t z2Size = lhsHighSize + rhsHighSize;
     std::uint64_t* z2 = result;
-    for(std::size_t i = 0; i < z2Size; ++i) z2[i] = 0;
+    doFullKaratsubaMultiplication(lhs, lhsHighSize, rhs, rhsHighSize, z2, tempBuffer);
 
-    const std::size_t highPlusLowSize = (rhsHighSize > lowSize ? rhsHighSize : lowSize) + 1;
-    std::uint64_t* rhsHighPlusLow = tempBuffer;
-    if(rhsHighSize > lowSize)
-        doFullAddition(rhsLow, lowSize, rhs, rhsHighSize, rhsHighPlusLow);
-    else
-        doFullAddition(rhs, rhsHighSize, rhsLow, lowSize, rhsHighPlusLow);
+    const std::size_t highPlusLowSize = lowSize + 1;
+    std::uint64_t* lhsHighPlusLow = tempBuffer;
+    doFullAddition(lhs, lhsHighSize, lhsLow, lowSize, lhsHighPlusLow);
 
-    std::uint64_t* lhsHighPlusLow = rhsHighPlusLow + highPlusLowSize;
-    const std::size_t zerosAmount = highPlusLowSize - lowSize;
-    for(std::size_t i = 0; i < zerosAmount; ++i)
-        lhsHighPlusLow[i] = 0;
-    for(std::size_t srcInd = 0, destInd=zerosAmount; srcInd < lhsSize; ++srcInd, ++destInd)
-        lhsHighPlusLow[destInd] = lhs[srcInd];
+    std::uint64_t* rhsHighPlusLow = lhsHighPlusLow + highPlusLowSize;
+    doFullAddition(rhs, rhsHighSize, rhsLow, lowSize, rhsHighPlusLow);
 
     const std::size_t z1Size = highPlusLowSize * 2;
-    std::uint64_t* z1 = lhsHighPlusLow + highPlusLowSize;
+    std::uint64_t* z1 = rhsHighPlusLow + highPlusLowSize;
     doFullKaratsubaMultiplicationForSameSizes
         (lhsHighPlusLow, rhsHighPlusLow, highPlusLowSize, z1, z1 + z1Size);
 
+    doSubtraction(z1, z1Size, z2, z2Size);
     doSubtraction(z1, z1Size, z0, z0Size);
     doAddition(result, resultSize - lowSize, z1, z1Size);
+}
+
+static void doFullKaratsubaMultiplication
+(const std::uint64_t* lhs, std::size_t lhsSize,
+ const std::uint64_t* rhs, std::size_t rhsSize,
+ std::uint64_t* result, std::uint64_t* tempBuffer)
+{
+    if(lhsSize == rhsSize)
+        doFullKaratsubaMultiplicationForSameSizes
+            (lhs, rhs, lhsSize, result, tempBuffer);
+    else if(lhsSize <= (rhsSize+1)/2)
+        doFullKaratsubaMultiplicationForSmallLHS
+            (lhs, lhsSize, rhs, rhsSize, result, tempBuffer);
+    else
+        doFullKaratsubaMultiplicationForLargeLHS
+            (lhs, lhsSize, rhs, rhsSize, result, tempBuffer);
 }
 
 /* This assumes that lhsSize <= rhsSize. (If that's not so, it will go out of bounds.) */
@@ -349,12 +443,7 @@ void WMPIntImplementations::doFullKaratsubaMultiplication
     gWMPInt_tempBuffer_max_position = tempBuffer;
 #endif
 
-    if(lhsSize < rhsSize)
-        doFullKaratsubaMultiplicationForDifferentSizes
-            (lhs, lhsSize, rhs, rhsSize, result, tempBuffer);
-    else
-        doFullKaratsubaMultiplicationForSameSizes
-            (lhs, rhs, lhsSize, result, tempBuffer);
+    ::doFullKaratsubaMultiplication(lhs, lhsSize, rhs, rhsSize, result, tempBuffer);
 
 #ifdef DEBUG_MODE
     gWMPInt_karatsuba_max_temp_buffer_size = gWMPInt_tempBuffer_max_position - tempBuffer;

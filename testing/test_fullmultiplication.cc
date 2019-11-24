@@ -197,10 +197,13 @@ static void initWMPUIntWithUint32Array(WMPUInt<kSize>& dest, const std::uint32_t
 }
 
 extern std::size_t gWMPInt_karatsuba_max_temp_buffer_size;
+static unsigned gTestCounter = 0;
+static const unsigned kTestsAmount = 42;
 
 template<std::size_t kSize1, std::size_t kSize2, std::size_t kIterations>
 static bool testFullMultiplication(std::mt19937& rng)
 {
+    std::cout << ++gTestCounter << "/" << kTestsAmount << "\r"; std::cout.flush();
     WMPUInt<kSize1> lhs;
     WMPUInt<kSize2> rhs;
     WMPUInt<kSize1 + kSize2> result, expectedResult;
@@ -257,9 +260,10 @@ static bool testFullMultiplication(std::mt19937& rng)
         }
     }
 
+    /*
     std::cout << "kSize1=" << kSize1 << ", kSize2=" << kSize2
               << ", tempBuffer size=" << gWMPInt_karatsuba_max_temp_buffer_size << "\n";
-
+    */
     return true;
 }
 
@@ -269,13 +273,13 @@ bool testFullMultiplication()
     if(!testTheTest()) DRET;
 
     std::mt19937 rng(1234);
-    if(!testFullMultiplication<1, 1, 100000>(rng)) DRET;
-    if(!testFullMultiplication<2, 1, 100000>(rng)) DRET;
-    if(!testFullMultiplication<3, 1, 100000>(rng)) DRET;
-    if(!testFullMultiplication<4, 1, 100000>(rng)) DRET;
-    if(!testFullMultiplication<5, 1, 100000>(rng)) DRET;
+    if(!testFullMultiplication<1, 1, 1000000>(rng)) DRET;
+    if(!testFullMultiplication<2, 1, 1000000>(rng)) DRET;
+    if(!testFullMultiplication<3, 1, 1000000>(rng)) DRET;
+    if(!testFullMultiplication<4, 1, 1000000>(rng)) DRET;
+    if(!testFullMultiplication<5, 1, 1000000>(rng)) DRET;
     if(!testFullMultiplication<32, 1, 100000>(rng)) DRET;
-    if(!testFullMultiplication<2, 2, 100000>(rng)) DRET;
+    if(!testFullMultiplication<2, 2, 1000000>(rng)) DRET;
     if(!testFullMultiplication<3, 2, 100000>(rng)) DRET;
     if(!testFullMultiplication<4, 2, 100000>(rng)) DRET;
     if(!testFullMultiplication<5, 2, 100000>(rng)) DRET;
@@ -292,15 +296,24 @@ bool testFullMultiplication()
     if(!testFullMultiplication<32, 5, 50000>(rng)) DRET;
     if(!testFullMultiplication<6, 6, 50000>(rng)) DRET;
     if(!testFullMultiplication<7, 6, 50000>(rng)) DRET;
-    if(!testFullMultiplication<32, 6, 5000>(rng)) DRET;
-    if(!testFullMultiplication<32, 10, 5000>(rng)) DRET;
-    if(!testFullMultiplication<32, 15, 5000>(rng)) DRET;
-    if(!testFullMultiplication<32, 17, 5000>(rng)) DRET;
-    if(!testFullMultiplication<32, 22, 5000>(rng)) DRET;
-    if(!testFullMultiplication<32, 32, 5000>(rng)) DRET;
-    if(!testFullMultiplication<100, 10, 2000>(rng)) DRET;
-    if(!testFullMultiplication<100, 40, 2000>(rng)) DRET;
-    if(!testFullMultiplication<100, 60, 2000>(rng)) DRET;
-    if(!testFullMultiplication<100, 100, 2000>(rng)) DRET;
+    if(!testFullMultiplication<32, 6, 10000>(rng)) DRET;
+    if(!testFullMultiplication<32, 10, 10000>(rng)) DRET;
+    if(!testFullMultiplication<32, 15, 10000>(rng)) DRET;
+    if(!testFullMultiplication<32, 17, 10000>(rng)) DRET;
+    if(!testFullMultiplication<32, 22, 10000>(rng)) DRET;
+    if(!testFullMultiplication<32, 32, 10000>(rng)) DRET;
+    if(!testFullMultiplication<100, 10, 5000>(rng)) DRET;
+    if(!testFullMultiplication<100, 40, 5000>(rng)) DRET;
+    if(!testFullMultiplication<100, 50, 4000>(rng)) DRET;
+    if(!testFullMultiplication<100, 51, 4000>(rng)) DRET;
+    if(!testFullMultiplication<100, 60, 4000>(rng)) DRET;
+    if(!testFullMultiplication<100, 100, 4000>(rng)) DRET;
+    if(!testFullMultiplication<101, 5, 5000>(rng)) DRET;
+    if(!testFullMultiplication<101, 50, 4000>(rng)) DRET;
+    if(!testFullMultiplication<101, 51, 4000>(rng)) DRET;
+    if(!testFullMultiplication<101, 52, 4000>(rng)) DRET;
+    if(!testFullMultiplication<101, 99, 4000>(rng)) DRET;
+    if(!testFullMultiplication<101, 100, 4000>(rng)) DRET;
+    if(!testFullMultiplication<101, 101, 4000>(rng)) DRET;
     return true;
 }
