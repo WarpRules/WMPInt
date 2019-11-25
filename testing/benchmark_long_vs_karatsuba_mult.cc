@@ -51,9 +51,24 @@ namespace
         { 25, 300, 35000 },
     };
 
-    constexpr std::size_t kSizesAmount = sizeof(kSizes)/sizeof(*kSizes);
-    constexpr std::size_t kMaxLHSSize = kSizes[kSizesAmount-1].lhsSize;
-    constexpr std::size_t kMaxRHSSize = kSizes[kSizesAmount-1].rhsSize;
+    constexpr std::size_t getMaxLHSSize()
+    {
+        std::size_t maxSize = 0;
+        for(const SizeData& data: kSizes)
+            if(data.lhsSize > maxSize) maxSize = data.lhsSize;
+        return maxSize;
+    }
+
+    constexpr std::size_t getMaxRHSSize()
+    {
+        std::size_t maxSize = 0;
+        for(const SizeData& data: kSizes)
+            if(data.rhsSize > maxSize) maxSize = data.rhsSize;
+        return maxSize;
+    }
+
+    constexpr std::size_t kMaxLHSSize = getMaxLHSSize();
+    constexpr std::size_t kMaxRHSSize = getMaxRHSSize();
     constexpr std::size_t kResultMaxSize = kMaxLHSSize + kMaxRHSSize;
     constexpr std::size_t kTempBufferMaxSize =
         WMPIntImplementations::fullKaratsubaMultiplicationBufferSize(kMaxLHSSize, kMaxRHSSize);
