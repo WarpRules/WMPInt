@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-  <title>WMPInt 0.4.0 documentation</title>
+  <title>WMPInt 0.4.1 documentation</title>
   <style type="text/css"> <!--
 html
 {
@@ -96,7 +96,7 @@ code
 </head>
 
 <body>
-<h1>WMPInt 0.4.0 documentation</h1>
+<h1>WMPInt 0.4.1 documentation</h1>
 
 <p><code>WMPUInt</code> and <code>WMPInt</code> (not yet implemented) are templated
   classes that implement multi-precision integer arithmetic for x86-64 platforms
@@ -274,8 +274,7 @@ WMPUInt&lt;3&gt; v3(0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF);
 <p><b>Member functions:</b></p>
 
 <pre class="synopsis">const char* <span class="funcname">assignFromHexStr</span> (const char*);
-const char* <span class="funcname">assignFromDecStr</span> (const char*);
-const char* <span class="funcname">assignFromDecStr</span> (const char*, std::uint64_t* tempBuffer);</pre>
+const char* <span class="funcname">assignFromDecStr</span> (const char*);</pre>
 
 <p>The functions will do very little sanity checks on the strings. They will simply
   scan the string until they find a non-hexadecimal (in the first case) or non-decimal
@@ -324,12 +323,6 @@ v3.assignFromHexStr("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF");
 v1.assignFromDecStr("10");
 v2.assignFromDecStr("340282366920938463463374607431768211455");
 v3.assignFromDecStr("6277101735386680763835789423207666416102355444464034512895");</pre>
-
-<p>Note that since <code>assignFromDecStr()</code> involves multiplication, a version
-  of the function is provided that can be given a user-provided temporary buffer
-  (containing at least <code>multiplyBufferSize()</code> <code>std::uint64_t</code> values) for
-  the multiplication operation. Consult the section <a href="#multiply">Multiplying very
-    large integers</a> for the reason for this.</p>
 
 <h3>Initialization with another <code>WMPUInt</code> object</h3>
 

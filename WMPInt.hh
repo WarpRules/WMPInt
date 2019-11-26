@@ -1,8 +1,8 @@
 #ifndef WMPINT_INCLUDE_GUARD
 #define WMPINT_INCLUDE_GUARD
 
-#define WMPINT_VERSION 0x000400
-#define WMPINT_VERSION_STRING "0.4.0"
+#define WMPINT_VERSION 0x000401
+#define WMPINT_VERSION_STRING "0.4.1"
 #define WMPINT_COPYRIGHT_STRING "WMPInt v" WMPINT_VERSION_STRING " (C)2019 Juha Nieminen"
 
 #include <cstdint>
@@ -41,7 +41,6 @@ class WMPUInt
 
     const char* assignFromHexStr(const char*);
     const char* assignFromDecStr(const char*);
-    const char* assignFromDecStr(const char*, std::uint64_t* tempBuffer);
 
     //------------------------------------------------------------------------
     // Data retrieval
@@ -552,7 +551,7 @@ inline const char* WMPUInt<kSize>::assignFromHexStr(const char* ptr)
 }
 
 template<std::size_t kSize>
-inline const char* WMPUInt<kSize>::assignFromDecStr(const char* ptr, std::uint64_t* tempBuffer)
+inline const char* WMPUInt<kSize>::assignFromDecStr(const char* ptr)
 {
     std::uint64_t value = 0;
     unsigned charCounter;
@@ -581,29 +580,21 @@ inline const char* WMPUInt<kSize>::assignFromDecStr(const char* ptr, std::uint64
         {
             if(charCounter == 19)
             {
-                multiply(UINT64_C(10000000000000000000), tempBuffer);
+                *this *= UINT64_C(10000000000000000000);
             }
             else
             {
                 std::uint64_t factor = 10;
                 for(unsigned i = 1; i < charCounter; ++i)
                     factor *= 10;
-                multiply(factor, tempBuffer);
+                *this *= factor;
             }
 
-            for(std::size_t i = 0; i < kSize; ++i) mData[i] = tempBuffer[i];
             *this += value;
         }
     }
 
     return ptr;
-}
-
-template<std::size_t kSize>
-inline const char* WMPUInt<kSize>::assignFromDecStr(const char* ptr)
-{
-    std::uint64_t tempBuffer[multiplyBufferSize()];
-    return assignFromDecStr(ptr, tempBuffer);
 }
 
 
@@ -1421,17 +1412,6 @@ template<std::size_t kSize>
 inline void WMPUInt<kSize>::multiply
 (const WMPUInt<kSize>& rhs, WMPUInt<kSize>& result, std::uint64_t* tempBuffer) const
 {
-    /* Long multiplication algorithm in base 2^64 (eg. kSize == 5)
-       -----------------------------------------------------------
-                        [R4][R3][R2][R1][R0] // rhs
-                      * [L4][L3][L2][L1][L0] // lhs (*this)
-         -----------------------------------
-         [R4*L0][R3*L0][R2*L0][R1*L0][R0*L0]
-       + [R3*L1][R2*L1][R1*L1][R0*L1]
-       + [R2*L2][R1*L2][R0*L2]
-       + [R1*L3][R0*L3]
-       + [R0*L4]
-    */
     if constexpr(kSize == 2)
     {
         /* The case of kSize==2 is simple enough to warrant its own loopless implementation */
@@ -1608,7 +1588,7 @@ inline void WMPUInt<kSize>::multiply(std::uint64_t rhs, std::uint64_t* result) c
              "movq (%[lhs],%[lhsInd],8),%%rax\n\t" // rax = lhs[lhsInd]
              "mulq %[rhs]\n\t" // (rdx,rax) = rax * rhs
              "addq %%rax,(%[result],%[lhsInd],8)\n\t" // result[lhsInd] += rax
-             "adcq %%rdx,-8(%[result],%[lhsInd],8)\n\t" // result[lhsInd-1] = rdx
+             "adcq %%rdx,-8(%[result],%[lhsInd],8)\n\t" // result[lhsInd-1] += rdx
              "decq %[lhsInd]\n\t" // --lhsInd
              "jnz loop%=\n\t" // if(lhsInd > 0) goto loop
              "imulq (%[lhs]),%[rhs]\n\t" // rhs = lhs[0] * rhs
@@ -1636,7 +1616,43 @@ inline WMPUInt<kSize> WMPUInt<kSize>::operator*(std::uint64_t rhs) const
 template<std::size_t kSize>
 inline WMPUInt<kSize>& WMPUInt<kSize>::operator*=(std::uint64_t rhs)
 {
+    /*
     *this = *this * rhs;
+    return *this;
+    */
+    if constexpr(kSize == 2)
+    {
+        std::uint64_t lhs0 = mData[0], lhs1 = mData[1];
+        asm ("movq %[lhs1], %%rax\n\t"
+             "mulq %[rhs]\n\t"
+             "movq %%rax, 8(%[result])\n\t"
+             "movq %%rdx, (%[result])\n\t"
+             "imulq %[lhs0], %[rhs]\n\t"
+             "addq %[rhs], (%[result])"
+             : "=m"(mData), [rhs]"+&r"(rhs)
+             : [lhs0]"r"(lhs0), [lhs1]"r"(lhs1), [result]"r"(mData)
+             : "rax", "rdx", "cc");
+    }
+    else
+    {
+        std::uint64_t lhsInd = kSize-1, zero = 0, tempValue = mData[kSize-1];
+        mData[kSize-1] = 0;
+        asm ("loop%=:\n\t"
+             "movq %[tempValue], %%rax\n\t" // rax = tempValue
+             "movq -8(%[lhs],%[lhsInd],8), %[tempValue]\n\t" // tempValue = lhs[lhsInd-1]
+             "movq %[zero], -8(%[lhs],%[lhsInd],8)\n\t" // lhs[lhsInd-1] = zero
+             "mulq %[rhs]\n\t" // (rdx,rax) = rax * rhs
+             "addq %%rax, (%[lhs],%[lhsInd],8)\n\t" // lhs[lhsInd] += rax
+             "adcq %%rdx, -8(%[lhs],%[lhsInd],8)\n\t" // lhs[lhsInd-1] += rdx
+             "decq %[lhsInd]\n\t" // --lhsInd
+             "jnz loop%=\n\t" // if(lhsInd > 0) goto loop
+             "imulq %[tempValue], %[rhs]\n\t" // rhs = tempValue * rhs
+             "addq %[rhs], (%[lhs])" // lhs[0] += rhs
+             : "+m"(mData), [rhs]"+&r"(rhs), [lhsInd]"+&r"(lhsInd), [tempValue]"+&r"(tempValue)
+             : [lhs]"r"(mData), [zero]"r"(zero)
+             : "rax", "rdx", "cc");
+    }
+
     return *this;
 }
 

@@ -12,6 +12,17 @@ void WMPIntImplementations::doLongMultiplication
 (std::size_t kSize, const std::uint64_t* lhs, const std::uint64_t* rhs,
  std::uint64_t* result, std::uint64_t* tempBuffer)
 {
+    /* Long multiplication algorithm in base 2^64 (eg. kSize == 5)
+       -----------------------------------------------------------
+                        [R4][R3][R2][R1][R0] // rhs
+                      * [L4][L3][L2][L1][L0] // lhs (*this)
+         -----------------------------------
+         [R4*L0][R3*L0][R2*L0][R1*L0][R0*L0]
+       + [R3*L1][R2*L1][R1*L1][R0*L1]
+       + [R2*L2][R1*L2][R0*L2]
+       + [R1*L3][R0*L3]
+       + [R0*L4]
+    */
     std::uint64_t lhsInd = kSize - 2, rhsInd = kSize - 1, rhsIndCounter, lhsValue = lhs[kSize - 1];
     for(std::size_t i = 0; i < kSize; ++i) result[i] = 0;
 

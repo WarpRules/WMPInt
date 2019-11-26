@@ -251,8 +251,28 @@ static bool testFullMultiplication(std::mt19937& rng)
             (lhs.data(), kSize1, rhs.data(), kSize2, result.data(), tempBuffer);
 
         if(result != expectedResult)
-            return DPRINT("Error: doFullLongMultiplication of\n", rhs, " and\n", lhs,
+            return DPRINT("Error: doFullLongMultiplication of\n", lhs, " and\n", rhs,
                           "\nresulted in\n", result, "\ninstead of\n", expectedResult, "\n");
+
+        if constexpr(kSize1 == kSize2)
+        {
+            WMPUInt<kSize1> expectedShortResult, shortResult = lhs * rhs;
+            initWMPUIntWithUint32Array(expectedShortResult, resultArray + kSize1*2);
+            if(shortResult != expectedShortResult)
+                return DPRINT("Error: WMPUInt<", kSize1, ">::operator*(WMPUInt<", kSize1, ">) of\n", lhs,
+                              " and\n", rhs, "\nresulted in\n", shortResult, "\ninstead of\n",
+                              expectedShortResult, "\n");
+        }
+        if constexpr(kSize2 == 1)
+        {
+            WMPUInt<kSize1> expectedShortResult, shortResult = lhs;
+            shortResult *= rhs.data()[0];
+            initWMPUIntWithUint32Array(expectedShortResult, resultArray + 2);
+            if(shortResult != expectedShortResult)
+                return DPRINT("Error: WMPUInt<", kSize1, ">::operator*(std::uint64_t) of\n", lhs,
+                              " and\n", rhs.data()[0], "\nresulted in\n", shortResult, "\ninstead of\n",
+                              expectedShortResult, "\n");
+        }
 
         if constexpr(kSize1 >= kSize2)
         {
