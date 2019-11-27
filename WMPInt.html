@@ -145,6 +145,7 @@ WMPUInt&lt;16&gt; result = a + b * c;</pre>
     <li><a href="#smalloperands">Small operands</a></li>
     <li><a href="#multiplication">Multiplication</a></li>
     <li><a href="#exproptimization">Expression optimizations</a></li>
+    <li><a href="#longvskaratsuba">Full multiplication with long vs. Karatsuba algorithm</a></li>
   </ul>
 </ul>
 
@@ -531,7 +532,7 @@ void <span class="funcname">fullMultiply</span> (const WMPUInt&lt;kSize2&gt;&amp
 
 <p>The multiplication operators (<code>operator*()</code> and <code>operator*=()</code>)
   and the <code>multiply()</code> function will return the result of the multiplication
-  clamped to the same size as the input operands. The <code>fullMultiply()</code> function
+  truncated to the same size as the input operands. The <code>fullMultiply()</code> function
   can be used to get the full result of the multiplication of two values of any size.</p>
 
 <p>Given two values <code>WMPUInt&lt;size1&gt;</code> and <code>WMPUInt&lt;size2&gt;</code>,
@@ -625,8 +626,10 @@ std::cout &lt;&lt; "The number is " &lt;&lt; str &lt;&lt; "\n";</pre>
 <p>Possible future improvements:</p>
 
 <ul>
-  <li>Implement the Karatsuba algorithm or the Toom-Cook algorithm to be used instead of long
-    multiplication for larger values of <code>kSize</code>.</li>
+  <li>Implement the Karatsuba algorithm algorithm to be used with truncated multiplication
+    (<code>operator*()</code>, <code>multiply()</code>) for larger values of
+    <code>kSize</code>.</li>
+  <li>A fixed-point arithmetic specialization class.</li>
 </ul>
 
 <!---------------------------------------------------------------------------->
@@ -748,4 +751,70 @@ result *= result;</pre>
 
 <pre>a += a;</pre>
 
+<h3 id="longvskaratsuba">Full multiplication with long vs. Karatsuba algorithm</h3>
+
+<p>The <code>fullMultiply()</code> function, which calculates the full non-truncated result
+  of the product of two values, will use either the long multiplication or the Karatsuba
+  multiplication algorithm, depending on the size of the operands. The heuristic to choose
+  between the two is relatively simplistic, and the faster one might not always be chosen
+  in every single case. Calling either algorithm directly is supported, to give the user the
+  possibility of bypassing this simplistic heuristic in cases where the chosen one is not
+  actually the more efficient, for a particular pair of sizes.</p>
+
+<p>This is mostly relevant only if you are using <code>fullMultiply()</code> on values of
+  different sizes. If they are of the same size, you most likely don't need to worry about it.
+  However, if you are multiplying values of very different sizes, especially if these values
+  are very large (the <code>kSize</code> template parameter in the thousands or more), it may
+  be worth checking if calling one of the algorithms or the other directly might be faster
+  than relying on the default choice.</p>
+
+<p>The current choice heuristic is the following. The long multiplication algorithm will be
+  chosen if:</p>
+
+<ul>
+  <li>The <code>kSize</code> of both numbers is the same, and this size is less than 16.</li>
+  <li>The <code>kSize</code> of the smaller number is less than 16, and less than half of the
+    larger <code>kSize</code>.</li>
+  <li>The <code>kSize</code> of the smaller number is 16 or more, and less than a third of the
+    larger <code>kSize</code>.</li>
+</ul>
+
+<p>Else the Karatsuba algorithm will be used.</p>
+
+<p>If you are using <code>fullMultiply</code> on very large numbers of very different sizes,
+  and using the optimal algorithm is crucial, it may be worth trying calling one algorithm or
+  the other directly.</p>
+
+<p><b>Member functions:</b></p>
+
+<pre class="synopsis">template&lt;std::size_t kSize2&gt;
+constexpr static std::size_t <span class="funcname">fullMultiply_longMultiplicationBufferSize</span>();
+
+template&lt;std::size_t kSize2&gt;
+void <span class="funcname">fullMultiply_longMultiplication</span>
+(const WMPUInt&lt;kSize2&gt;&amp;, WMPUInt&lt;kSize+kSize2&gt;&amp; result,
+ std::uint64_t* tempBuffer) const;
+
+template&lt;std::size_t kSize2&gt;
+constexpr static std::size_t <span class="funcname">fullMultiply_karatsubaBufferSize</span>();
+
+template&lt;std::size_t kSize2&gt;
+void <span class="funcname">fullMultiply_karatsuba</span>
+(const WMPUInt&lt;kSize2&gt;&amp;, WMPUInt&lt;kSize+kSize2&gt;&amp; result,
+ std::uint64_t* tempBuffer) const;</pre>
+
+<p>Only versions that take a temporary buffer for calculations are provided. Be sure to get its
+  size using the corresponding function.</p>
+
+<p>Example:</p>
+
+<pre>WMPUInt&lt;2048&gt; value1;
+WMPUInt&lt;512&gt; value2;
+WMPUInt&lt;2048+512&gt; result;
+
+constexpr std::size_t kTempBufferSize =
+    value1.fullMultiply_karatsubaBufferSize&lt;value2.size()&gt;();
+std::uint64_t tempBuffer[kTempBufferSize];
+
+value1.fullMultiply_karatsuba(value2, result, tempBuffer);</pre>
 </body></html>

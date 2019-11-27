@@ -408,7 +408,9 @@ template<std::size_t kSize>
 template<std::size_t kSize2>
 constexpr inline std::size_t WMPUInt<kSize>::fullMultiplyBufferSize()
 {
-    if((kSize == kSize2 && kSize < 16) || kSize < kSize2/2 || kSize2 < kSize/2)
+    if((kSize == kSize2 && kSize < 16) ||
+       (kSize < 16 && kSize < kSize2/2) || (kSize2 < 16 && kSize2 < kSize/2) ||
+       (kSize >= 16 && kSize < kSize2/3) || (kSize2 >= 16 && kSize2 < kSize/3))
         return WMPIntImplementations::fullLongMultiplicationBufferSize(kSize, kSize2);
     else if(kSize <= kSize2)
         return WMPIntImplementations::fullKaratsubaMultiplicationBufferSize(kSize, kSize2);
@@ -1478,7 +1480,10 @@ inline void WMPUInt<kSize>::fullMultiply
                [result]"r"(result.mData), [zero]"r"(zero)
              : "rax", "rdx", "cc");
     }
-    else if constexpr((kSize == kSize2 && kSize < 16) || kSize < kSize2/2 || kSize2 < kSize/2)
+    else if constexpr
+        ((kSize == kSize2 && kSize < 16) ||
+         (kSize < 16 && kSize < kSize2/2) || (kSize2 < 16 && kSize2 < kSize/2) ||
+         (kSize >= 16 && kSize < kSize2/3) || (kSize2 >= 16 && kSize2 < kSize/3))
     {
         WMPIntImplementations::doFullLongMultiplication
             (mData, kSize, rhs.mData, kSize2, result.mData, tempBuffer);
