@@ -557,7 +557,7 @@ WMPUInt&lt;1000&gt; value2;
 WMPUInt&lt;512+1000&gt; result;
 
 const std::size_t kTempBufferSize =
-    value1.fullMultiplyBufferSize&lt;value2.size()&gt;();
+    WMPUInt&lt;512&gt;::fullMultiplyBufferSize&lt;1000&gt;();
 std::uint64_t tempBuffer[kTempBufferSize];
 
 value1.fullMultiply(value2, result, tempBuffer);</pre>
@@ -813,7 +813,7 @@ WMPUInt&lt;512&gt; value2;
 WMPUInt&lt;2048+512&gt; result;
 
 constexpr std::size_t kTempBufferSize =
-    value1.fullMultiply_karatsubaBufferSize&lt;value2.size()&gt;();
+    WMPUInt&lt;2048&gt;::fullMultiply_karatsubaBufferSize&lt;512&gt;();
 std::uint64_t tempBuffer[kTempBufferSize];
 
 value1.fullMultiply_karatsuba(value2, result, tempBuffer);</pre>
