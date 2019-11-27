@@ -1148,18 +1148,37 @@ inline WMPUInt<kSize>& WMPUInt<kSize>::operator+=(const WMPUInt<kSize>& rhs)
                "m"(rhs.mData) : "cc");
     }
 #endif
-    else
+    else if constexpr(kSize % 2 == 0)
     {
-        /* There is not enough speed advantage in unrolling the loop to warrant
-           the complexity it introduces to the implementation. */
-        std::uint64_t dataInd = kSize - 1;
-        asm ("movq (%[rhs],%[dataInd],8), %[tempReg]\n\t"
-             "addq %[tempReg], (%[lhs],%[dataInd],8)\n"
+        std::uint64_t dataInd = kSize - 3;
+        asm ("movq 16(%[rhs],%[dataInd],8), %[tempReg]\n\t"
+             "addq %[tempReg], 16(%[lhs],%[dataInd],8)\n\t"
+             "movq 8(%[rhs],%[dataInd],8), %[tempReg]\n\t"
+             "adcq %[tempReg], 8(%[lhs],%[dataInd],8)\n"
              "loop%=:\n\t"
+             "movq (%[rhs],%[dataInd],8), %[tempReg]\n\t"
+             "adcq %[tempReg], (%[lhs],%[dataInd],8)\n\t"
              "movq -8(%[rhs],%[dataInd],8), %[tempReg]\n\t"
              "adcq %[tempReg], -8(%[lhs],%[dataInd],8)\n\t"
              "decq %[dataInd]\n\t"
-             "jnz loop%="
+             "decq %[dataInd]\n\t"
+             "jns loop%="
+             : "+m"(mData), [dataInd]"+&r"(dataInd), [tempReg]"=&r"(tempReg)
+             : [lhs]"r"(mData), [rhs]"r"(rhs.mData), "m"(rhs.mData) : "cc");
+    }
+    else
+    {
+        std::uint64_t dataInd = kSize - 2;
+        asm ("movq 8(%[rhs],%[dataInd],8), %[tempReg]\n\t"
+             "addq %[tempReg], 8(%[lhs],%[dataInd],8)\n\t"
+             "loop%=:\n\t"
+             "movq (%[rhs],%[dataInd],8), %[tempReg]\n\t"
+             "adcq %[tempReg], (%[lhs],%[dataInd],8)\n\t"
+             "movq -8(%[rhs],%[dataInd],8), %[tempReg]\n\t"
+             "adcq %[tempReg], -8(%[lhs],%[dataInd],8)\n\t"
+             "decq %[dataInd]\n\t"
+             "decq %[dataInd]\n\t"
+             "jns loop%="
              : "+m"(mData), [dataInd]"+&r"(dataInd), [tempReg]"=&r"(tempReg)
              : [lhs]"r"(mData), [rhs]"r"(rhs.mData), "m"(rhs.mData) : "cc");
     }
@@ -1200,8 +1219,6 @@ inline WMPUInt<kSize>& WMPUInt<kSize>::operator+=(std::uint64_t value)
              "adcq %[zero], 8(%[lhs])\n\t"
              "adcq %[zero], (%[lhs])"
              : "+m"(mData) : [lhs]"r"(mData), [value]"r"(value), [zero]"r"(zero) : "cc");
-
-    /* The speed advantage we get from unrolling is large enough to warrant it below. */
     else if constexpr(kSize % 2 == 0)
     {
         std::uint64_t dataInd = kSize - 3;
@@ -1301,17 +1318,38 @@ inline WMPUInt<kSize>& WMPUInt<kSize>::operator-=(const WMPUInt<kSize>& rhs)
              "sbbq %[tempReg], (%[lhs])"
              : "+m"(mData), [tempReg]"=&r"(tempReg)
              : [lhs]"r"(mData), [rhs]"r"(rhs.mData), "m"(rhs.mData) : "cc");
+    else if constexpr(kSize % 2 == 0)
+    {
+        std::uint64_t dataInd = kSize - 3;
+        asm ("movq 16(%[rhs],%[dataInd],8), %[tempReg]\n\t"
+             "subq %[tempReg], 16(%[lhs],%[dataInd],8)\n\t"
+             "movq 8(%[rhs],%[dataInd],8), %[tempReg]\n\t"
+             "sbbq %[tempReg], 8(%[lhs],%[dataInd],8)\n"
+             "loop%=:\n\t"
+             "movq (%[rhs],%[dataInd],8), %[tempReg]\n\t"
+             "sbbq %[tempReg], (%[lhs],%[dataInd],8)\n\t"
+             "movq -8(%[rhs],%[dataInd],8), %[tempReg]\n\t"
+             "sbbq %[tempReg], -8(%[lhs],%[dataInd],8)\n\t"
+             "decq %[dataInd]\n\t"
+             "decq %[dataInd]\n\t"
+             "jns loop%="
+             : "+m"(mData), [dataInd]"+&r"(dataInd), [tempReg]"=&r"(tempReg)
+             : [lhs]"r"(mData), [rhs]"r"(rhs.mData), "m"(rhs.mData) : "cc");
+    }
     else
     {
         std::uint64_t dataInd = kSize - 2;
         asm ("movq 8(%[rhs],%[dataInd],8), %[tempReg]\n\t"
-             "subq %[tempReg], 8(%[lhs],%[dataInd],8)\n"
+             "subq %[tempReg], 8(%[lhs],%[dataInd],8)\n\t"
              "loop%=:\n\t"
              "movq (%[rhs],%[dataInd],8), %[tempReg]\n\t"
              "sbbq %[tempReg], (%[lhs],%[dataInd],8)\n\t"
+             "movq -8(%[rhs],%[dataInd],8), %[tempReg]\n\t"
+             "sbbq %[tempReg], -8(%[lhs],%[dataInd],8)\n\t"
+             "decq %[dataInd]\n\t"
              "decq %[dataInd]\n\t"
              "jns loop%="
-             : "+m"(mData), [tempReg]"=&r"(tempReg), [dataInd]"+&r"(dataInd)
+             : "+m"(mData), [dataInd]"+&r"(dataInd), [tempReg]"=&r"(tempReg)
              : [lhs]"r"(mData), [rhs]"r"(rhs.mData), "m"(rhs.mData) : "cc");
     }
 
@@ -1621,10 +1659,6 @@ inline WMPUInt<kSize> WMPUInt<kSize>::operator*(std::uint64_t rhs) const
 template<std::size_t kSize>
 inline WMPUInt<kSize>& WMPUInt<kSize>::operator*=(std::uint64_t rhs)
 {
-    /*
-    *this = *this * rhs;
-    return *this;
-    */
     if constexpr(kSize == 2)
     {
         std::uint64_t lhs0 = mData[0], lhs1 = mData[1];
