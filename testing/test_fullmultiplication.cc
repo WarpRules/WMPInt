@@ -259,9 +259,9 @@ static bool testFullMultiplication(std::mt19937& rng)
             WMPUInt<kSize1> expectedShortResult, shortResult = lhs * rhs;
             initWMPUIntWithUint32Array(expectedShortResult, resultArray + kSize1*2);
             if(shortResult != expectedShortResult)
-                return DPRINT("Error: WMPUInt<", kSize1, ">::operator*(WMPUInt<", kSize1, ">) of\n", lhs,
-                              " and\n", rhs, "\nresulted in\n", shortResult, "\ninstead of\n",
-                              expectedShortResult, "\n");
+                return DPRINT("Error: WMPUInt<", kSize1, ">::operator*(WMPUInt<", kSize1,
+                              ">) of\n", lhs, " and\n", rhs, "\nresulted in\n", shortResult,
+                              "\ninstead of\n", expectedShortResult, "\n");
         }
         if constexpr(kSize2 == 1)
         {
@@ -269,9 +269,29 @@ static bool testFullMultiplication(std::mt19937& rng)
             shortResult *= rhs.data()[0];
             initWMPUIntWithUint32Array(expectedShortResult, resultArray + 2);
             if(shortResult != expectedShortResult)
-                return DPRINT("Error: WMPUInt<", kSize1, ">::operator*(std::uint64_t) of\n", lhs,
-                              " and\n", rhs.data()[0], "\nresulted in\n", shortResult, "\ninstead of\n",
-                              expectedShortResult, "\n");
+                return DPRINT("Error: WMPUInt<", kSize1, ">::operator*=(std::uint64_t) of\n",
+                              lhs, " and\n", rhs.data()[0], "\nresulted in\n", shortResult,
+                              "\ninstead of\n", expectedShortResult, "\n");
+
+            if(rhs.data()[0] > 0)
+            {
+                result /= rhs.data()[0];
+                shortResult.assign(result);
+                if(result.data()[0] > 0 || shortResult != lhs)
+                    return DPRINT("Error: WMPUInt<", result.size(),
+                                  ">::operator/=(std::uint64_t) of\n", expectedResult,
+                                  " and\n", rhs.data()[0], "\nresulted in\n", result,
+                                  "\ninstead of\n", lhs, "\n");
+
+                result.assign(0);
+                result = expectedResult / rhs.data()[0];
+                shortResult.assign(result);
+                if(result.data()[0] > 0 || shortResult != lhs)
+                    return DPRINT("Error: WMPUInt<", result.size(),
+                                  ">::operator/(std::uint64_t) of\n", expectedResult,
+                                  " and\n", rhs.data()[0], "\nresulted in\n", result,
+                                  "\ninstead of\n", lhs, "\n");
+            }
         }
 
         if constexpr(kSize1 >= kSize2)

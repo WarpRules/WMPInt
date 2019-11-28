@@ -1,8 +1,8 @@
 #ifndef WMPINT_INCLUDE_GUARD
 #define WMPINT_INCLUDE_GUARD
 
-#define WMPINT_VERSION 0x000401
-#define WMPINT_VERSION_STRING "0.4.1"
+#define WMPINT_VERSION 0x000402
+#define WMPINT_VERSION_STRING "0.4.2"
 #define WMPINT_COPYRIGHT_STRING "WMPInt v" WMPINT_VERSION_STRING " (C)2019 Juha Nieminen"
 
 #include <cstdint>
@@ -115,6 +115,8 @@ class WMPUInt
     WMPUInt<kSize> operator*(const WMPUInt<kSize>&) const;
     WMPUInt<kSize>& operator*=(std::uint64_t);
     WMPUInt<kSize> operator*(std::uint64_t) const;
+    WMPUInt<kSize>& operator/=(std::uint64_t);
+    WMPUInt<kSize> operator/(std::uint64_t) const;
 
     WMPUInt<kSize> operator-() const;
     void neg();
@@ -146,6 +148,8 @@ class WMPUInt
     template<std::size_t kSize2>
     void fullMultiply_karatsuba(const WMPUInt<kSize2>&, WMPUInt<kSize+kSize2>& result,
                                 std::uint64_t* tempBuffer) const;
+
+    void divide(std::uint64_t, WMPUInt<kSize>& result) const;
 
     void addTo(WMPUInt<kSize>& target1, WMPUInt<kSize>& target2) const;
 
@@ -203,6 +207,8 @@ class WMPUInt<1>
     WMPUInt<1>& operator--() { --mValue; return *this; }
     WMPUInt<1>& operator*=(const WMPUInt<1>& rhs) { mValue *= rhs.mValue; return *this; }
     WMPUInt<1> operator*(const WMPUInt<1>& rhs) const { return WMPUInt<1>(mValue * rhs.mValue); }
+    WMPUInt<1>& operator/=(const WMPUInt<1>& rhs) { mValue /= rhs.mValue; return *this; }
+    WMPUInt<1> operator/(const WMPUInt<1>& rhs) const { return WMPUInt<1>(mValue / rhs.mValue); }
     WMPUInt<1> operator-() const { return WMPUInt<1>(-mValue); }
     void neg() { mValue = -mValue; }
 
@@ -1699,6 +1705,86 @@ template<std::size_t kSize>
 inline WMPUInt<kSize> operator*(std::uint64_t lhs, const WMPUInt<kSize>& rhs)
 {
     return rhs * lhs;
+}
+
+
+//----------------------------------------------------------------------------
+// Division
+//----------------------------------------------------------------------------
+template<std::size_t kSize>
+inline void WMPUInt<kSize>::divide(std::uint64_t rhs, WMPUInt<kSize>& result) const
+{
+    if constexpr(kSize == 2)
+    {
+        asm ("xorl %%edx, %%edx\n\t"
+             "movq (%[lhs]), %%rax\n\t"
+             "divq %[rhs]\n\t"
+             "movq %%rax, (%[result])\n\t"
+             "movq 8(%[lhs]), %%rax\n\t"
+             "divq %[rhs]\n\t"
+             "movq %%rax, 8(%[result])"
+             : "=m"(result.mData)
+             : "m"(mData), [lhs]"r"(mData), [rhs]"rm"(rhs), [result]"r"(result.mData)
+             : "rax", "rdx", "cc");
+    }
+    else
+    {
+        std::size_t counter = kSize, lhsIndex = 0;
+        asm ("xorl %%edx, %%edx\n"
+             "L1%=:\n\t"
+             "movq (%[lhs], %[lhsIndex]), %%rax\n\t"
+             "divq %[rhs]\n\t"
+             "movq %%rax, (%[result], %[lhsIndex])\n\t"
+             "leaq 8(%[lhsIndex]), %[lhsIndex]\n\t"
+             "decq %[counter]\n\t"
+             "jnz L1%="
+             : "=m"(result.mData), [lhsIndex]"+&r"(lhsIndex), [counter]"+&r"(counter)
+             : "m"(mData), [lhs]"r"(mData), [rhs]"r"(rhs), [result]"r"(result.mData)
+             : "rax", "rdx", "cc");
+    }
+}
+
+template<std::size_t kSize>
+inline WMPUInt<kSize>& WMPUInt<kSize>::operator/=(std::uint64_t rhs)
+{
+    if constexpr(kSize == 2)
+    {
+        asm ("xorl %%edx, %%edx\n\t"
+             "movq (%[lhs]), %%rax\n\t"
+             "divq %[rhs]\n\t"
+             "movq %%rax, (%[lhs])\n\t"
+             "movq 8(%[lhs]), %%rax\n\t"
+             "divq %[rhs]\n\t"
+             "movq %%rax, 8(%[lhs])"
+             : "+m"(mData)
+             : [lhs]"r"(mData), [rhs]"rm"(rhs)
+             : "rax", "rdx", "cc");
+    }
+    else
+    {
+        std::uint64_t* lhs = mData;
+        std::size_t counter = kSize;
+        asm ("xorl %%edx, %%edx\n"
+             "L1%=:\n\t"
+             "movq (%[lhs]), %%rax\n\t"
+             "divq %[rhs]\n\t"
+             "movq %%rax, (%[lhs])\n\t"
+             "leaq 8(%[lhs]), %[lhs]\n\t"
+             "decq %[counter]\n\t"
+             "jnz L1%="
+             : "+m"(mData), [lhs]"+&r"(lhs), [counter]"+&r"(counter)
+             : [rhs]"r"(rhs) : "rax", "rdx", "cc");
+    }
+
+    return *this;
+}
+
+template<std::size_t kSize>
+inline WMPUInt<kSize> WMPUInt<kSize>::operator/(std::uint64_t rhs) const
+{
+    WMPUInt<kSize> result;
+    divide(rhs, result);
+    return result;
 }
 
 

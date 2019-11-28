@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-  <title>WMPInt 0.4.1 documentation</title>
+  <title>WMPInt 0.4.2 documentation</title>
   <style type="text/css"> <!--
 html
 {
@@ -96,7 +96,7 @@ code
 </head>
 
 <body>
-<h1>WMPInt 0.4.1 documentation</h1>
+<h1>WMPInt 0.4.2 documentation</h1>
 
 <p><code>WMPUInt</code> and <code>WMPInt</code> (not yet implemented) are templated
   classes that implement multi-precision integer arithmetic for x86-64 platforms
@@ -439,6 +439,8 @@ WMPUInt&lt;kSize&gt;&amp; <span class="funcname">operator*=</span> (const WMPUIn
 WMPUInt&lt;kSize&gt;  <span class="funcname">operator*</span>  (const WMPUInt&lt;kSize&gt;&amp;) const;
 WMPUInt&lt;kSize&gt;&amp; <span class="funcname">operator*=</span> (std::uint64_t);
 WMPUInt&lt;kSize&gt;  <span class="funcname">operator*</span>  (std::uint64_t) const;
+WMPUInt&lt;kSize&gt;&amp; <span class="funcname">operator/=</span> (std::uint64_t);
+WMPUInt&lt;kSize&gt;  <span class="funcname">operator/</span>  (std::uint64_t) const;
 WMPUInt&lt;kSize&gt;  <span class="funcname">operator-</span>  () const;
 
 void neg ();</pre>
@@ -448,6 +450,11 @@ void neg ();</pre>
 <pre class="synopsis">WMPUInt&lt;kSize&gt; <span class="funcname">operator+</span> (std::uint64_t, const WMPUInt&lt;kSize&gt;&amp;);
 WMPUInt&lt;kSize&gt; <span class="funcname">operator-</span> (std::uint64_t, const WMPUInt&lt;kSize&gt;&amp;);
 WMPUInt&lt;kSize&gt; <span class="funcname">operator*</span> (std::uint64_t, const WMPUInt&lt;kSize&gt;&amp;);</pre>
+
+<p><b class="important">Important!</b> The division operators <em>do not</em> check for
+  division by zero. Dividing by zero will most probably cause the CPU to throw an exception
+  (which eg. in Linux will cause the program to throw a SIGFPE signal.) Checking if the divisor
+  is zero (before calling the division operators) is up to the calling code.</p>
 
 <p>Note 1: The postfix versions of <code>operator++</code> and <code>operator--</code>
   are <em>deliberately</em> omitted because of their (needless) overhead.</p>
