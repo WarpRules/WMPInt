@@ -149,7 +149,7 @@ class WMPUInt
     void fullMultiply_karatsuba(const WMPUInt<kSize2>&, WMPUInt<kSize+kSize2>& result,
                                 std::uint64_t* tempBuffer) const;
 
-    void divide(std::uint64_t, WMPUInt<kSize>& result) const;
+    std::uint64_t divide(std::uint64_t, WMPUInt<kSize>& result) const;
 
     void addTo(WMPUInt<kSize>& target1, WMPUInt<kSize>& target2) const;
 
@@ -1712,8 +1712,9 @@ inline WMPUInt<kSize> operator*(std::uint64_t lhs, const WMPUInt<kSize>& rhs)
 // Division
 //----------------------------------------------------------------------------
 template<std::size_t kSize>
-inline void WMPUInt<kSize>::divide(std::uint64_t rhs, WMPUInt<kSize>& result) const
+inline std::uint64_t WMPUInt<kSize>::divide(std::uint64_t rhs, WMPUInt<kSize>& result) const
 {
+    std::uint64_t reminder;
     if constexpr(kSize == 2)
     {
         asm ("xorl %%edx, %%edx\n\t"
@@ -1723,9 +1724,9 @@ inline void WMPUInt<kSize>::divide(std::uint64_t rhs, WMPUInt<kSize>& result) co
              "movq 8(%[lhs]), %%rax\n\t"
              "divq %[rhs]\n\t"
              "movq %%rax, 8(%[result])"
-             : "=m"(result.mData)
+             : "=m"(result.mData), "=&d"(reminder)
              : "m"(mData), [lhs]"r"(mData), [rhs]"rm"(rhs), [result]"r"(result.mData)
-             : "rax", "rdx", "cc");
+             : "rax", "cc");
     }
     else
     {
@@ -1738,10 +1739,12 @@ inline void WMPUInt<kSize>::divide(std::uint64_t rhs, WMPUInt<kSize>& result) co
              "leaq 8(%[lhsIndex]), %[lhsIndex]\n\t"
              "decq %[counter]\n\t"
              "jnz L1%="
-             : "=m"(result.mData), [lhsIndex]"+&r"(lhsIndex), [counter]"+&r"(counter)
+             : "=m"(result.mData), "=&d"(reminder),
+               [lhsIndex]"+&r"(lhsIndex), [counter]"+&r"(counter)
              : "m"(mData), [lhs]"r"(mData), [rhs]"r"(rhs), [result]"r"(result.mData)
-             : "rax", "rdx", "cc");
+             : "rax", "cc");
     }
+    return reminder;
 }
 
 template<std::size_t kSize>
