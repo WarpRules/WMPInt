@@ -459,3 +459,77 @@ void WMPIntImplementations::doFullKaratsubaMultiplication
     gWMPInt_karatsuba_max_temp_buffer_size = gWMPInt_tempBuffer_max_position - tempBuffer;
 #endif
 }
+
+
+//----------------------------------------------------------------------------
+// Output as decimal string
+//----------------------------------------------------------------------------
+#include <cstdio>
+
+/* In all these functions "destination" points to the *last* position in the destination
+   char array, to the last character where the outputted string should be put (it will be
+   decremented as the value is outputted).
+*/
+static char* print_uint64_full_length(std::uint64_t value, char* destination)
+{
+    for(unsigned i = 0; i < 19; ++i)
+    {
+        const std::uint64_t remainder = value % 10;
+        value /= 10;
+        *destination-- = static_cast<char>(remainder) + '0';
+    }
+    return destination;
+}
+
+static char* print_uint64(std::uint64_t value, char* destination)
+{
+    while(value)
+    {
+        const std::uint64_t remainder = value % 10;
+        value /= 10;
+        *destination-- = static_cast<char>(remainder) + '0';
+    }
+    return destination;
+}
+
+char* WMPIntImplementations::printAsDecStrAndReset
+(std::uint64_t* value, std::size_t valueSize, char* destination)
+{
+    std::size_t leftIndex = 0;
+    while(leftIndex < valueSize && !value[leftIndex]) ++leftIndex;
+
+    if(leftIndex == valueSize) // the value is all zeros
+    {
+        *destination = '0';
+        return destination;
+    }
+
+    std::size_t remainingValueSize = valueSize - leftIndex;
+    std::uint64_t rhs = UINT64_C(10000000000000000000);
+
+    while(true)
+    {
+        std::size_t counter = remainingValueSize;
+        std::uint64_t* lhs = value + leftIndex, remainder;
+        asm ("xorl %%edx, %%edx\n"
+             "L1%=:\n\t"
+             "movq (%[lhs]), %%rax\n\t"
+             "divq %[rhs]\n\t"
+             "movq %%rax, (%[lhs])\n\t"
+             "leaq 8(%[lhs]), %[lhs]\n\t"
+             "decq %[counter]\n\t"
+             "jnz L1%="
+             : "+m"(*(std::uint64_t(*)[valueSize])value),
+               [lhs]"+&r"(lhs), [counter]"+&r"(counter), "=&d"(remainder)
+             : [rhs]"r"(rhs) : "rax", "cc");
+
+        if(!value[leftIndex])
+        {
+            ++leftIndex;
+            if(--remainingValueSize == 0)
+                return print_uint64(remainder, destination) + 1;
+        }
+
+        destination = print_uint64_full_length(remainder, destination);
+    }
+}

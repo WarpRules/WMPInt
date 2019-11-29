@@ -5,6 +5,11 @@
 #include <cstring>
 #include <cctype>
 
+namespace
+{
+    std::mt19937_64 gRngEngine(0);
+}
+
 //============================================================================
 // Test WMPUInt<1>
 //============================================================================
@@ -78,6 +83,41 @@ static bool testAssignmentFromDecStr(const char* str, Values_t&&... values)
     return true;
 }
 
+template<std::size_t kSize>
+static bool testAssignmentAndPrintingAsDecStr()
+{
+    const std::size_t kMaxDigits = WMPUInt<kSize>::maxDecimalDigits();
+    WMPUInt<kSize> value;
+    char inputStr[kMaxDigits+1], outputStr[kMaxDigits+1];
+    outputStr[kMaxDigits] = 0;
+
+    for(std::size_t strLength = 1; strLength < kMaxDigits; ++strLength)
+    {
+        for(unsigned iteration = 0; iteration < 1000; ++iteration)
+        {
+            inputStr[0] = '1' + gRngEngine() % 9;
+            for(unsigned i = 1; i < strLength; ++i)
+                inputStr[i] = '0' + gRngEngine() % 10;
+            inputStr[strLength] = 0;
+
+            value.assignFromDecStr(inputStr);
+            const char* resultStr = value.printAsDecStr(outputStr);
+
+            if(resultStr < outputStr)
+                return DPRINT("Error: WMPUInt<", kSize,
+                              ">::printAsDecStr() outputted too many characters for value\n",
+                              value, "\n");
+
+            if(std::strcmp(inputStr, resultStr) != 0)
+                return DPRINT("Error: WMPUInt<", kSize,
+                              ">::printAsDecStr() outputted\n\"", resultStr,
+                              "\"\ninstead of\n\"", inputStr, "\"\n");
+        }
+    }
+
+    return true;
+}
+
 static bool testAssignmentFromStr()
 {
     std::cout << "Testing assignment from string" << std::endl;
@@ -118,6 +158,13 @@ static bool testAssignmentFromStr()
        ("1234567890123456789012345678901234567890123456789012345678901234567890",
         UINT64_C(0x0000002DCAEC4C2D), UINT64_C(0xF4268937664439BA),
         UINT64_C(0x2F162FC2D76998CB), UINT64_C(0xACCFF196CE3F0AD2))) DRET;
+
+    if(!testAssignmentAndPrintingAsDecStr<2>()) DRET;
+    if(!testAssignmentAndPrintingAsDecStr<3>()) DRET;
+    if(!testAssignmentAndPrintingAsDecStr<4>()) DRET;
+    if(!testAssignmentAndPrintingAsDecStr<5>()) DRET;
+    if(!testAssignmentAndPrintingAsDecStr<6>()) DRET;
+    if(!testAssignmentAndPrintingAsDecStr<7>()) DRET;
     return true;
 }
 
@@ -361,15 +408,14 @@ static bool testMultiplicationWithSize2(std::uint64_t v1_lsw, std::uint64_t v1_m
 
 static bool testMultiplicationWithSize2()
 {
-    std::mt19937_64 rngEngine(0);
     WMPUInt<2> result;
 
     for(unsigned i = 0; i < 1000000; ++i)
     {
-        if(!testMultiplicationWithSize2(rngEngine(), rngEngine(), rngEngine(), rngEngine()))
+        if(!testMultiplicationWithSize2(gRngEngine(), gRngEngine(), gRngEngine(), gRngEngine()))
             DRET;
 
-        const WMPUInt<1> input1(rngEngine()), input2(rngEngine());
+        const WMPUInt<1> input1(gRngEngine()), input2(gRngEngine());
         const __uint128_t testValue1 = *input1.data(), testValue2 = *input2.data();
         input1.fullMultiply(input2, result, nullptr);
         const __uint128_t resultValue = testValue1 * testValue2;
@@ -442,13 +488,12 @@ static bool testMultiplicationWithPatterns(unsigned bitPattern1, unsigned bitPat
 template<std::size_t kSize>
 static bool testMultiplicationWithAddition()
 {
-    std::mt19937_64 rngEngine(0);
     WMPUInt<kSize> value, factor(0), result1, result2;
 
     for(unsigned counter = 0; counter < 5000; ++counter)
     {
         for(std::size_t i = 0; i < kSize; ++i)
-            value.data()[i] = rngEngine();
+            value.data()[i] = gRngEngine();
 
         result1 = value;
 
@@ -1023,13 +1068,12 @@ static bool testModuloForSize(std::mt19937_64& rng)
 static bool testModulo()
 {
     std::cout << "Testing modulo" << std::endl;
-    std::mt19937_64 rngEngine(0);
-    if(!testModuloForSize<1>(rngEngine)) DRET;
-    if(!testModuloForSize<2>(rngEngine)) DRET;
-    if(!testModuloForSize<3>(rngEngine)) DRET;
-    if(!testModuloForSize<4>(rngEngine)) DRET;
-    if(!testModuloForSize<5>(rngEngine)) DRET;
-    if(!testModuloForSize<10>(rngEngine)) DRET;
+    if(!testModuloForSize<1>(gRngEngine)) DRET;
+    if(!testModuloForSize<2>(gRngEngine)) DRET;
+    if(!testModuloForSize<3>(gRngEngine)) DRET;
+    if(!testModuloForSize<4>(gRngEngine)) DRET;
+    if(!testModuloForSize<5>(gRngEngine)) DRET;
+    if(!testModuloForSize<10>(gRngEngine)) DRET;
     return true;
 }
 
@@ -1220,14 +1264,13 @@ static bool testShiftWithSize(std::mt19937_64& rngEngine)
 static bool testShifting()
 {
     std::cout << "Testing bitshift" << std::endl;
-    std::mt19937_64 rngEngine(0);
-    if(!testShiftWithSize<1>(rngEngine)) DRET;
-    if(!testShiftWithSize<2>(rngEngine)) DRET;
-    if(!testShiftWithSize<3>(rngEngine)) DRET;
-    if(!testShiftWithSize<4>(rngEngine)) DRET;
-    if(!testShiftWithSize<10>(rngEngine)) DRET;
-    if(!testShiftWithSize<15>(rngEngine)) DRET;
-    if(!testShiftWithSize<100>(rngEngine)) DRET;
+    if(!testShiftWithSize<1>(gRngEngine)) DRET;
+    if(!testShiftWithSize<2>(gRngEngine)) DRET;
+    if(!testShiftWithSize<3>(gRngEngine)) DRET;
+    if(!testShiftWithSize<4>(gRngEngine)) DRET;
+    if(!testShiftWithSize<10>(gRngEngine)) DRET;
+    if(!testShiftWithSize<15>(gRngEngine)) DRET;
+    if(!testShiftWithSize<100>(gRngEngine)) DRET;
     return true;
 }
 

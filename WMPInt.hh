@@ -1,8 +1,8 @@
 #ifndef WMPINT_INCLUDE_GUARD
 #define WMPINT_INCLUDE_GUARD
 
-#define WMPINT_VERSION 0x000402
-#define WMPINT_VERSION_STRING "0.4.2"
+#define WMPINT_VERSION 0x000500
+#define WMPINT_VERSION_STRING "0.5.0"
 #define WMPINT_COPYRIGHT_STRING "WMPInt v" WMPINT_VERSION_STRING " (C)2019 Juha Nieminen"
 
 #include <cstdint>
@@ -57,6 +57,10 @@ class WMPUInt
     constexpr static std::size_t maxDecimalDigits();
 
     void printAsHexStr(char* destination) const;
+
+    char* printAsDecStr(char* destination) const;
+    char* printAsDecStr(char* destination, WMPUInt<kSize>& temp) const;
+    char* printAsDecStrAndReset(char* destination);
 
     //------------------------------------------------------------------------
     // Comparison operators
@@ -345,6 +349,8 @@ inline void WMPUInt<1>::addTo(WMPUInt<1>& target1, WMPUInt<1>& target2) const
 //----------------------------------------------------------------------------
 namespace WMPIntImplementations
 {
+    char* printAsDecStrAndReset(std::uint64_t*, std::size_t, char*);
+
     void doLongMultiplication
     (std::size_t, const std::uint64_t*, const std::uint64_t*, std::uint64_t*, std::uint64_t*);
 
@@ -649,6 +655,28 @@ inline void WMPUInt<kSize>::printAsHexStr(char* destination) const
             *destination++ = (nibble < 10 ? nibble + '0' : nibble + ('A' - 10));
         }
     }
+}
+
+template<std::size_t kSize>
+inline char* WMPUInt<kSize>::printAsDecStr(char* destination, WMPUInt<kSize>& temp) const
+{
+    temp = *this;
+    return WMPIntImplementations::printAsDecStrAndReset
+        (temp.mData, kSize, destination + (maxDecimalDigits() - 1));
+}
+
+template<std::size_t kSize>
+inline char* WMPUInt<kSize>::printAsDecStr(char* destination) const
+{
+    WMPUInt<kSize> temp;
+    return printAsDecStr(destination, temp);
+}
+
+template<std::size_t kSize>
+inline char* WMPUInt<kSize>::printAsDecStrAndReset(char* destination)
+{
+    return WMPIntImplementations::printAsDecStrAndReset
+        (mData, kSize, destination + (maxDecimalDigits() - 1));
 }
 
 

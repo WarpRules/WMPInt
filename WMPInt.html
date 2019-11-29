@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-  <title>WMPInt 0.4.2 documentation</title>
+  <title>WMPInt 0.5.0 documentation</title>
   <style type="text/css"> <!--
 html
 {
@@ -96,7 +96,7 @@ code
 </head>
 
 <body>
-<h1>WMPInt 0.4.2 documentation</h1>
+<h1>WMPInt 0.5.0 documentation</h1>
 
 <p><code>WMPUInt</code> and <code>WMPInt</code> (not yet implemented) are templated
   classes that implement multi-precision integer arithmetic for x86-64 platforms
@@ -604,7 +604,7 @@ std::uint64_t divisor = 1234567;
 std::uint64_t remainder = value.divide(divisor, result);</pre>
 
 <p>If you only require the remainder of the <code>WMPUInt</code> object divided by a
-  <code>std::uint64_t</code> value, using the <code>modulo()</code> is more convenient
+  <code>std::uint64_t</code> value, using the <code>modulo()</code> function is more convenient
   and slightly more optimal (because the quotient will not be needlessly stored anywhere).
   Example:</p>
 
@@ -668,6 +668,69 @@ char str[number.maxHexadecimalDigits() + 1] = {};
 number.printAsHexStr(str);
 std::cout &lt;&lt; "The number is " &lt;&lt; str &lt;&lt; "\n";</pre>
 
+<h3>Output in decimal format</h3>
+
+<p><b>Member functions:</b></p>
+
+<pre class="synopsis">constexpr static std::size_t <span class="funcname">maxDecimalDigits</span> ();
+char* <span class="funcname">printAsDecStr</span> (char* destination) const;
+char* <span class="funcname">printAsDecStr</span> (char* destination, WMPUInt&lt;kSize&gt;&amp; temp) const;
+char* <span class="funcname">printAsDecStrAndReset</span> (char* destination);</pre>
+
+<p>These functions can be used to output the value in decimal format. The <code>destination</code>
+  char array must contain at least <code>maxDecimalDigits()</code> elements.</p>
+
+<p>Note that these functions will output the characters at the <em>end</em> of the destination
+  array. The return value is a pointer to the beginning of the outputted string. The contents
+  of the array prior to that point will be unmodified. The result will have no leading
+  <code>'0'</code> characters.</p>
+
+<p>Note that these functions do not output an ending null character.</p>
+
+<p>Example:</p>
+
+<pre>WMPUInt&lt;4&gt; value;
+value.assignFromDecStr("123456789012345678901234567890");
+
+const std::size_t kMaxDigits = WMPUInt&lt;4&gt;::maxDecimalDigits();
+char str[kMaxDigits + 1];
+str[kMaxDigits] = 0;
+
+std::cout &lt;&lt; value.printAsDecStr(str) &lt;&lt; "\n";</pre>
+
+<p>Note that in order to create the output string, <code>printAsDecStr()</code> needs to copy
+  the value into a temporary buffer in order to modify it. The second version of the function
+  takes this temporary buffer as parameter (which may be necessary for very large values).
+  Example:</p>
+
+<pre>WMPUInt&lt;1024&gt; value, temp;
+value.printAsDecStr(destination, temp);</pre>
+
+<p>This temporary buffer can be avoided completely if it's acceptable for the object that's
+  being printed to be zeroed. This can be done with the <code>printAsDecStrAndReset()</code>
+  function. This version does not require any temporary buffer, and the value will be set to
+  zero when it returns.</p>
+
+<p>Expanding <code>std::ostream</code> to support (relatively small) <code>WMPUInt</code>
+  values could be done for example like this:</p>
+
+<pre>template&lt;std::size_t kSize&gt;
+std::ostream&amp; operator&lt;&lt;(std::ostream&amp; os, const WMPUInt&lt;kSize&gt;&amp; value)
+{
+    const std::size_t kMaxDigits = WMPUInt&lt;kSize&gt;::maxDecimalDigits();
+    char str[kMaxDigits + 1];
+    str[kMaxDigits] = 0;
+    return os &lt;&lt; value.printAsDecStr(str);
+}
+
+void foo()
+{
+    WMPUInt&lt;2&gt; value;
+    value.assignFromDecStr("123456789012345678901234567890");
+    std::cout &lt;&lt; "Value is: " &lt;&lt; value &lt;&lt; "\n";
+}
+</pre>
+
 <!---------------------------------------------------------------------------->
 <h2 id="notyetsupported">Not yet supported features</h2>
 
@@ -677,7 +740,6 @@ std::cout &lt;&lt; "The number is " &lt;&lt; str &lt;&lt; "\n";</pre>
   <li>Division operators.</li>
   <li>Modulo operators.</li>
   <li>A <code>divmod()</code> function that returns both the result and remainder of division.</li>
-  <li>Output to a string in decimal format (not yet provided because it requires division.)</li>
   <li>A signed version of the class, <code>WMPInt</code>.</li>
 </ul>
 
