@@ -978,6 +978,63 @@ static bool testMultiplication()
 
 
 //============================================================================
+// Test modulo
+//============================================================================
+template<std::size_t kSize>
+static bool testModuloForSize(std::mt19937_64& rng)
+{
+    WMPUInt<kSize> value;
+    WMPUInt<kSize+1> product, result2;
+
+    for(std::uint64_t divisor = 2; divisor < 500; ++divisor)
+    {
+        for(std::size_t i = 0; i < kSize; ++i) value.data()[i] = rng();
+        value.fullMultiply(WMPUInt<1>(divisor), product);
+
+        for(std::uint64_t counter = 0; counter < divisor*2; ++counter)
+        {
+            const std::uint64_t expectedResult = counter % divisor;
+            const std::uint64_t result1 = product.modulo(divisor);
+
+            if(result1 != expectedResult)
+                return DPRINT("Error: WMPUInt<", kSize+1, ">::modulo(", divisor, ") of\n",
+                              product, "\nreturned ", result1, " instead of ",
+                              expectedResult, "\n");
+
+            result2 = product % divisor;
+            if(result2 != expectedResult)
+                return DPRINT("Error: WMPUInt<", kSize+1, ">::operator%(", divisor, ") of\n",
+                              product, "\nreturned ", result1, " instead of ",
+                              expectedResult, "\n");
+
+            result2 = product;
+            result2 %= divisor;
+            if(result2 != expectedResult)
+                return DPRINT("Error: WMPUInt<", kSize+1, ">::operator%=(", divisor, ") of\n",
+                              product, "\nreturned ", result1, " instead of ",
+                              expectedResult, "\n");
+
+            ++product;
+        }
+    }
+    return true;
+}
+
+static bool testModulo()
+{
+    std::cout << "Testing modulo" << std::endl;
+    std::mt19937_64 rngEngine(0);
+    if(!testModuloForSize<1>(rngEngine)) DRET;
+    if(!testModuloForSize<2>(rngEngine)) DRET;
+    if(!testModuloForSize<3>(rngEngine)) DRET;
+    if(!testModuloForSize<4>(rngEngine)) DRET;
+    if(!testModuloForSize<5>(rngEngine)) DRET;
+    if(!testModuloForSize<10>(rngEngine)) DRET;
+    return true;
+}
+
+
+//============================================================================
 // Test negation
 //============================================================================
 template<std::size_t kSize>
@@ -1274,6 +1331,7 @@ int main()
     if(!testAddition()) DRETM;
     if(!testMultiplication()) DRETM;
     if(!testFullMultiplication()) DRETM;
+    if(!testModulo()) DRETM;
     if(!testNegation()) DRETM;
     if(!testShifting()) DRETM;
     std::cout << "All tests OK.\n";

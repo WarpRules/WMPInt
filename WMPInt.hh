@@ -117,6 +117,8 @@ class WMPUInt
     WMPUInt<kSize> operator*(std::uint64_t) const;
     WMPUInt<kSize>& operator/=(std::uint64_t);
     WMPUInt<kSize> operator/(std::uint64_t) const;
+    WMPUInt<kSize>& operator%=(std::uint64_t);
+    WMPUInt<kSize> operator%(std::uint64_t) const;
 
     WMPUInt<kSize> operator-() const;
     void neg();
@@ -150,6 +152,7 @@ class WMPUInt
                                 std::uint64_t* tempBuffer) const;
 
     std::uint64_t divide(std::uint64_t, WMPUInt<kSize>& result) const;
+    std::uint64_t modulo(std::uint64_t rhs) const;
 
     void addTo(WMPUInt<kSize>& target1, WMPUInt<kSize>& target2) const;
 
@@ -209,6 +212,8 @@ class WMPUInt<1>
     WMPUInt<1> operator*(const WMPUInt<1>& rhs) const { return WMPUInt<1>(mValue * rhs.mValue); }
     WMPUInt<1>& operator/=(const WMPUInt<1>& rhs) { mValue /= rhs.mValue; return *this; }
     WMPUInt<1> operator/(const WMPUInt<1>& rhs) const { return WMPUInt<1>(mValue / rhs.mValue); }
+    WMPUInt<1>& operator%=(const WMPUInt<1>& rhs) { mValue %= rhs.mValue; return *this; }
+    WMPUInt<1> operator%(const WMPUInt<1>& rhs) const { return WMPUInt<1>(mValue % rhs.mValue); }
     WMPUInt<1> operator-() const { return WMPUInt<1>(-mValue); }
     void neg() { mValue = -mValue; }
 
@@ -234,6 +239,9 @@ class WMPUInt<1>
     constexpr static std::size_t fullMultiply_karatsubaBufferSize() { return 1; }
     template<std::size_t kSize2> void fullMultiply_karatsuba
     (const WMPUInt<kSize2>&, WMPUInt<1+kSize2>&, std::uint64_t*) const;
+
+    std::uint64_t divide(std::uint64_t, WMPUInt<1>& result) const;
+    std::uint64_t modulo(std::uint64_t rhs) const { return mValue % rhs; }
 
     void addTo(WMPUInt<1>& target1, WMPUInt<1>& target2) const;
 
@@ -315,6 +323,14 @@ inline void WMPUInt<1>::fullMultiply_karatsuba
 (const WMPUInt<kSize2>& rhs, WMPUInt<1+kSize2>& result, std::uint64_t*) const
 {
     fullMultiply(rhs, result);
+}
+
+inline std::uint64_t WMPUInt<1>::divide(std::uint64_t rhs, WMPUInt<1>& result) const
+{
+    // Compilers are smart enough to optimize this. No need for inline asm.
+    const std::uint64_t quotient = mValue / rhs, remainder = mValue % rhs;
+    result.mValue = quotient;
+    return remainder;
 }
 
 inline void WMPUInt<1>::addTo(WMPUInt<1>& target1, WMPUInt<1>& target2) const
@@ -1714,7 +1730,7 @@ inline WMPUInt<kSize> operator*(std::uint64_t lhs, const WMPUInt<kSize>& rhs)
 template<std::size_t kSize>
 inline std::uint64_t WMPUInt<kSize>::divide(std::uint64_t rhs, WMPUInt<kSize>& result) const
 {
-    std::uint64_t reminder;
+    std::uint64_t remainder;
     if constexpr(kSize == 2)
     {
         asm ("xorl %%edx, %%edx\n\t"
@@ -1724,7 +1740,7 @@ inline std::uint64_t WMPUInt<kSize>::divide(std::uint64_t rhs, WMPUInt<kSize>& r
              "movq 8(%[lhs]), %%rax\n\t"
              "divq %[rhs]\n\t"
              "movq %%rax, 8(%[result])"
-             : "=m"(result.mData), "=&d"(reminder)
+             : "=m"(result.mData), "=&d"(remainder)
              : "m"(mData), [lhs]"r"(mData), [rhs]"rm"(rhs), [result]"r"(result.mData)
              : "rax", "cc");
     }
@@ -1739,12 +1755,12 @@ inline std::uint64_t WMPUInt<kSize>::divide(std::uint64_t rhs, WMPUInt<kSize>& r
              "leaq 8(%[lhsIndex]), %[lhsIndex]\n\t"
              "decq %[counter]\n\t"
              "jnz L1%="
-             : "=m"(result.mData), "=&d"(reminder),
+             : "=m"(result.mData), "=&d"(remainder),
                [lhsIndex]"+&r"(lhsIndex), [counter]"+&r"(counter)
              : "m"(mData), [lhs]"r"(mData), [rhs]"r"(rhs), [result]"r"(result.mData)
              : "rax", "cc");
     }
-    return reminder;
+    return remainder;
 }
 
 template<std::size_t kSize>
@@ -1788,6 +1804,57 @@ inline WMPUInt<kSize> WMPUInt<kSize>::operator/(std::uint64_t rhs) const
     WMPUInt<kSize> result;
     divide(rhs, result);
     return result;
+}
+
+
+//----------------------------------------------------------------------------
+// Modulo
+//----------------------------------------------------------------------------
+template<std::size_t kSize>
+inline std::uint64_t WMPUInt<kSize>::modulo(std::uint64_t rhs) const
+{
+    // Since we only need the remainder, we don't need to store the result anywhere
+    std::uint64_t remainder;
+    if constexpr(kSize == 2)
+    {
+        asm ("xorl %%edx, %%edx\n\t"
+             "movq (%[lhs]), %%rax\n\t"
+             "divq %[rhs]\n\t"
+             "movq 8(%[lhs]), %%rax\n\t"
+             "divq %[rhs]\n\t"
+             : "=&d"(remainder)
+             : "m"(mData), [lhs]"r"(mData), [rhs]"rm"(rhs)
+             : "rax", "cc");
+    }
+    else
+    {
+        const std::uint64_t* lhs = mData;
+        std::size_t counter = kSize;
+        asm ("xorl %%edx, %%edx\n"
+             "L1%=:\n\t"
+             "movq (%[lhs]), %%rax\n\t"
+             "divq %[rhs]\n\t"
+             "leaq 8(%[lhs]), %[lhs]\n\t"
+             "decq %[counter]\n\t"
+             "jnz L1%="
+             : "=&d"(remainder), [lhs]"+&r"(lhs), [counter]"+&r"(counter)
+             : "m"(mData), [rhs]"r"(rhs)
+             : "rax", "cc");
+    }
+    return remainder;
+}
+
+template<std::size_t kSize>
+WMPUInt<kSize>& WMPUInt<kSize>::operator%=(std::uint64_t rhs)
+{
+    assign(modulo(rhs));
+    return *this;
+}
+
+template<std::size_t kSize>
+WMPUInt<kSize> WMPUInt<kSize>::operator%(std::uint64_t rhs) const
+{
+    return WMPUInt<kSize>(modulo(rhs));
 }
 
 

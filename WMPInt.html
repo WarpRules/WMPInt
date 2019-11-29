@@ -134,6 +134,7 @@ WMPUInt&lt;16&gt; result = a + b * c;</pre>
     <ul>
       <li><a href="#multiply">Multiplying very large integers</a></li>
       <li><a href="#fullmultiply">Full multiplication</a></li>
+      <li><a href="#divmod">Division and modulo</a></li>
       <li><a href="#bitshift">Bit-shifting by a compile-time constant</a></li>
     </ul>
     <li><a href="#printing">ASCII output</a></li>
@@ -441,6 +442,8 @@ WMPUInt&lt;kSize&gt;&amp; <span class="funcname">operator*=</span> (std::uint64_
 WMPUInt&lt;kSize&gt;  <span class="funcname">operator*</span>  (std::uint64_t) const;
 WMPUInt&lt;kSize&gt;&amp; <span class="funcname">operator/=</span> (std::uint64_t);
 WMPUInt&lt;kSize&gt;  <span class="funcname">operator/</span>  (std::uint64_t) const;
+WMPUInt&lt;kSize&gt;&amp; <span class="funcname">operator%=</span> (std::uint64_t);
+WMPUInt&lt;kSize&gt;  <span class="funcname">operator%</span>  (std::uint64_t) const;
 WMPUInt&lt;kSize&gt;  <span class="funcname">operator-</span>  () const;
 
 void neg ();</pre>
@@ -451,7 +454,7 @@ void neg ();</pre>
 WMPUInt&lt;kSize&gt; <span class="funcname">operator-</span> (std::uint64_t, const WMPUInt&lt;kSize&gt;&amp;);
 WMPUInt&lt;kSize&gt; <span class="funcname">operator*</span> (std::uint64_t, const WMPUInt&lt;kSize&gt;&amp;);</pre>
 
-<p><b class="important">Important!</b> The division operators <em>do not</em> check for
+<p><b class="important">Important!</b> The division and modulo operators <em>do not</em> check for
   division by zero. Dividing by zero will most probably cause the CPU to throw an exception
   (which eg. in Linux will cause the program to throw a SIGFPE signal.) Checking if the divisor
   is zero (before calling the division operators) is up to the calling code.</p>
@@ -521,6 +524,7 @@ void foo(const WMPUInt&lt;kSize&gt;&amp; value1,
 }</pre>
 
 
+<!---------------------------------------------------------------------------->
 <h3 id="fullmultiply">Full multiplication</h3>
 
 <p><b>Member functions:</b></p>
@@ -569,6 +573,53 @@ std::uint64_t tempBuffer[kTempBufferSize];
 
 value1.fullMultiply(value2, result, tempBuffer);</pre>
 
+<!---------------------------------------------------------------------------->
+<h3 id="divmod">Division and modulo</h3>
+
+<p>(Note: This section is still incomplete. It will be updated as the functions get
+  implemented.)</p>
+
+<p><b>Member functions:</b></p>
+
+<pre class="synopsis">std::uint64_t <span class="funcname">divide</span> (std::uint64_t, WMPUInt&lt;kSize&gt;&amp; result) const;
+
+std::uint64_t <span class="funcname">modulo</span> (std::uint64_t rhs) const;</pre>
+
+<p>If you need the quotient <em>and</em> remainder of a division operation, it's much more
+  efficient to get them both at the same time with a single function call, rather than calling
+  <code>operator/()</code> and <code>operator%()</code> separately (as doing so would be
+  calculating the exact same division twice).</p>
+
+<p>The <code>divide()</code> member function taking a <code>std::uint64_t</code> divisor value
+  works similarly in usage to the equivalent <code>multiply()</code> function does, except that
+  it also returns the remainder of the division. (Calling this function is essentially "free"
+  in terms of efficiency even if you don't use the return value for anything. The compiler will
+  be able to optimize the assignment of the return value completely away if it's not used.)</p>
+
+<p>Example:</p>
+
+<pre>WMPUInt&lt;64&gt; value, result;
+std::uint64_t divisor = 1234567;
+
+std::uint64_t remainder = value.divide(divisor, result);</pre>
+
+<p>If you only require the remainder of the <code>WMPUInt</code> object divided by a
+  <code>std::uint64_t</code> value, using the <code>modulo()</code> is more convenient
+  and slightly more optimal (because the quotient will not be needlessly stored anywhere).
+  Example:</p>
+
+<pre>WMPUInt&lt;64&gt; value;
+std::uint64_t divisor = 1234567;
+
+std::uint64_t remainder = value.modulo(divisor);</pre>
+
+<p><b class="important">Important!</b> Note that <code>divide()</code> and <code>modulo()</code>
+  do <em>not</em> check if the divisor is zero. If it is, this will most probably cause a CPU
+  exception to be thrown. Doing this check is up to the calling code, if needed, before calling
+  these functions.</p>
+
+
+<!---------------------------------------------------------------------------->
 <h3 id="bitshift">Bit-shifting by a compile-time constant</h3>
 
 <p><b>Member functions:</b></p>
