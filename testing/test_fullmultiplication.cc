@@ -262,6 +262,29 @@ static bool testFullMultiplication(std::mt19937& rng)
                 return DPRINT("Error: WMPUInt<", kSize1, ">::operator*(WMPUInt<", kSize1,
                               ">) of\n", lhs, " and\n", rhs, "\nresulted in\n", shortResult,
                               "\ninstead of\n", expectedShortResult, "\n");
+
+            if constexpr(kSize1 > 1)
+            {
+                const std::size_t truncatedKaratsubaTempBufferSize =
+                    WMPIntImplementations::truncatedKaratsubaMultiplicationBufferSize(kSize1);
+                std::uint64_t truncatedKaratsubaTempBuffer[truncatedKaratsubaTempBufferSize];
+                shortResult.assign(0);
+                WMPIntImplementations::doTruncatedKaratsubaMultiplication
+                    (lhs.data(), rhs.data(), kSize1, shortResult.data(),
+                     truncatedKaratsubaTempBuffer);
+
+                if(gWMPInt_karatsuba_max_temp_buffer_size != truncatedKaratsubaTempBufferSize)
+                    return DPRINT
+                        ("Error: truncatedKaratsubaMultiplicationBufferSize(",
+                         kSize1, ")\nreturned the value ", truncatedKaratsubaTempBufferSize,
+                         "\nbut the calculation used a buffer size of ",
+                         gWMPInt_karatsuba_max_temp_buffer_size, ".\n");
+
+                if(shortResult != expectedShortResult)
+                    return DPRINT("Error: doTruncatedKaratsubaMultiplication of\n", lhs,
+                                  " and\n", rhs, "\nresulted in\n", shortResult,
+                                  "\ninstead of\n", expectedShortResult, "\n");
+            }
         }
         if constexpr(kSize2 == 1)
         {

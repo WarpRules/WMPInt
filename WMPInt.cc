@@ -12,6 +12,11 @@ void WMPIntImplementations::doLongMultiplication
 (std::size_t kSize, const std::uint64_t* lhs, const std::uint64_t* rhs,
  std::uint64_t* result, std::uint64_t* tempBuffer)
 {
+#ifdef WMPINT_DEBUG_MODE
+    if(tempBuffer + kSize > gWMPInt_tempBuffer_max_position)
+        gWMPInt_tempBuffer_max_position = tempBuffer + kSize;
+#endif
+
     /* Long multiplication algorithm in base 2^64 (eg. kSize == 5)
        -----------------------------------------------------------
                         [R4][R3][R2][R1][R0] // rhs
@@ -237,9 +242,26 @@ static void doAddition(std::uint64_t* lhs, std::size_t lhsSize,
     }
 }
 
+static inline void doAddition(std::uint64_t* lhs, const std::uint64_t* rhs, std::size_t size)
+{
+    std::size_t index = size - 1;
+    std::uint64_t value;
+    asm ("clc\n"
+         "loop%=:\n\t"
+         "movq (%[rhs],%[index],8), %[value]\n\t"
+         "adcq %[value], (%[lhs],%[index],8)\n\t"
+         "decq %[index]\n\t"
+         "jns loop%="
+         : "+m"(*(std::uint64_t(*)[size])lhs),
+           [index]"+&r"(index), [value]"=&r"(value)
+         : "m"(*(std::uint64_t(*)[size])rhs),
+           [lhs]"r"(lhs), [rhs]"r"(rhs)
+         : "cc");
+}
+
 /* Assumes that lhsSize > rhsSize */
-static void doSubtraction(std::uint64_t* lhs, std::size_t lhsSize,
-                          const std::uint64_t* rhs, std::size_t rhsSize)
+static inline void doSubtraction(std::uint64_t* lhs, std::size_t lhsSize,
+                                 const std::uint64_t* rhs, std::size_t rhsSize)
 {
     std::size_t lhsInd = lhsSize - 1, rhsInd = rhsSize - 1;
     std::uint64_t value, zero = 0;
@@ -454,6 +476,50 @@ void WMPIntImplementations::doFullKaratsubaMultiplication
 #endif
 
     ::doFullKaratsubaMultiplication(lhs, lhsSize, rhs, rhsSize, result, tempBuffer);
+
+#ifdef WMPINT_DEBUG_MODE
+    gWMPInt_karatsuba_max_temp_buffer_size = gWMPInt_tempBuffer_max_position - tempBuffer;
+#endif
+}
+
+/* This assumes size > 1 (else doLongMultiplication() will crash) */
+static void doTruncatedKaratsubaMultiplication
+(const std::uint64_t* lhs, const std::uint64_t* rhs, std::size_t size,
+ std::uint64_t* result, std::uint64_t* tempBuffer)
+{
+    if(size <= 31)
+        return WMPIntImplementations::doLongMultiplication(size, lhs, rhs, result, tempBuffer);
+
+    const std::size_t lhsLowSize = size / 2;
+    const std::size_t lhsHighSize = size - lhsLowSize;
+    const std::size_t rhsLowSize = (size + 1) / 2;
+    const std::size_t rhsHighSize = size - rhsLowSize;
+    const std::uint64_t* lhsLow = lhs + lhsHighSize;
+    const std::uint64_t* rhsLow = rhs + rhsHighSize;
+
+    doFullKaratsubaMultiplication
+        (lhsLow, lhsLowSize, rhsLow, rhsLowSize, result, tempBuffer);
+
+    ::doTruncatedKaratsubaMultiplication
+        (lhs, rhsLow, lhsHighSize, tempBuffer, tempBuffer + lhsHighSize);
+
+    doAddition(result, tempBuffer, lhsHighSize);
+
+    ::doTruncatedKaratsubaMultiplication
+        (lhsLow, rhs, lhsLowSize, tempBuffer, tempBuffer + lhsLowSize);
+
+    doAddition(result, tempBuffer, lhsLowSize);
+}
+
+void WMPIntImplementations::doTruncatedKaratsubaMultiplication
+(const std::uint64_t* lhs, const std::uint64_t* rhs, std::size_t size,
+ std::uint64_t* result, std::uint64_t* tempBuffer)
+{
+#ifdef WMPINT_DEBUG_MODE
+    gWMPInt_tempBuffer_max_position = tempBuffer;
+#endif
+
+    ::doTruncatedKaratsubaMultiplication(lhs, rhs, size, result, tempBuffer);
 
 #ifdef WMPINT_DEBUG_MODE
     gWMPInt_karatsuba_max_temp_buffer_size = gWMPInt_tempBuffer_max_position - tempBuffer;

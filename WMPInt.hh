@@ -1,8 +1,8 @@
 #ifndef WMPINT_INCLUDE_GUARD
 #define WMPINT_INCLUDE_GUARD
 
-#define WMPINT_VERSION 0x000500
-#define WMPINT_VERSION_STRING "0.5.0"
+#define WMPINT_VERSION 0x000600
+#define WMPINT_VERSION_STRING "0.6.0"
 #define WMPINT_COPYRIGHT_STRING "WMPInt v" WMPINT_VERSION_STRING " (C)2019 Juha Nieminen"
 
 #include <cstdint>
@@ -362,6 +362,10 @@ namespace WMPIntImplementations
     (const std::uint64_t*, std::size_t, const std::uint64_t*, std::size_t,
      std::uint64_t*, std::uint64_t*);
 
+    void doTruncatedKaratsubaMultiplication
+    (const std::uint64_t*, const std::uint64_t*, std::size_t,
+     std::uint64_t*, std::uint64_t*);
+
     constexpr std::size_t longMultiplicationBufferSize(std::size_t lhsSize)
     { return lhsSize; }
 
@@ -372,6 +376,7 @@ namespace WMPIntImplementations
     constexpr std::size_t fullKaratsubaMultiplicationBufferSizeForSameSizes(std::size_t);
     constexpr std::size_t fullKaratsubaMultiplicationBufferSizeForSmallLHS(std::size_t,std::size_t);
     constexpr std::size_t fullKaratsubaMultiplicationBufferSizeForLargeLHS(std::size_t,std::size_t);
+    constexpr std::size_t truncatedKaratsubaMultiplicationBufferSize(std::size_t);
 }
 
 constexpr std::size_t WMPIntImplementations::fullKaratsubaMultiplicationBufferSizeForSameSizes
@@ -426,10 +431,27 @@ constexpr std::size_t WMPIntImplementations::fullKaratsubaMultiplicationBufferSi
         return fullKaratsubaMultiplicationBufferSizeForLargeLHS(lhsSize, rhsSize);
 }
 
+constexpr std::size_t WMPIntImplementations::truncatedKaratsubaMultiplicationBufferSize
+(std::size_t size)
+{
+    if(size <= 31) return longMultiplicationBufferSize(size);
+    const std::size_t lhsLowSize = size / 2;
+    const std::size_t lhsHighSize = size - lhsLowSize;
+    const std::size_t rhsLowSize = (size + 1) / 2;
+    const std::size_t size1 = fullKaratsubaMultiplicationBufferSize(lhsLowSize, rhsLowSize);
+    const std::size_t size2 = lhsHighSize + truncatedKaratsubaMultiplicationBufferSize(lhsHighSize);
+    const std::size_t size3 = lhsLowSize + truncatedKaratsubaMultiplicationBufferSize(lhsLowSize);
+    const std::size_t size4 = size1 > size2 ? size1 : size2;
+    return (size3 > size4 ? size3 : size4);
+}
+
 template<std::size_t kSize>
 constexpr inline std::size_t WMPUInt<kSize>::multiplyBufferSize()
 {
-    return WMPIntImplementations::longMultiplicationBufferSize(kSize);
+    if constexpr(kSize <= 31)
+        return WMPIntImplementations::longMultiplicationBufferSize(kSize);
+    else
+        return WMPIntImplementations::truncatedKaratsubaMultiplicationBufferSize(kSize);
 }
 
 template<std::size_t kSize>
@@ -1521,9 +1543,12 @@ inline void WMPUInt<kSize>::multiply
                "m"(mData), "m"(rhs.mData)
              : "rax", "rdx", "cc");
     }
-    else
+    else if constexpr(kSize <= 31)
         WMPIntImplementations::doLongMultiplication
             (kSize, mData, rhs.mData, result.mData, tempBuffer);
+    else
+        WMPIntImplementations::doTruncatedKaratsubaMultiplication
+            (mData, rhs.mData, kSize, result.mData, tempBuffer);
 }
 
 template<std::size_t kSize>
@@ -1643,7 +1668,7 @@ inline WMPUInt<kSize> WMPUInt<kSize>::operator*(const WMPUInt<kSize>& rhs) const
     }
     else
     {
-        std::uint64_t tempBuf[kSize];
+        std::uint64_t tempBuf[multiplyBufferSize()];
         multiply(rhs, result, tempBuf);
     }
     return result;
