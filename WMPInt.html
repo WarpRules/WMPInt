@@ -147,6 +147,7 @@ WMPUInt&lt;16&gt; result = a + b * c;</pre>
     <li><a href="#multiplication">Multiplication</a></li>
     <li><a href="#exproptimization">Expression optimizations</a></li>
     <li><a href="#longvskaratsuba">Full multiplication with long vs. Karatsuba algorithm</a></li>
+    <li><a href="#extremelylargevalues">Creating extremely large values</a></li>
   </ul>
 </ul>
 
@@ -790,6 +791,7 @@ a -= e;</pre>
 
 <pre>void foo(const WMPUInt&lt;128&gt;&amp; value1, const WMPUInt&lt;128&gt;&amp; value2);</pre>
 
+<!---------------------------------------------------------------------------->
 <h3 id="smalloperands">Small operands</h3>
 
 <p>In general, the versions of the operators and functions that take a <code>std::uint64_t</code>
@@ -820,6 +822,7 @@ value1 += 10;
 value2 -= 10;
 value3 *= 10;</pre>
 
+<!---------------------------------------------------------------------------->
 <h3 id="multiplication">Multiplication</h3>
 
 <p>Take note of the earlier section <a href="#multiply">Multiplying very large integers</a>.
@@ -839,6 +842,7 @@ v1.multiply(v2, result, tempBuffer);</pre>
   as the second (ie. result) parameter to the function, as this would simply give a completely
   incorrect result. The result must always be calculated into a third object.)</p>
 
+<!---------------------------------------------------------------------------->
 <h3 id="exproptimization">Expression optimizations</h3>
 
 <p>Note that even though these classes behave like they were integers, the compiler will not
@@ -868,6 +872,7 @@ result *= result;</pre>
 
 <pre>a += a;</pre>
 
+<!---------------------------------------------------------------------------->
 <h3 id="longvskaratsuba">Full multiplication with long vs. Karatsuba algorithm</h3>
 
 <p>The <code>fullMultiply()</code> function, which calculates the full non-truncated result
@@ -934,4 +939,53 @@ constexpr std::size_t kTempBufferSize =
 std::uint64_t tempBuffer[kTempBufferSize];
 
 value1.fullMultiply_karatsuba(value2, result, tempBuffer);</pre>
+
+<!---------------------------------------------------------------------------->
+<h3 id="extremelylargevalues">Creating extremely large values</h3>
+
+<p><code>WMPUInt</code> works in the same way as an <code>std::array</code> of
+  <code>std::uint64_t</code> values, in that all the data is kept as a member array
+  (rather than being dynamically allocated). This is very efficient with relatively
+  small values (up to sizes in the thousands), but may become a problem with extremely
+  large values because of limited stack space.</p>
+
+<p>In the case of such enormous values it's more advisable to allocate the <code>WMPUInt</code>
+  objects dynamically. It's recommended to use for example <code>std::unique_ptr</code> or
+  <code>std::shared_ptr</code> to manage them.</p>
+
+<p>Example of <code>WMPUInt</code> values of size 65536 (4194304‬ bits):</p>
+
+<pre><span class="comment">/* Constants and types*/</span>
+const std::size_t kSize = 65536;
+using UInt_t = WMPUInt&lt;kSize&gt;;
+using Result_t = WMPUInt&lt;kSize*2&gt;;
+const std::size_t kFullMultBufferSize =
+    UInt_t::fullMultiplyBufferSize&lt;kSize&gt;();
+
+<span class="comment">/* Dynamically allocated big numbers */</span>
+std::unique_ptr&lt;UInt_t&gt; value1(new UInt_t);
+std::unique_ptr&lt;UInt_t&gt; value2(new UInt_t);
+std::unique_ptr&lt;Result_t&gt; result(new Result_t);
+
+std::unique_ptr&lt;std::uint64_t[]&gt; tempBuffer
+    (new std::uint64_t[kFullMultBufferSize]);</pre>
+
+<p>Example use of the above (multiply the two values, measure the time):</p>
+
+<pre><span class="comment">/* Initialize with random values */</span>
+std::mt19937_64 rng;
+for(std::size_t i = 0; i &lt; kSize; ++i) value1-&gt;data()[i] = rng();
+for(std::size_t i = 0; i &lt; kSize; ++i) value2-&gt;data()[i] = rng();
+
+<span class="comment">/* Multiply and measure time */</span>
+auto startTime = std::chrono::high_resolution_clock::now();
+
+value1-&gt;fullMultiply(*value2, *result, tempBuffer.get());
+
+auto endTime = std::chrono::high_resolution_clock::now();
+std::chrono::duration&lt;double&gt; diff = endTime - startTime;
+const double seconds = diff.count();
+
+std::cout &lt;&lt; "Duration: " &lt;&lt; seconds &lt;&lt; " seconds\n";</pre>
+
 </body></html>
