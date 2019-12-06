@@ -49,11 +49,11 @@ int main()
     runMultiplicationBenchmark<8>(9500000);
     runMultiplicationBenchmark<10>(6000000);
     runMultiplicationBenchmark<16>(2400000);
-    runMultiplicationBenchmark<24>(1000000);
-    runMultiplicationBenchmark<32>(550000);
-    runMultiplicationBenchmark<50>(220000);
-    runMultiplicationBenchmark<150>(24500);
-    runMultiplicationBenchmark<256>(8000);
-    runMultiplicationBenchmark<1024>(500);
-    runMultiplicationBenchmark<1024*16>(2);
+    runMultiplicationBenchmark<24>(1200000);
+    runMultiplicationBenchmark<32>(700000);
+    runMultiplicationBenchmark<50>(300000);
+    runMultiplicationBenchmark<150>(53000);
+    runMultiplicationBenchmark<256>(22000);
+    runMultiplicationBenchmark<1024>(2500);
+    runMultiplicationBenchmark<1024*16>(30);
 }

@@ -51,8 +51,8 @@ int main()
     runMultiplicationBenchmark<24>(2000000);
     runMultiplicationBenchmark<32>(1100000);
     runMultiplicationBenchmark<50>(430000);
-    runMultiplicationBenchmark<150>(49000);
-    runMultiplicationBenchmark<256>(16000);
-    runMultiplicationBenchmark<1024>(1000);
-    runMultiplicationBenchmark<1024*16>(4);
+    runMultiplicationBenchmark<150>(62000);
+    runMultiplicationBenchmark<256>(28000);
+    runMultiplicationBenchmark<1024>(2600);
+    runMultiplicationBenchmark<1024*16>(30);
 }
