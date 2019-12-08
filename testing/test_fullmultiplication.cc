@@ -202,7 +202,7 @@ static void initWMPUIntWithUint32Array(WMPUInt<kSize>& dest, const std::uint32_t
 
 extern std::size_t gWMPInt_karatsuba_max_temp_buffer_size;
 static unsigned gTestCounter = 0;
-static const unsigned kTestsAmount = 46;
+static const unsigned kTestsAmount = 50;
 
 template<std::size_t kSize1, std::size_t kSize2, std::size_t kIterations>
 static bool testFullMultiplication(std::mt19937& rng)
@@ -413,5 +413,9 @@ bool testFullMultiplication()
     if(!testFullMultiplication<101, 99, 4000>(rng)) DRET;
     if(!testFullMultiplication<101, 100, 4000>(rng)) DRET;
     if(!testFullMultiplication<101, 101, 4000>(rng)) DRET;
+    if(!testFullMultiplication<103, 103, 4000>(rng)) DRET;
+    if(!testFullMultiplication<106, 106, 4000>(rng)) DRET;
+    if(!testFullMultiplication<125, 125, 4000>(rng)) DRET;
+    if(!testFullMultiplication<127, 127, 4000>(rng)) DRET;
     return true;
 }

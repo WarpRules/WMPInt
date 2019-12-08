@@ -497,7 +497,7 @@ static void doTruncatedKaratsubaMultiplication
     const std::uint64_t* lhsLow = lhs + lhsHighSize;
     const std::uint64_t* rhsLow = rhs + rhsHighSize;
 
-    doFullKaratsubaMultiplication
+    ::doFullKaratsubaMultiplication
         (lhsLow, lhsLowSize, rhsLow, rhsLowSize, result, tempBuffer);
 
     ::doTruncatedKaratsubaMultiplication
