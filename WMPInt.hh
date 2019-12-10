@@ -303,7 +303,7 @@ inline void WMPUInt<1>::fullMultiply(const WMPUInt<kSize2>& rhs, WMPUInt<1+kSize
              "decq %[rhsInd]\n\t"
              "jns L1%="
              : "+m"(result.mData), [rhsInd]"+&r"(rhsInd)
-             : [lhs]"r"(mValue), [rhs]"r"(rhs.mData), [result]"r"(result.mData)
+             : "m"(rhs.mData), [lhs]"r"(mValue), [rhs]"r"(rhs.mData), [result]"r"(result.mData)
              : "rax", "rdx", "cc");
     }
 }
