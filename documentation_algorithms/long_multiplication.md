@@ -81,6 +81,24 @@ inline void shortMultiplication
 }
 ```
 
+### In-place short multiplication
+
+If the multiplicand (`lhs`) ought to be replaced with the result of the short multiplication
+(eg. for the implementation of `operator*=(uint64_t)`), it's still possible without the use
+of a temporary buffer, but the algorithm needs to be slightly modified:
+
+1. `index` = the size of `lhs` minus 1
+2. `tempValue` = `lhs[index]`
+3. `lhs[index]` = 0
+4. `A` = `tempValue`
+5. `tempValue` = `lhs[index-1]`
+6. Multiply `A` with `rhs` into a double-word sized result `AB`.
+7. Add `B` to `lhs[index]`.
+8. Add the carry to `A` (eg. with add-with-carry a zero to it).
+9. `lhs[index-1]` = `A`
+10. Decrement `index` and if it's larger than zero, jump to step 4.
+11. Multiply `tempValue` with `rhs` and store the lowest word of the result into `lhs[0]`.
+
 ## Long multiplication (full)
 
 (To be written).
