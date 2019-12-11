@@ -50,7 +50,8 @@ array, `result`, the basic short multiplication algorithm goes as follows:
 6. Decrement `index` and if it's still inside `lhs`, jump to step 3.
 
 Note: If the first step above is omitted, the algorithm becomes a "fused multiply-and-add"
-function, where the value to add should be in the `result` array, essentially for free.
+function, essentially for free, where the value to add should be in the `result` array before
+running the algorithm.
 
 The truncated version of the multiplication simply puts the result at the same index positions
 as the multiplicand values, and omits writing the last most-significant word. (This can be done
@@ -101,8 +102,81 @@ of a temporary buffer, but the algorithm needs to be slightly modified:
 
 ## Long multiplication (full)
 
-(To be written).
+At its simplest, long multiplication is done by taking each word in the multiplier (`rhs`),
+calculating full short multiplication with the multiplicand (`lhs`), and adding the result
+to the destination at the same index position as the word in the multiplier.
+
+For example, given a 5-words-long multiplicand, ABCDE, and a multiplier, FGHIJ, long
+multiplication can be visualized like this (with each row in the sum being the full
+short multiplication of each word in the multiplier with the multiplicand):
+
+```
+       ABCDE
+     * FGHIJ
+  ----------
+      jjjjjj = ABCDE*J
+     iiiiii  = ABCDE*I
+    hhhhhh   = ABCDE*H
+   gggggg    = ABCDE*G
++ ffffff     = ABCDE*F
+  ----------
+  rrrrrrrrrr = result
+```
+
+This method requires a separate temporary buffer of words of size one larger than the size
+(in words) of the multiplicand, in order to store the result of the short multiplication,
+before it is added to the destination. (The result of a short multiplication cannot be
+easily directly added to the destination as it is being calculated because of the required
+carry flags in the addition operation.)
+
+### Algorithm
+
+Long multiplication is relatively easy to describe in terms of short multiplication.
+
+Given a multiplicand, `lhs`, a multiplier, `rhs`, a destination, `result`, and a temporary
+buffer (of size one more than the size of `lhs`):
+
+1. Zero the result array (if necessary).
+2. `index` = the size of `rhs` minus 1.
+3. Calculate the short multiplication of `lhs` and `rhs[index]` into the temporary buffer.
+4. Add the temporary buffer to `result[index]`, using add-with-carry. (Only the values in the buffer need to be added. There are no further carry flags to add beyond that.)
+5. Decrement `index` and if it's still inside `rhs` jump to step 3.
+
+Note that `lhs` and `rhs` don't need to be the same size.
 
 ## Long multiplication (truncated)
 
-(To be written).
+Truncated multiplication (used to implement `operator*()` and `operator*=()`) can omit half
+of the individual multiplications and additions (which makes it about twice faster, as no
+unneeded operations are done). Essentially, at each step the short multiplication step is one
+smaller than the previous, as well as the number of words to add from the temp buffer to the
+result.
+
+It can be visualized as follows:
+
+```
+  ABCDE
+* FGHIJ
+  -----
+  jjjjj = ABCDE*J
+  iiii  = BCDE*I
+  hhh   = CDE*H
+  gg    = DE*G
++ f     = E*F
+  -----
+  rrrrr = result
+```
+
+A temporary buffer of the size of the multiplicand is enough for this.
+
+### Algorithm
+
+Note that in this case it's assumed that both `lhs` and `rhs` are of the same size.
+
+1. Zero the result array (if necessary).
+2. `index` = size of `rhs` minus 1.
+3. `lhs_start_index` = `0`.
+4. Calculate the (truncated) short multiplication of `lhs` starting at `lhs_start_index` and `rhs[index]` into the temporary buffer.
+5. Add the value in the temporary buffer (of size `index+1` words) to `result`, using add-with-carry.
+6. Increment `lhs_start_index`.
+7. Decrement `index` and if it's still inside `rhs` jump to step 4.
