@@ -97,7 +97,7 @@ of a temporary buffer, but the algorithm needs to be slightly modified:
 8. Add the carry to `A` (eg. with add-with-carry a zero to it).
 9. `lhs[index-1]` = `A`
 10. Decrement `index` and if it's larger than zero, jump to step 4.
-11. Multiply `tempValue` with `rhs` and store the lowest word of the result into `lhs[0]`.
+11. Multiply `tempValue` with `rhs` and add the lowest word of the result to `lhs[0]`.
 
 ## Long multiplication (full)
 
