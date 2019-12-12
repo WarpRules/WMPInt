@@ -2,7 +2,7 @@
 
 The traditional long multiplication algorithm performs `n*m` individual (one-word) multiplications
 and additions, where `n` and `m` are the sizes (in words) of the multiplicand and the multiplier
-(`n`<sup>2</sup> if they are of the same size).
+(n<sup>2</sup> if they are of the same size).
 
 However, this is not the fastest possible algorithm for larger input values. The so-called
 _Karatsuba algorithm_ (first discovered by Anatoly Karatsuba in 1960) is the first, and perhaps
@@ -50,7 +50,7 @@ extra implementation overhead, and the recursion.)
 However, what Karatsuba discovered is that with a bit of math, one of those sub-multiplications
 (and therefore one of the recursive calls) can be omitted, by using a couple of additions and
 subtractions instead (which can be calculated in-situ, not requiring any recursive calls). Since
-one of the recursive calls is omitted, this speeds up the total amount of operations required.
+one of the recursive calls is omitted, this reduces the total amount of operations required.
 The larger the input values, the more significant this saving becomes.
 
 ## The algorithm
@@ -99,6 +99,17 @@ indicated here by the zeros in the result of `z1`). Note, however, that the add-
 of zeros can be stopped immediately when there is no carry left. In practice this does not
 slow down the algorithm almost at all.
 
+Also note that the split of the input numbers doesn't have to be exactly in the middle of them.
+The algorithm works the same regardless of where the numbers are split. However, splitting in
+the middle (or as close to the middle as possible) results in the least amount of operations
+and thus optimal performance. But this is the reason why the algorithm works the same even if
+the size (in words) of the input numbers is odd, rather than even. In this case either the
+higher part will be one word smaller than the lower, or the other way around, depending on
+where you decide to split them. (Note that if the original input values are of the same size,
+at no point is multiplying values of different sizes required, even when they have to be split
+off-middle due to the size being odd. All three multiplications will be of values of the same
+size regardless.)
+
 ## The math
 
 Why does this work?
@@ -142,6 +153,10 @@ x1*y0 + x0*y1
 ```
 
 ## Algorithm pseudocode
+
+(To be written.)
+
+## Multiplying numbers of different sizes
 
 (To be written.)
 
