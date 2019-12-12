@@ -222,6 +222,21 @@ static bool testFullMultiplication(std::mt19937& rng)
     std::uint32_t lhsArray[kSize1*2], rhsArray[kSize2*2];
     std::uint32_t resultArray[kSize1*2+kSize2*2], tempBuffer2[kSize2*2+1];
 
+    for(std::size_t i = 0; i < kSize1*2; i += 2) lhsArray[kSize1*2-1-i] = ~std::uint32_t(0);
+    for(std::size_t i = 1; i < kSize1*2; i += 2) lhsArray[kSize1*2-1-i] = (~std::uint32_t(0))>>1;
+    for(std::size_t i = 0; i < kSize2*2; ++i) rhsArray[kSize2*2-1-i] = (i+1) % 2;
+    multiply(lhsArray, kSize1*2, rhsArray, kSize2*2, resultArray, tempBuffer2);
+
+    initWMPUIntWithUint32Array(lhs, lhsArray);
+    initWMPUIntWithUint32Array(rhs, rhsArray);
+    initWMPUIntWithUint32Array(expectedResult, resultArray);
+
+    lhs.fullMultiply(rhs, result, tempBuffer);
+
+    if(result != expectedResult)
+        return DPRINT("Error: fullMultiply of\n", lhs, " and\n", rhs,
+                      "\nresulted in\n", result, "\ninstead of\n", expectedResult, "\n");
+
     for(std::size_t iteration = 0; iteration < kIterations; ++iteration)
     {
         for(std::size_t i = 0; i < kSize1*2; ++i) lhsArray[i] = rng();
@@ -400,22 +415,22 @@ bool testFullMultiplication()
     if(!testFullMultiplication<50, 20, 10000>(rng)) DRET;
     if(!testFullMultiplication<50, 40, 10000>(rng)) DRET;
     if(!testFullMultiplication<50, 50, 10000>(rng)) DRET;
-    if(!testFullMultiplication<100, 10, 5000>(rng)) DRET;
-    if(!testFullMultiplication<100, 40, 5000>(rng)) DRET;
-    if(!testFullMultiplication<100, 50, 4000>(rng)) DRET;
-    if(!testFullMultiplication<100, 51, 4000>(rng)) DRET;
-    if(!testFullMultiplication<100, 60, 4000>(rng)) DRET;
-    if(!testFullMultiplication<100, 100, 4000>(rng)) DRET;
-    if(!testFullMultiplication<101, 5, 5000>(rng)) DRET;
-    if(!testFullMultiplication<101, 50, 4000>(rng)) DRET;
-    if(!testFullMultiplication<101, 51, 4000>(rng)) DRET;
-    if(!testFullMultiplication<101, 52, 4000>(rng)) DRET;
-    if(!testFullMultiplication<101, 99, 4000>(rng)) DRET;
-    if(!testFullMultiplication<101, 100, 4000>(rng)) DRET;
-    if(!testFullMultiplication<101, 101, 4000>(rng)) DRET;
-    if(!testFullMultiplication<103, 103, 4000>(rng)) DRET;
-    if(!testFullMultiplication<106, 106, 4000>(rng)) DRET;
-    if(!testFullMultiplication<125, 125, 4000>(rng)) DRET;
-    if(!testFullMultiplication<127, 127, 4000>(rng)) DRET;
+    if(!testFullMultiplication<100, 10, 8000>(rng)) DRET;
+    if(!testFullMultiplication<100, 40, 8000>(rng)) DRET;
+    if(!testFullMultiplication<100, 50, 6000>(rng)) DRET;
+    if(!testFullMultiplication<100, 51, 6000>(rng)) DRET;
+    if(!testFullMultiplication<100, 60, 6000>(rng)) DRET;
+    if(!testFullMultiplication<100, 100, 6000>(rng)) DRET;
+    if(!testFullMultiplication<101, 5, 8000>(rng)) DRET;
+    if(!testFullMultiplication<101, 50, 6000>(rng)) DRET;
+    if(!testFullMultiplication<101, 51, 6000>(rng)) DRET;
+    if(!testFullMultiplication<101, 52, 6000>(rng)) DRET;
+    if(!testFullMultiplication<101, 99, 6000>(rng)) DRET;
+    if(!testFullMultiplication<101, 100, 6000>(rng)) DRET;
+    if(!testFullMultiplication<101, 101, 6000>(rng)) DRET;
+    if(!testFullMultiplication<103, 103, 6000>(rng)) DRET;
+    if(!testFullMultiplication<106, 106, 6000>(rng)) DRET;
+    if(!testFullMultiplication<125, 125, 6000>(rng)) DRET;
+    if(!testFullMultiplication<127, 127, 6000>(rng)) DRET;
     return true;
 }

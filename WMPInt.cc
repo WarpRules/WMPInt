@@ -222,7 +222,6 @@ static void doAddition(std::uint64_t* lhs, std::size_t lhsSize,
     }
     else
     {
-        std::uint64_t zero = 0;
         asm ("clc\n"
              "L1%=:\n\t"
              "movq (%[rhs],%[rhsInd],8), %[value]\n\t"
@@ -230,14 +229,16 @@ static void doAddition(std::uint64_t* lhs, std::size_t lhsSize,
              "decq %[lhsInd]\n\t"
              "decq %[rhsInd]\n\t"
              "jns L1%=\n"
+             "jnc end%=\n"
              "L2%=:\n\t"
-             "adcq %[zero], (%[lhs],%[lhsInd],8)\n\t"
+             "incq (%[lhs],%[lhsInd],8)\n\t"
+             "jnz end%=\n\t"
              "decq %[lhsInd]\n\t"
-             "jns L2%="
+             "jns L2%=\n"
+             "end%=:"
              : "+m"(*(std::uint64_t(*)[lhsSize])lhs),
                [lhsInd]"+&r"(lhsInd), [rhsInd]"+&r"(rhsInd), [value]"=&r"(value)
-             : [lhs]"r"(lhs), [rhs]"r"(rhs), [zero]"r"(zero),
-               "m"(*(std::uint64_t(*)[rhsSize])rhs)
+             : [lhs]"r"(lhs), [rhs]"r"(rhs), "m"(*(std::uint64_t(*)[rhsSize])rhs)
              : "cc");
     }
 }
