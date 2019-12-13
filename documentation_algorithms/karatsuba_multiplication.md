@@ -152,14 +152,181 @@ x1*y1 + x1*y0 + x0*y1 + x0*y0 - x1*y1 - x0*y0 =
 x1*y0 + x0*y1
 ```
 
-## Algorithm pseudocode
+## Algorithm pseudocode for inputs of the same size
 
-(To be written.)
+This algorithm description assumes that the values are stored in arrays of unsigned integers
+(eg. 64-bit) such that the most-significant term is at the beginning of the array and the
+least-significant term is at the end of the array.
+
+Given two large numbers of the same size (in words), `lhs` and `rhs`, a target `result` array
+(of size twice that of the input values), and a temporary buffer:
+
+1. If `size` is less than a given threshold (like eg. 12), call the long multiplication implementation and return.
+2. `lowSize` = size divided by 2, rounded up. `highSize` = `size - lowSize`.
+3. Split the input values into two parts, `lhsLow` and `rhsLow` of size `lowSize`, and `lhsHigh` and `rhsHigh` of size `highSize`. (In C and C++ this can be done by simply having pointers point to the corresponding parts in the input arrays. In non-pointer-based languages this can be done with index values. There is no need to copy these values anywhere. The "split" is done only at the conceptual level.)
+4. Call this routine recursively with `lhsLow` and `rhsLow`, putting the result into the `result` array at a position starting from `size*2-lowSize*2`. Let's call this result `z0`. Its size will be `lowSize*2`.
+5. Call this routine recursively with `lhsHigh` and `rhsHigh`, putting the result into the `result` array, at its beginning. Let's call this result `z2`. Its size will be `highSize*2`.
+6. Calculate `lhsLow+lhsHigh` into the temporary buffer. Let's call it `lhsSum`. The size of this value is `sumSize` = `lowSize+1`.
+7. Calculate `rhsLow+rhsHigh` into the temporary buffer, after `lhsSum` (ie. at position `sumSize`). Let's call it `rhsSum`.
+8. Call this routine recursively with `lhsSum` and `rhsSum`, putting the result into the temporary buffer after both values. Let's call this result `z1`. Its size will be `sumSize*2`. The temporary buffer given to the recursive call can point to position `sumSize*4` in the buffer.
+9. Subtract `z2` from `z1` (in-place, ie. putting the result in `z1`).
+10. Subtract `z0` from `z1` (in-place, ie. putting the result in `z1`).
+11. Add `z1` to the `result`, at position `size*2-lowSize`.
 
 ## Multiplying numbers of different sizes
 
-(To be written.)
+If the two input values are of different sizes (in words), this poses an additional challenge
+in implementing the algorithm. The above algorithm can only be used, as-is, for numbers of the
+same size. Numbers of different sizes need to be handled specially.
+
+While one approach would be to expand the smaller number to the same size as the larger one,
+by appending zeros at the front, this would not be optimal, as more operations (and more recursive
+calls) would be performed than necessary. The larger the difference in sizes, the more sub-optimal
+it would be (essentially, there would be a lot of useless multiplications by zero).
+
+The most optimal implementation will always split the larger number from the middle (or as close
+to the middle as possible, when the size is odd). Thus we need three different implementations
+of the algorithm, depending on the size of the smaller number:
+
+1. An implementation for the case that both sizes are the same (given above.)
+2. An implementation for when the smaller number is half the size of the larger number or smaller.
+3. An implementation for when the smaller number is larger then half the size of the larger number.
+
+The two latter implementations will call recursively any of the three as needed. (The first one
+only needs to call itself recursively, as seen earlier.) This is easiest to implement by having
+one general multiplication function that calls one of the three specialized functions depending
+on the sizes of the inputs. The two latter specialized functions above would then call this
+generic function.
+
+### Algorithm for when the smaller number is less than or equal to half the size of the larger
+
+This case is actually very simple to implement, as it doesn't actually require using the
+Karatsuba method at all. (It will _call_ any of the three versions of the function above,
+but this itself does not need to use the Karatsuba algorithm.) This can be implemented
+essentially as a "short multiplication", using the smaller number as the multiplier.
+
+Suppose we have two input values, for example `AAAABBBB` and `CCC`. this version of the
+algorithm can be calculated like this:
+
+```
+     AAAABBBB
+        * CCC
+  -----------
+      DDDDDDD = CCC*BBBB
++ EEEEEEE     = CCC*AAAA
+  -----------
+  RRRRRRRRRRR = result
+```
+
+The two sub-multiplications can be done by calling the generic multiplication function
+recursively.
+
+### Algorithm for when the smaller number is larger than half the size of the larger
+
+This version is, in fact, almost identical to the version with same sizes, with the only
+difference being that we need to calculate and keep track of the `highSize` separately for
+the two input values (as they will be different in this respect), and we need to call the
+generic multiplication function (rather than this function itself) when the two values to
+multiply are of different sizes. Other than that, the same algorithm can be closely followed.
+
+## Calculating the required size of the temporary buffer
+
+The algorithm requires a buffer to store temporary calculations. One single buffer suffices
+for the entire algorithm, regardless of its recursive nature (recursive calls can simply pass
+a pointer or index to the same temporary buffer, pointing to the end of whatever data is stored
+by the current function.)
+
+Calculating the total requires size of this temporary buffer, however, is not trivial. There might
+not be a simple formula to calculate this size with precision (especially since the algorithm
+is optimized by jumping to the long multiplication algorithm for segments smaller than a given
+threshold).
+
+The exact size can be calculated though, but it has to be done by essentially replicating the
+entire algorithm (all three functions above, plus the long multiplication), but simply calculating
+used temp buffer size instead of anything else (which is what the `WMPInt` library does.) In C++17,
+if the sizes of the input values are known at compile time, this can be done with a series of
+`constexpr` functions, allowing also this size to be known at compile time. (In other languages
+it will probably need to be calculated at runtime, and the temporary buffer likewise be allocated
+at runtime.)
 
 ## Truncated Karatsuba multiplication
 
-(To be written.)
+Truncated multiplication is a version of multiplication where the input values are of the same
+size and the result is truncated to that same size (in other words, the entire upper half of
+the result is discarded). This is useful to implement `operator*` and `operator*=`.
+
+One way to do this would be to calculate the full-sized multiplication, and simply assign the
+lower half of it to the result. However, this wouldn't be optimal, as twice as many operations
+would be done than necessary (and the result of those extra operations simply discarded).
+Truncated multiplication requires only half the operations than full multiplication.
+
+The truncated multiplication version of the algorithm doesn't itself use the Karatsuba method,
+but it calls the Karatsuba multiplication function (which is where the efficiency comes from,
+compared to truncated long multiplication).
+
+Assume the two input values are `AAABBB` and `CCCDDD`. Truncated multiplication can be calculated
+like this:
+
+```
+  AAABBB
+* CCCDDD
+  ------
+  EEEEEE = DDD*BBB
++ FFF    = DDD*AAA (truncated)
++ GGG    = CCC*BBB (truncated)
+  ------------
+  RRRRRR = result
+```
+
+The first sub-multiplication (`DDD*BBB`) is a full multiplication and can be done by calling
+the Karatsuba multiplication function. The other two multiplications are done by calling this
+same routine recursively.
+
+### Truncated Karatsuba multiplication of odd-sized numbers
+
+A slight complication happens if the size (in words) of the input values is not even. In that
+case they would need to be split off-middle. This would not pose a problem with the first (full)
+sub-multiplication above, but the other two multiplications would need to multiply two numbers
+of different sizes (differing in size by one).
+
+However, this problem actually becomes non-existent when we realize that the two input numbers
+don't actually have to be split the same way: Split one of the input numbers at half of its
+size _rounded down,_ and the other at half of its size _rounded up._
+
+Assume the two input values are `AAAABBB` and `CCCDDDD`. The multiplication can be calculated
+like this:
+
+```
+  AAAABBB
+* CCCDDDD
+  -------
+  EEEEEEE = DDDD*BBB
++ FFFF    = DDDD*AAAA (truncated)
++ GGG     = CCC*BBB (truncated)
+  ------------
+  RRRRRRR = result
+```
+
+The first multiplication will now be of different sizes, but this is ok, because we have already
+implemented a full Karatsuba multiplication for different sizes. The other two multiplications
+are now of values of the same size, so we can just call this same routine recursively for them.
+
+Note that we don't actually need two different implementations for these two cases. The one
+and same implementation will work for both (because when the size of the input numbers is
+even, rounding the split point up or down doesn't matter, they are still split from the same
+point in the middle.)
+
+### Truncated Karatsuba multiplication algorithm
+
+Given two large numbers of the same size (in words), `lhs` and `rhs`, a target `result` array
+(of size twice that of the input values), and a temporary buffer:
+
+1. If `size` is less than a given threshold (like eg. 30), call the long multiplication implementation and return.
+2. `lhsLowSize` = `size / 2`, rounded down. `lhsHighSize` = `size - lhsLowSize`
+3. `rhsLowSize` = `size / 2`, rounded up. `rhsHighSize` = `size - rhsLowSize`
+4. Split the numbers into `lhsHigh`, `lhsLow`, `rhsHigh` and `rhsLow` according to those sizes. (This can be done with just pointers or indices. There is no need to copy the values elsewhere.)
+5. Call the Karatsuba full multiplication for `lhsLow` and `rhsLow`, putting the result directly into the `result` array.
+6. Call this routine recursively with `lhsHigh` and `rhsLow`, puttin the result into the temporary buffer.
+7. Add the value in the temporary buffer to (the beginning of) `result`.
+8. Call this routine recursively with `lhsLow` and `rhsHigh`, puttin the result into the temporary buffer.
+9. Add the value in the temporary buffer to (the beginning of) `result`.
