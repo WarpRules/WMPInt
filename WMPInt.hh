@@ -1,8 +1,8 @@
 #ifndef WMPINT_INCLUDE_GUARD
 #define WMPINT_INCLUDE_GUARD
 
-#define WMPINT_VERSION 0x000600
-#define WMPINT_VERSION_STRING "0.6.0"
+#define WMPINT_VERSION 0x000601
+#define WMPINT_VERSION_STRING "0.6.1"
 #define WMPINT_COPYRIGHT_STRING "WMPInt v" WMPINT_VERSION_STRING " (C)2019 Juha Nieminen"
 
 #include <cstdint>
@@ -393,12 +393,14 @@ constexpr std::size_t WMPIntImplementations::fullKaratsubaMultiplicationBufferSi
 {
     if(lhsSize <= 2 || rhsSize <= 12) return fullLongMultiplicationBufferSize(rhsSize, lhsSize);
     const std::size_t rhsLowSize = (rhsSize+1) / 2;
+    const std::size_t rhsHighSize = rhsSize - rhsLowSize;
     const std::size_t bufferSize1 =
         fullKaratsubaMultiplicationBufferSize(lhsSize, rhsLowSize);
-    const std::size_t rhsHighPlusLowSize = rhsLowSize + 1;
-    const std::size_t z1Size = rhsHighPlusLowSize + lhsSize;
-    const std::size_t bufferSize2 = rhsHighPlusLowSize + z1Size +
-        fullKaratsubaMultiplicationBufferSize(lhsSize, rhsHighPlusLowSize);
+    const std::size_t z1Size = rhsHighSize + lhsSize;
+    const std::size_t bufferSize2 = z1Size +
+        (lhsSize <= rhsHighSize ?
+         fullKaratsubaMultiplicationBufferSize(lhsSize, rhsHighSize) :
+         fullKaratsubaMultiplicationBufferSize(rhsHighSize, lhsSize));
     return bufferSize1 > bufferSize2 ? bufferSize1 : bufferSize2;
 }
 
@@ -459,8 +461,12 @@ template<std::size_t kSize2>
 constexpr inline std::size_t WMPUInt<kSize>::fullMultiplyBufferSize()
 {
     if((kSize == kSize2 && kSize < 16) ||
-       (kSize < 16 && kSize < kSize2/2) || (kSize2 < 16 && kSize2 < kSize/2) ||
-       (kSize >= 16 && kSize < kSize2/3) || (kSize2 >= 16 && kSize2 < kSize/3))
+       (kSize < 50 && kSize2 < kSize/2) ||
+       (kSize2 < 50 && kSize < kSize2/2) ||
+       (kSize >= 50 && kSize < 200 && kSize2 < kSize/3) ||
+       (kSize2 >= 50 && kSize2 < 200 && kSize < kSize2/3) ||
+       (kSize >= 200 && kSize2 < kSize/4) ||
+       (kSize2 >= 200 && kSize < kSize2/4))
         return WMPIntImplementations::fullLongMultiplicationBufferSize(kSize, kSize2);
     else if(kSize <= kSize2)
         return WMPIntImplementations::fullKaratsubaMultiplicationBufferSize(kSize, kSize2);
@@ -1593,10 +1599,13 @@ inline void WMPUInt<kSize>::fullMultiply
                [result]"r"(result.mData), [zero]"r"(zero)
              : "rax", "rdx", "cc");
     }
-    else if constexpr
-        ((kSize == kSize2 && kSize < 16) ||
-         (kSize < 16 && kSize < kSize2/2) || (kSize2 < 16 && kSize2 < kSize/2) ||
-         (kSize >= 16 && kSize < kSize2/3) || (kSize2 >= 16 && kSize2 < kSize/3))
+    else if constexpr((kSize == kSize2 && kSize < 16) ||
+                      (kSize < 50 && kSize2 < kSize/2) ||
+                      (kSize2 < 50 && kSize < kSize2/2) ||
+                      (kSize >= 50 && kSize < 200 && kSize2 < kSize/3) ||
+                      (kSize2 >= 50 && kSize2 < 200 && kSize < kSize2/3) ||
+                      (kSize >= 200 && kSize2 < kSize/4) ||
+                      (kSize2 >= 200 && kSize < kSize2/4))
     {
         WMPIntImplementations::doFullLongMultiplication
             (mData, kSize, rhs.mData, kSize2, result.mData, tempBuffer);

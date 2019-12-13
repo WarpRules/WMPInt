@@ -202,12 +202,13 @@ static void initWMPUIntWithUint32Array(WMPUInt<kSize>& dest, const std::uint32_t
 
 extern std::size_t gWMPInt_karatsuba_max_temp_buffer_size;
 static unsigned gTestCounter = 0;
-static const unsigned kTestsAmount = 50;
+static const unsigned kTestsAmount = 75;
 
 template<std::size_t kSize1, std::size_t kSize2, std::size_t kIterations>
 static bool testFullMultiplication(std::mt19937& rng)
 {
     std::cout << ++gTestCounter << "/" << kTestsAmount << "\r"; std::cout.flush();
+    //std::cout << kSize1 << "x" << kSize2 << std::endl;
     WMPUInt<kSize1> lhs;
     WMPUInt<kSize2> rhs;
     WMPUInt<kSize1 + kSize2> result, expectedResult;
@@ -234,7 +235,7 @@ static bool testFullMultiplication(std::mt19937& rng)
     lhs.fullMultiply(rhs, result, tempBuffer);
 
     if(result != expectedResult)
-        return DPRINT("Error: fullMultiply of\n", lhs, " and\n", rhs,
+        return DPRINT("Error: (", kSize1, "x", kSize2, ") fullMultiply of\n", lhs, " and\n", rhs,
                       "\nresulted in\n", result, "\ninstead of\n", expectedResult, "\n");
 
     for(std::size_t iteration = 0; iteration < kIterations; ++iteration)
@@ -405,23 +406,43 @@ bool testFullMultiplication()
     if(!testFullMultiplication<32, 5, 50000>(rng)) DRET;
     if(!testFullMultiplication<6, 6, 50000>(rng)) DRET;
     if(!testFullMultiplication<7, 6, 50000>(rng)) DRET;
+    if(!testFullMultiplication<34, 16, 10000>(rng)) DRET;
+    if(!testFullMultiplication<34, 17, 10000>(rng)) DRET;
+    if(!testFullMultiplication<34, 18, 10000>(rng)) DRET;
     if(!testFullMultiplication<35, 6, 10000>(rng)) DRET;
     if(!testFullMultiplication<35, 10, 10000>(rng)) DRET;
     if(!testFullMultiplication<35, 15, 10000>(rng)) DRET;
     if(!testFullMultiplication<35, 17, 10000>(rng)) DRET;
+    if(!testFullMultiplication<35, 18, 10000>(rng)) DRET;
+    if(!testFullMultiplication<35, 19, 10000>(rng)) DRET;
     if(!testFullMultiplication<35, 22, 10000>(rng)) DRET;
     if(!testFullMultiplication<35, 32, 10000>(rng)) DRET;
     if(!testFullMultiplication<35, 35, 10000>(rng)) DRET;
+    if(!testFullMultiplication<50, 12, 10000>(rng)) DRET;
+    if(!testFullMultiplication<50, 13, 10000>(rng)) DRET;
     if(!testFullMultiplication<50, 20, 10000>(rng)) DRET;
+    if(!testFullMultiplication<50, 24, 10000>(rng)) DRET;
+    if(!testFullMultiplication<50, 25, 10000>(rng)) DRET;
+    if(!testFullMultiplication<50, 26, 10000>(rng)) DRET;
     if(!testFullMultiplication<50, 40, 10000>(rng)) DRET;
     if(!testFullMultiplication<50, 50, 10000>(rng)) DRET;
+    if(!testFullMultiplication<51, 12, 10000>(rng)) DRET;
+    if(!testFullMultiplication<51, 13, 10000>(rng)) DRET;
+    if(!testFullMultiplication<51, 14, 10000>(rng)) DRET;
+    if(!testFullMultiplication<51, 25, 10000>(rng)) DRET;
+    if(!testFullMultiplication<51, 26, 10000>(rng)) DRET;
+    if(!testFullMultiplication<51, 27, 10000>(rng)) DRET;
+    if(!testFullMultiplication<51, 50, 10000>(rng)) DRET;
+    if(!testFullMultiplication<51, 51, 10000>(rng)) DRET;
     if(!testFullMultiplication<100, 10, 8000>(rng)) DRET;
     if(!testFullMultiplication<100, 40, 8000>(rng)) DRET;
+    if(!testFullMultiplication<100, 49, 6000>(rng)) DRET;
     if(!testFullMultiplication<100, 50, 6000>(rng)) DRET;
     if(!testFullMultiplication<100, 51, 6000>(rng)) DRET;
     if(!testFullMultiplication<100, 60, 6000>(rng)) DRET;
     if(!testFullMultiplication<100, 100, 6000>(rng)) DRET;
     if(!testFullMultiplication<101, 5, 8000>(rng)) DRET;
+    if(!testFullMultiplication<101, 17, 8000>(rng)) DRET;
     if(!testFullMultiplication<101, 50, 6000>(rng)) DRET;
     if(!testFullMultiplication<101, 51, 6000>(rng)) DRET;
     if(!testFullMultiplication<101, 52, 6000>(rng)) DRET;
@@ -432,5 +453,11 @@ bool testFullMultiplication()
     if(!testFullMultiplication<106, 106, 6000>(rng)) DRET;
     if(!testFullMultiplication<125, 125, 6000>(rng)) DRET;
     if(!testFullMultiplication<127, 127, 6000>(rng)) DRET;
+    if(!testFullMultiplication<200, 10, 6000>(rng)) DRET;
+    if(!testFullMultiplication<200, 50, 4000>(rng)) DRET;
+    if(!testFullMultiplication<200, 100, 3000>(rng)) DRET;
+    if(!testFullMultiplication<200, 150, 2000>(rng)) DRET;
+    if(!testFullMultiplication<200, 200, 2000>(rng)) DRET;
+
     return true;
 }

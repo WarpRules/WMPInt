@@ -43,7 +43,7 @@ Note that each of those smaller multiplications can be done by calling this rout
 (up until the input values are small enough to be multiplied directly, or by using regular long
 multiplication.)
 
-However, this does not save anything. This still performs exactly `n`<sup>2</sup> multiplications
+However, this does not save anything. This still performs exactly n<sup>2</sup> multiplications
 and additions in total (and is in fact slower than straigforward long multiplication due to the
 extra implementation overhead, and the recursion.)
 

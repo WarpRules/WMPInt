@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-  <title>WMPInt 0.6.0 documentation</title>
+  <title>WMPInt 0.6.1 documentation</title>
   <style type="text/css"> <!--
 html
 {
@@ -96,7 +96,7 @@ code
 </head>
 
 <body>
-<h1>WMPInt 0.6.0 documentation</h1>
+<h1>WMPInt 0.6.1 documentation</h1>
 
 <p><code>WMPUInt</code> and <code>WMPInt</code> (not yet implemented) are templated
   classes that implement multi-precision integer arithmetic for x86-64 platforms
@@ -891,14 +891,16 @@ result *= result;</pre>
   than relying on the default choice.</p>
 
 <p>The current choice heuristic is the following. The long multiplication algorithm will be
-  chosen if:</p>
+  chosen if any of these is true:</p>
 
 <ul>
   <li>The <code>kSize</code> of both numbers is the same, and this size is less than 16.</li>
-  <li>The <code>kSize</code> of the smaller number is less than 16, and less than half of the
-    larger <code>kSize</code>.</li>
-  <li>The <code>kSize</code> of the smaller number is 16 or more, and less than a third of the
-    larger <code>kSize</code>.</li>
+  <li>The larger <code>kSize</code> is less than 50, and the smaller <code>kSize</code> is less
+    than half the larger one.</li>
+  <li>The larger <code>kSize</code> is between 50 and 199, and the smaller <code>kSize</code> is
+    less than a third of the larger one.</li>
+  <li>The larger <code>kSize</code> is 200 or more, and the smaller <code>kSize</code> is
+    less than a quarter of the larger one.</li>
 </ul>
 
 <p>Else the Karatsuba algorithm will be used.</p>
@@ -931,11 +933,11 @@ void <span class="funcname">fullMultiply_karatsuba</span>
 <p>Example:</p>
 
 <pre>WMPUInt&lt;2048&gt; value1;
-WMPUInt&lt;512&gt; value2;
-WMPUInt&lt;2048+512&gt; result;
+WMPUInt&lt;256&gt; value2;
+WMPUInt&lt;2048+256&gt; result;
 
 constexpr std::size_t kTempBufferSize =
-    WMPUInt&lt;2048&gt;::fullMultiply_karatsubaBufferSize&lt;512&gt;();
+    WMPUInt&lt;2048&gt;::fullMultiply_karatsubaBufferSize&lt;256&gt;();
 std::uint64_t tempBuffer[kTempBufferSize];
 
 value1.fullMultiply_karatsuba(value2, result, tempBuffer);</pre>

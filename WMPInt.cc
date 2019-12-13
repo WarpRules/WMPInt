@@ -394,18 +394,14 @@ static void doFullKaratsubaMultiplicationForSmallLHS
 
     ::doFullKaratsubaMultiplication(lhs, lhsSize, rhsLow, rhsLowSize, z0, tempBuffer);
 
-    const std::size_t rhsHighPlusLowSize = rhsLowSize + 1;
-    std::uint64_t* rhsHighPlusLow = tempBuffer;
-    doFullAddition(rhs, rhsHighSize, rhsLow, rhsLowSize, rhsHighPlusLow);
+    const std::size_t z1Size = rhsHighSize + lhsSize;
+    std::uint64_t* z1 = tempBuffer;
+    if(lhsSize <= rhsHighSize)
+        ::doFullKaratsubaMultiplication(lhs, lhsSize, rhs, rhsHighSize, z1, tempBuffer+z1Size);
+    else
+        ::doFullKaratsubaMultiplication(rhs, rhsHighSize, lhs, lhsSize, z1, tempBuffer+z1Size);
 
-    const std::size_t z1Size = rhsHighPlusLowSize + lhsSize;
-    std::uint64_t* z1 = rhsHighPlusLow + rhsHighPlusLowSize;
-    ::doFullKaratsubaMultiplication
-          (lhs, lhsSize, rhsHighPlusLow, rhsHighPlusLowSize, z1, z1 + z1Size);
-
-    // z2 is 0 (because lhsHigh is 0, and z2 = rhsHigh*lhsHigh), so no need to subtract it
-    doSubtraction(z1, z1Size, z0, z0Size);
-    doAddition(result, resultSize - rhsLowSize, z1, z1Size);
+    doAddition(result, z1, z1Size);
 }
 
 /* This must only be called when lhsSize > (rhsSize+1)/2 and lhsSize < rhsSize */
