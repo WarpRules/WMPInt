@@ -144,7 +144,7 @@ static void doFullAddition(const std::uint64_t* lhs, std::size_t lhsSize,
     {
         *result = 0;
         std::size_t srcInd = lhsSize - 1;
-        std::uint64_t value, zero = 0;
+        std::uint64_t value;
         asm ("clc\n"
              "L1%=:\n\t"
              "movq (%[lhs],%[srcInd],8), %[value]\n\t"
@@ -152,10 +152,10 @@ static void doFullAddition(const std::uint64_t* lhs, std::size_t lhsSize,
              "movq %[value], 8(%[result],%[srcInd],8)\n\t"
              "decq %[srcInd]\n\t"
              "jns L1%=\n\t"
-             "adcq %[zero], (%[result])"
+             "adcq $0, (%[result])"
              : "=m"(*(std::uint64_t(*)[lhsSize+1])result),
                [srcInd]"+&r"(srcInd), [value]"=&r"(value)
-             : [lhs]"r"(lhs), [rhs]"r"(rhs), [result]"r"(result), [zero]"r"(zero),
+             : [lhs]"r"(lhs), [rhs]"r"(rhs), [result]"r"(result),
                "m"(*(std::uint64_t(*)[lhsSize])lhs), "m"(*(std::uint64_t(*)[rhsSize])rhs)
              : "cc");
     }
@@ -163,7 +163,7 @@ static void doFullAddition(const std::uint64_t* lhs, std::size_t lhsSize,
     {
         for(std::size_t i = 0; i < rhsSize - lhsSize + 1; ++i) result[i] = 0;
         std::size_t lhsInd = lhsSize-1, rhsInd = rhsSize-1;
-        std::uint64_t value, zero = 0;
+        std::uint64_t value;
         asm ("clc\n"
              "L1%=:\n\t"
              "movq (%[lhs],%[lhsInd],8), %[value]\n\t"
@@ -177,10 +177,10 @@ static void doFullAddition(const std::uint64_t* lhs, std::size_t lhsSize,
              "adcq %[value], 8(%[result],%[rhsInd],8)\n\t"
              "decq %[rhsInd]\n\t"
              "jns L2%=\n\t"
-             "adcq %[zero], (%[result])"
+             "adcq $0, (%[result])"
              : "=m"(*(std::uint64_t(*)[rhsSize+1])result),
                [lhsInd]"+&r"(lhsInd), [rhsInd]"+&r"(rhsInd), [value]"=&r"(value)
-             : [lhs]"r"(lhs), [rhs]"r"(rhs), [result]"r"(result), [zero]"r"(zero),
+             : [lhs]"r"(lhs), [rhs]"r"(rhs), [result]"r"(result),
                "m"(*(std::uint64_t(*)[lhsSize])lhs), "m"(*(std::uint64_t(*)[rhsSize])rhs)
              : "cc");
     }
@@ -189,24 +189,26 @@ static void doFullAddition(const std::uint64_t* lhs, std::size_t lhsSize,
 static void doAddition(std::uint64_t* lhs, std::size_t lhsSize,
                        const std::uint64_t* rhs, std::size_t rhsSize)
 {
-    std::size_t lhsInd = lhsSize - 1, rhsInd = rhsSize - 1;
+    std::size_t lhsInd = lhsSize - 1;
     std::uint64_t value;
     if(lhsSize <= rhsSize)
     {
+        const std::uint64_t* rhsPtr = rhs + (rhsSize - 1);
         asm ("clc\n"
              "L1%=:\n\t"
-             "movq (%[rhs],%[rhsInd],8), %[value]\n\t"
+             "movq (%[rhs]), %[value]\n\t"
              "adcq %[value], (%[lhs],%[lhsInd],8)\n\t"
-             "decq %[rhsInd]\n\t"
+             "leaq -8(%[rhs]), %[rhs]\n\t"
              "decq %[lhsInd]\n\t"
              "jns L1%="
              : "+m"(*(std::uint64_t(*)[lhsSize])lhs),
-               [lhsInd]"+&r"(lhsInd), [rhsInd]"+&r"(rhsInd), [value]"=&r"(value)
-             : [lhs]"r"(lhs), [rhs]"r"(rhs), "m"(*(std::uint64_t(*)[rhsSize])rhs)
+               [lhsInd]"+&r"(lhsInd), [rhs]"+&r"(rhsPtr), [value]"=&r"(value)
+             : [lhs]"r"(lhs), "m"(*(std::uint64_t(*)[rhsSize])rhs)
              : "cc");
     }
     else
     {
+        std::size_t rhsInd = rhsSize - 1;
         asm ("clc\n"
              "L1%=:\n\t"
              "movq (%[rhs],%[rhsInd],8), %[value]\n\t"
@@ -250,7 +252,7 @@ static inline void doSubtraction(std::uint64_t* lhs, std::size_t lhsSize,
                                  const std::uint64_t* rhs, std::size_t rhsSize)
 {
     std::size_t lhsInd = lhsSize - 1, rhsInd = rhsSize - 1;
-    std::uint64_t value, zero = 0;
+    std::uint64_t value;
     asm ("clc\n"
          "L1%=:\n\t"
          "movq (%[rhs],%[rhsInd],8), %[value]\n\t"
@@ -259,13 +261,12 @@ static inline void doSubtraction(std::uint64_t* lhs, std::size_t lhsSize,
          "decq %[rhsInd]\n\t"
          "jns L1%=\n"
          "L2%=:\n\t"
-         "sbbq %[zero], (%[lhs],%[lhsInd],8)\n\t"
+         "sbbq $0, (%[lhs],%[lhsInd],8)\n\t"
          "decq %[lhsInd]\n\t"
          "jns L2%="
          : "+m"(*(std::uint64_t(*)[lhsSize])lhs),
            [lhsInd]"+&r"(lhsInd), [rhsInd]"+&r"(rhsInd), [value]"=&r"(value)
-         : [lhs]"r"(lhs), [rhs]"r"(rhs), [zero]"r"(zero),
-           "m"(*(std::uint64_t(*)[rhsSize])rhs)
+         : [lhs]"r"(lhs), [rhs]"r"(rhs), "m"(*(std::uint64_t(*)[rhsSize])rhs)
          : "cc");
 }
 

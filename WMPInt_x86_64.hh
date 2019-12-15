@@ -343,18 +343,18 @@ inline void WMPUInt<kSize>::multiply_size2
     if constexpr(kSize == 2)
     {
         /* The case of kSize==2 is simple enough to warrant its own loopless implementation */
-        std::uint64_t tmp1, tmp2;
-        asm ("movq 8(%[rhs]),%%rax /* hopsis */\n\t" // rax = rhs[1]
-             "movq (%[rhs]),%[tmp2]\n\t" // tmp2 = rhs[0]
-             "movq (%[lhs]),%[tmp1]\n\t" // tmp1 = lhs[0]
-             "imulq %%rax,%[tmp1]\n\t" // tmp1 *= rax
+        std::uint64_t tmp;
+        asm ("movq 8(%[rhs]),%%rax\n\t" // rax = rhs[1]
+             "movq (%[lhs]),%[tmp]\n\t" // tmp = lhs[0]
+             "imulq %%rax,%[tmp]\n\t" // tmp *= rax
              "mulq 8(%[lhs])\n\t" // (rax,rdx) = rax * lhs[1]
-             "addq %[tmp1],%%rdx\n\t" // rdx += tmp1
-             "imulq 8(%[lhs]),%[tmp2]\n\t" // tmp2 *= lhs[1]
-             "addq %[tmp2],%%rdx\n\t" // rdx += tmp2
+             "addq %[tmp],%%rdx\n\t" // rdx += tmp
+             "movq (%[rhs]),%[tmp]\n\t" // tmp = rhs[0]
+             "imulq 8(%[lhs]),%[tmp]\n\t" // tmp *= lhs[1]
+             "addq %[tmp],%%rdx\n\t" // rdx += tmp
              "movq %%rax,8(%[result])\n\t" // result[1] = rax
              "movq %%rdx,(%[result])" // result[0] = rdx;
-             : "+m"(result.mData), [tmp1]"=&r"(tmp1), [tmp2]"=&r"(tmp2)
+             : "+m"(result.mData), [tmp]"=&r"(tmp)
              : [lhs]"r"(mData), [rhs]"r"(rhs.mData), [result]"r"(result.mData),
                "m"(mData), "m"(rhs.mData)
              : "rax", "rdx", "cc");
@@ -376,7 +376,6 @@ inline void WMPUInt<kSize>::fullMultiply_size2
               + KL
            (This is about 4 times faster than calling doFullLongMultiplication().)
         */
-        std::uint64_t zero = 0;
         asm ("movq %[rhs0], %%rax\n\t" // rax = rhs[0]
              "mulq %[lhs0]\n\t" // (rdx,rax) = lhs[0] * rax
              "movq %%rdx, (%[result])\n\t" // result[0] = rdx
@@ -389,58 +388,57 @@ inline void WMPUInt<kSize>::fullMultiply_size2
              "mulq %[lhs1]\n\t" // (rdx,rax) = lhs[1] * rax
              "addq %%rax, 16(%[result])\n\t" // result[2] += rax
              "adcq %%rdx, 8(%[result])\n\t" // result[1] += rdx
-             "adcq %[zero], (%[result])\n\t" // result[0] += 0
+             "adcq $0, (%[result])\n\t" // result[0] += 0
              "movq %[rhs1], %%rax\n\t" // rax = rhs[1]
              "mulq %[lhs0]\n\t" // (rdx,rax) = lhs[0] * rax
              "addq %%rax, 16(%[result])\n\t" // result[2] += rax
              "adcq %%rdx, 8(%[result])\n\t" // result[1] += rdx
-             "adcq %[zero], (%[result])" // result[0] += 0
+             "adcq $0, (%[result])" // result[0] += 0
              : "=m"(result.mData)
              : [lhs0]"rm"(mData[0]), [lhs1]"rm"(mData[1]),
                [rhs0]"rm"(rhs.mData[0]), [rhs1]"rm"(rhs.mData[1]),
-               [result]"r"(result.mData), [zero]"r"(zero)
+               [result]"r"(result.mData)
              : "rax", "rdx", "cc");
     }
     else if constexpr(kSize == 2)
     {
-        /* In essence this does short multiplication on 128-bit values.
+        /* Specialization for kSize == 2.
+           In essence this does short multiplication on 128-bit values.
            This is almost three times faster than calling doFullLongMultiplication().
         */
         for(std::size_t i = 0; i < kSize+kSize2; ++i) result.mData[i] = 0;
-        std::uint64_t zero = 0, *targetPtr = result.mData + (kSize+kSize2-1);
-        std::uint64_t res0, res1, res2, res3;
+        std::uint64_t *targetPtr = result.mData + (kSize+kSize2-4);
+        std::uint64_t temp0, temp1;
         std::size_t rhsIndex = kSize2 - 1;
         asm ("Loop%=:\n\t"
              "movq (%[rhs], %[rhsIndex], 8), %%rax\n\t" // rax = rhs[rhsIndex]
              "mulq %[lhs1]\n\t" // (rdx,rax) = rax * lhs1
-             "movq %%rax, %[res3]\n\t" // res3 = rax
-             "movq %%rdx, %[res2]\n\t" // res2 = rdx
+             "movq %%rax, %[temp1]\n\t" // temp1 = rax
+             "movq %%rdx, %[temp0]\n\t" // temp0 = rdx
              "movq -8(%[rhs], %[rhsIndex], 8), %%rax\n\t" // rax = rhs[rhsIndex-1]
              "mulq %[lhs0]\n\t" // (rdx,rax) = rax * lhs0
-             "movq %%rax, %[res1]\n\t" // res1 = rax
-             "movq %%rdx, %[res0]\n\t" // res0 = rdx
+             "addq %[temp1], 24(%[result])\n\t" // result[3] += temp1
+             "adcq %[temp0], 16(%[result])\n\t" // result[2] += temp0
+             "adcq %%rax, 8(%[result])\n\t" // result[1] += rax
+             "adcq %%rdx, (%[result])\n\t" // result[0] += rdx
              "movq (%[rhs], %[rhsIndex], 8), %%rax\n\t" // rax = rhs[rhsIndex]
              "mulq %[lhs0]\n\t" // (rdx,rax) = rax * lhs0
-             "addq %%rax, %[res2]\n\t" // res2 += rax
-             "adcq %%rdx, %[res1]\n\t" // res1 += rdx
-             "adcq %[zero], %[res0]\n\t" // res0 += 0
+             "addq %%rax, 16(%[result])\n\t" // result[2] += rax
+             "adcq %%rdx, 8(%[result])\n\t" // result[1] += rdx
+             "adcq $0, (%[result])\n\t" // result[0] += 0
              "movq -8(%[rhs], %[rhsIndex], 8), %%rax\n\t" // rax = rhs[rhsIndex-1]
              "mulq %[lhs1]\n\t" // (rdx,rax) = rax * lhs1
-             "addq %%rax, %[res2]\n\t" // res2 += rax
-             "adcq %%rdx, %[res1]\n\t" // res1 += rdx
-             "adcq %[zero], %[res0]\n\t" // res0 += 0
+             "addq %%rax, 16(%[result])\n\t" // result[2] += rax
+             "adcq %%rdx, 8(%[result])\n\t" // result[1] += rdx
+             "adcq $0, (%[result])\n\t" // result[0] += 0
              "leaq -2(%[rhsIndex]), %[rhsIndex]\n\t" // rhsIndex -= 2
-             "addq %[res3], (%[result])\n\t" // *result += res3
-             "adcq %[res2], -8(%[result])\n\t" // *(result-1) += res2
-             "adcq %[res1], -16(%[result])\n\t" // *(result-2) += res1
-             "adcq %[res0], -24(%[result])\n\t" // *(result-3) += res0
              "leaq -16(%[result]), %[result]\n\t" // result -= 2
-             "cmpq %[zero], %[rhsIndex]\n\t"
+             "testq %[rhsIndex], %[rhsIndex]\n\t"
              "jg Loop%=" // if(rhsIndex > 0) goto Loop
              : "=m"(result.mData), [result]"+&r"(targetPtr), [rhsIndex]"+&r"(rhsIndex),
-               [res0]"=&r"(res0), [res1]"=&r"(res1), [res2]"=&r"(res2), [res3]"=&r"(res3)
+               [temp0]"=&r"(temp0), [temp1]"=&r"(temp1)
              : "m"(rhs.mData), [lhs0]"rm"(mData[0]), [lhs1]"rm"(mData[1]),
-               [rhs]"r"(rhs.mData), [zero]"r"(zero)
+               [rhs]"r"(rhs.mData)
              : "rax", "rdx", "cc");
 
         if constexpr(kSize2 % 2 == 1)
@@ -459,14 +457,14 @@ inline void WMPUInt<kSize>::fullMultiply_size2
                  "mulq %[lhs1]\n\t"
                  "addq %%rax, 16(%[result])\n\t"
                  "adcq %%rdx, 8(%[result])\n\t"
-                 "adcq %[zero], (%[result])\n\t"
+                 "adcq $0, (%[result])\n\t"
                  "movq %[rhs0], %%rax\n\t"
                  "mulq %[lhs0]\n\t"
                  "addq %%rax, 8(%[result])\n\t"
                  "adcq %%rdx, (%[result])"
                  : "=m"(result.mData)
                  : [lhs0]"rm"(mData[0]), [lhs1]"rm"(mData[1]),
-                   [rhs0]"rm"(rhs.mData[0]), [result]"r"(result.mData), [zero]"r"(zero)
+                   [rhs0]"rm"(rhs.mData[0]), [result]"r"(result.mData)
                  : "rax", "rdx", "cc");
         }
     }
@@ -524,12 +522,12 @@ inline WMPUInt<kSize>& WMPUInt<kSize>::operator*=(std::uint64_t rhs)
     }
     else
     {
-        std::uint64_t lhsInd = kSize-1, zero = 0, tempValue = mData[kSize-1];
+        std::uint64_t lhsInd = kSize-1, tempValue = mData[kSize-1];
         mData[kSize-1] = 0;
         asm ("loop%=:\n\t"
              "movq %[tempValue], %%rax\n\t" // rax = tempValue
              "movq -8(%[lhs],%[lhsInd],8), %[tempValue]\n\t" // tempValue = lhs[lhsInd-1]
-             "movq %[zero], -8(%[lhs],%[lhsInd],8)\n\t" // lhs[lhsInd-1] = zero
+             "movq $0, -8(%[lhs],%[lhsInd],8)\n\t" // lhs[lhsInd-1] = 0
              "mulq %[rhs]\n\t" // (rdx,rax) = rax * rhs
              "addq %%rax, (%[lhs],%[lhsInd],8)\n\t" // lhs[lhsInd] += rax
              "adcq %%rdx, -8(%[lhs],%[lhsInd],8)\n\t" // lhs[lhsInd-1] += rdx
@@ -538,7 +536,7 @@ inline WMPUInt<kSize>& WMPUInt<kSize>::operator*=(std::uint64_t rhs)
              "imulq %[tempValue], %[rhs]\n\t" // rhs = tempValue * rhs
              "addq %[rhs], (%[lhs])" // lhs[0] += rhs
              : "+m"(mData), [rhs]"+&r"(rhs), [lhsInd]"+&r"(lhsInd), [tempValue]"+&r"(tempValue)
-             : [lhs]"r"(mData), [zero]"r"(zero)
+             : [lhs]"r"(mData)
              : "rax", "rdx", "cc");
     }
 
@@ -706,35 +704,6 @@ inline void WMPUInt<kSize>::addTo(WMPUInt<kSize>& target1, WMPUInt<kSize>& targe
                [tempReg1]"=&r"(tempReg1), [tempReg2]"=&r"(tempReg2)
              : [self]"r"(mData), [target1]"r"(target1.mData), [target2]"r"(target2.mData),
                "m"(mData) : "cc");
-    else if constexpr(kSize % 2 == 0)
-    {
-        std::uint64_t tempReg3, tempReg4;
-        std::uint64_t dataInd = 8 * kSize;
-        asm ("test %%al, %%al\n"
-             "loop%=:\n\t"
-             "leaq -16(%[dataInd]), %[dataInd]\n\t"
-             "movq 8(%[target1],%[dataInd]), %[tempReg1]\n\t"
-             "movq 8(%[target2],%[dataInd]), %[tempReg2]\n\t"
-             "movq (%[target1],%[dataInd]), %[tempReg3]\n\t"
-             "movq (%[target2],%[dataInd]), %[tempReg4]\n\t"
-             "adcxq 8(%[self],%[dataInd]), %[tempReg1]\n\t"
-             "adoxq 8(%[self],%[dataInd]), %[tempReg2]\n\t"
-             "adcxq (%[self],%[dataInd]), %[tempReg3]\n\t"
-             "adoxq (%[self],%[dataInd]), %[tempReg4]\n\t"
-             "movq %[tempReg1], 8(%[target1],%[dataInd])\n\t"
-             "movq %[tempReg2], 8(%[target2],%[dataInd])\n\t"
-             "movq %[tempReg3], (%[target1],%[dataInd])\n\t"
-             "movq %[tempReg4], (%[target2],%[dataInd])\n\t"
-             "jrcxz done%=\n\t"
-             "jmp loop%=\n"
-             "done%=:"
-             : "+m"(target1.mData), "+m"(target2.mData),
-               [dataInd]"+&c"(dataInd),
-               [tempReg1]"=&r"(tempReg1), [tempReg2]"=&r"(tempReg2),
-               [tempReg3]"=&r"(tempReg3), [tempReg4]"=&r"(tempReg4)
-             : [self]"r"(mData), [target1]"r"(target1.mData), [target2]"r"(target2.mData),
-               "m"(mData) : "cc");
-    }
     else
     {
         std::uint64_t dataInd = 8 * kSize;
