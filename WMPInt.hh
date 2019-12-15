@@ -169,7 +169,7 @@ class WMPUInt
     void multiply_size2(const WMPUInt<kSize>&, WMPUInt<kSize>&) const;
     void multiply(std::uint64_t, std::uint64_t* result) const;
     template<std::size_t kSize2>
-    void fullMultiply_size2_2(const WMPUInt<kSize2>&, WMPUInt<kSize+kSize2>&) const;
+    void fullMultiply_size2(const WMPUInt<kSize2>&, WMPUInt<kSize+kSize2>&) const;
     void neg_size2();
     template<std::size_t> friend class WMPUInt;
 };
@@ -1231,8 +1231,10 @@ inline void WMPUInt<kSize>::fullMultiply
 {
     if constexpr(kSize2 == 1)
         rhs.fullMultiply(*this, result);
-    else if constexpr(kSize == 2 && kSize2 == 2)
-        fullMultiply_size2_2(rhs, result);
+    else if constexpr(kSize == 2)
+        fullMultiply_size2(rhs, result);
+    else if constexpr(kSize2 == 2)
+        rhs.fullMultiply_size2(*this, result);
     else if constexpr((kSize == kSize2 && kSize < 16) ||
                       (kSize < 50 && kSize2 < kSize/2) ||
                       (kSize2 < 50 && kSize < kSize2/2) ||

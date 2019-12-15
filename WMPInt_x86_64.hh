@@ -363,7 +363,7 @@ inline void WMPUInt<kSize>::multiply_size2
 
 template<std::size_t kSize>
 template<std::size_t kSize2>
-inline void WMPUInt<kSize>::fullMultiply_size2_2
+inline void WMPUInt<kSize>::fullMultiply_size2
 (const WMPUInt<kSize2>& rhs, WMPUInt<kSize+kSize2>& result) const
 {
     if constexpr(kSize == 2 && kSize2 == 2)
@@ -372,8 +372,8 @@ inline void WMPUInt<kSize>::fullMultiply_size2_2
              A*C = EF, B*D = GH, A*D = IJ, B*C = KL,
              AB*CD =
                EFGH
-               +IJ0
-               +KL0
+              + IJ
+              + KL
            (This is about 4 times faster than calling doFullLongMultiplication().)
         */
         std::uint64_t zero = 0;
@@ -400,6 +400,75 @@ inline void WMPUInt<kSize>::fullMultiply_size2_2
                [rhs0]"rm"(rhs.mData[0]), [rhs1]"rm"(rhs.mData[1]),
                [result]"r"(result.mData), [zero]"r"(zero)
              : "rax", "rdx", "cc");
+    }
+    else if constexpr(kSize == 2)
+    {
+        /* In essence this does short multiplication on 128-bit values.
+           This is almost three times faster than calling doFullLongMultiplication().
+        */
+        for(std::size_t i = 0; i < kSize+kSize2; ++i) result.mData[i] = 0;
+        std::uint64_t zero = 0, *targetPtr = result.mData + (kSize+kSize2-1);
+        std::uint64_t res0, res1, res2, res3;
+        std::size_t rhsIndex = kSize2 - 1;
+        asm ("Loop%=:\n\t"
+             "movq (%[rhs], %[rhsIndex], 8), %%rax\n\t" // rax = rhs[rhsIndex]
+             "mulq %[lhs1]\n\t" // (rdx,rax) = rax * lhs1
+             "movq %%rax, %[res3]\n\t" // res3 = rax
+             "movq %%rdx, %[res2]\n\t" // res2 = rdx
+             "movq -8(%[rhs], %[rhsIndex], 8), %%rax\n\t" // rax = rhs[rhsIndex-1]
+             "mulq %[lhs0]\n\t" // (rdx,rax) = rax * lhs0
+             "movq %%rax, %[res1]\n\t" // res1 = rax
+             "movq %%rdx, %[res0]\n\t" // res0 = rdx
+             "movq (%[rhs], %[rhsIndex], 8), %%rax\n\t" // rax = rhs[rhsIndex]
+             "mulq %[lhs0]\n\t" // (rdx,rax) = rax * lhs0
+             "addq %%rax, %[res2]\n\t" // res2 += rax
+             "adcq %%rdx, %[res1]\n\t" // res1 += rdx
+             "adcq %[zero], %[res0]\n\t" // res0 += 0
+             "movq -8(%[rhs], %[rhsIndex], 8), %%rax\n\t" // rax = rhs[rhsIndex-1]
+             "mulq %[lhs1]\n\t" // (rdx,rax) = rax * lhs1
+             "addq %%rax, %[res2]\n\t" // res2 += rax
+             "adcq %%rdx, %[res1]\n\t" // res1 += rdx
+             "adcq %[zero], %[res0]\n\t" // res0 += 0
+             "leaq -2(%[rhsIndex]), %[rhsIndex]\n\t" // rhsIndex -= 2
+             "addq %[res3], (%[result])\n\t" // *result += res3
+             "adcq %[res2], -8(%[result])\n\t" // *(result-1) += res2
+             "adcq %[res1], -16(%[result])\n\t" // *(result-2) += res1
+             "adcq %[res0], -24(%[result])\n\t" // *(result-3) += res0
+             "leaq -16(%[result]), %[result]\n\t" // result -= 2
+             "cmpq %[zero], %[rhsIndex]\n\t"
+             "jg Loop%=" // if(rhsIndex > 0) goto Loop
+             : "=m"(result.mData), [result]"+&r"(targetPtr), [rhsIndex]"+&r"(rhsIndex),
+               [res0]"=&r"(res0), [res1]"=&r"(res1), [res2]"=&r"(res2), [res3]"=&r"(res3)
+             : "m"(rhs.mData), [lhs0]"rm"(mData[0]), [lhs1]"rm"(mData[1]),
+               [rhs]"r"(rhs.mData), [zero]"r"(zero)
+             : "rax", "rdx", "cc");
+
+        if constexpr(kSize2 % 2 == 1)
+        {
+            /* With an odd rhs size, we need to take care of the most significant word separately.
+
+                   ABBCCDD          JJJ ->   0A            JJJ ->   A
+                      * EF                 * EF                  * EF
+               -----------                 ----                   ---
+               +      GGGG = EF*DD         00KK = (E*0|F*A)        KK = F*A
+               +    HHHH   = EF*CC        + LL  = E*A           + LL  = E*A
+               +  IIII     = EF*BB        + 00  = F*0
+               + JJJ       = EF*A
+            */
+            asm ("movq %[rhs0], %%rax\n\t"
+                 "mulq %[lhs1]\n\t"
+                 "addq %%rax, 16(%[result])\n\t"
+                 "adcq %%rdx, 8(%[result])\n\t"
+                 "adcq %[zero], (%[result])\n\t"
+                 "movq %[rhs0], %%rax\n\t"
+                 "mulq %[lhs0]\n\t"
+                 "addq %%rax, 8(%[result])\n\t"
+                 "adcq %%rdx, (%[result])"
+                 : "=m"(result.mData)
+                 : [lhs0]"rm"(mData[0]), [lhs1]"rm"(mData[1]),
+                   [rhs0]"rm"(rhs.mData[0]), [result]"r"(result.mData), [zero]"r"(zero)
+                 : "rax", "rdx", "cc");
+        }
     }
 }
 

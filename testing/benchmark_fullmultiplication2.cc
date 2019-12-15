@@ -59,7 +59,7 @@ void runMultiplicationBenchmark(std::size_t totalIterations)
 }
 
 static constexpr std::size_t kSizes[] =
-{ 2, 3, 4, 5, 6, 8, 12, 16, 32, 64, 128, 256, 512, 1024, 2048 };
+{ 2, 3, 4, 5, 6, 8, 12, 16, 32, 63, 64, 127, 128, 255, 256, 511, 512, 1024, 2048 };
 
 template<std::size_t kSizesIndex>
 static void runBenchmark1();

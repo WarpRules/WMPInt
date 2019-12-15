@@ -28,59 +28,47 @@ void WMPIntImplementations::doLongMultiplication
        + [R1*L3][R0*L3]
        + [R0*L4]
     */
-    std::uint64_t lhsInd = kSize - 2, rhsInd = kSize - 1, rhsIndCounter, lhsValue = lhs[kSize - 1];
     for(std::size_t i = 0; i < kSize; ++i) result[i] = 0;
-
-    asm (/* Multiplication by [L0] */
-         /* Loop: rhsInd = [kSize-1, 1] */
-         "\nL1%=:\n\t"
-         "movq (%[rhs],%[rhsInd],8),%%rax\n\t" // rax = rhs[rhsInd]
-         "mulq %[lhsValue]\n\t" // (rdx,rax) = rax * lhsValue
-         "addq %%rax,(%[result],%[rhsInd],8)\n\t" // result[rhsInd] += rax
-         "adcq %%rdx,-8(%[result],%[rhsInd],8)\n\t" // result[rhsInd-1] = rdx
-         "decq %[rhsInd]\n\t" // --rhsInd
-         "jnz L1%=\n\t" // if(rhsInd > 0) goto L1
-         "imulq (%[rhs]),%[lhsValue]\n\t" // lhsValue = rhs[0] * lhsValue
-         "addq %[lhsValue],(%[result])\n" // result[0] += lhsValue
-         /* Multiplication by the remaining of lhs. */
-         /* Outer loop: lhsInd = [kSize-2, 0] */
-         "L2%=:\n\t"
-         /* tempBuf has to be zeroed: */
-         "xorq %[lhsValue],%[lhsValue]\n\t" // lhsValue = 0
-         "movq %[lhsInd],%[rhsIndCounter]\n\t" // rhsIndCounter = lhsInd
-         "movq %[lhsValue],8(%[tempBuf],%[lhsInd],8)\n" // tempBuf[lhsInd+1]=0
-         "L5%=:\n\t"
-         "movq %[lhsValue],(%[tempBuf],%[rhsIndCounter],8)\n\t" // tempBuf[rhsIndCounter]=0
-         "decq %[rhsIndCounter]\n\t" // --rhsIndCounter
-         "jns L5%=\n\t" // if(rhsIndCounter >= 0) goto L5
-         /* Inner loop 1: rhsIndCounter = [lhsInd, 0] */
-         "movq %[lhsInd],%[rhsIndCounter]\n\t" // rhsIndCounter = lhsInd
-         "movq %[kSizeM1],%[rhsInd]\n\t" // rhsInd = kSize-1
-         "movq (%[lhs],%[lhsInd],8),%[lhsValue]\n" // lhsValue = lhs[lhsInd]
-         "L3%=:\n\t"
-         "movq (%[rhs],%[rhsInd],8),%%rax\n\t" // rax = rhs[rhsInd]
-         "mulq %[lhsValue]\n\t" // (rdx,rax) = rax * lhsValue
-         "decq %[rhsInd]\n\t" // --rhsInd
-         "addq %%rax,8(%[tempBuf],%[rhsIndCounter],8)\n\t" // tempBuf[rhsIndCounter+1] += rax
-         "adcq %%rdx,(%[tempBuf],%[rhsIndCounter],8)\n\t" // tmpBuf[rhsIndCounter] += rdx
-         "decq %[rhsIndCounter]\n\t" // -rhsIndCounter
-         "jns L3%=\n\t" // if(rhsIndCounter >= 0) goto L3
-         /* Inner loop 2: rhsIndCounter = [lhsInd, 0] */
-         "movq %[lhsInd],%[rhsIndCounter]\n\t" // rhsIndCounter = lhsInd
+    std::uint64_t lhsInd = kSize - 1, rhsInd, lhsValue;
+    asm ("Loop1%=:\n\t"
+         // Zero tempBuf:
+         "xorq %[lhsValue], %[lhsValue]\n\t"
+         "movq %[lhsInd], %[rhsInd]\n"
+         "Loop2%=:\n\t"
+         "movq %[lhsValue], (%[tempBuf], %[rhsInd], 8)\n\t"
+         "decq %[rhsInd]\n\t"
+         "jns Loop2%=\n\t"
+         // rhs * lhs[lhsInd] into the tempBuf
+         "movq %[lhsInd], %[rhsInd]\n\t"
+         "movq (%[lhs], %[lhsInd], 8), %[lhsValue]\n"
+         "Loop3%=:\n\t"
+         "movq (%[rhs], %[rhsInd], 8), %%rax\n\t"
+         "mulq %[lhsValue]\n\t"
+         "addq %%rax, (%[tempBuf], %[rhsInd], 8)\n\t"
+         "adcq %%rdx, -8(%[tempBuf], %[rhsInd], 8)\n\t"
+         "decq %[rhsInd]\n\t"
+         "jnz Loop3%=\n\t"
+         "imulq (%[rhs]), %[lhsValue]\n\t"
+         "addq %[lhsValue], (%[tempBuf])\n\t"
+         // Add tempBuf to the result:
+         "movq %[lhsInd], %[rhsInd]\n\t"
          "clc\n"
-         "L4%=:\n\t"
-         "movq 8(%[tempBuf],%[rhsIndCounter],8),%%rax\n\t" // rax = tempBuf[rhsIndCounter+1]
-         "adcq %%rax,(%[result],%[rhsIndCounter],8)\n\t" // result[rhsIndCounter] += rax
-         "decq %[rhsIndCounter]\n\t" // --rhsIndCounter
-         "jns L4%=\n\t" // if(rhsIndCounter >= 0) goto L4
-         "decq %[lhsInd]\n\t" // --lhsInd
-         "jns L2%=" // if(lhsInd >= 0) goto L2
+         "Loop4%=:\n\t"
+         "movq (%[tempBuf], %[rhsInd], 8), %[lhsValue]\n\t"
+         "adcq %[lhsValue], (%[result], %[rhsInd], 8)\n\t"
+         "decq %[rhsInd]\n\t"
+         "jns Loop4%=\n\t"
+         // Advance rhs and ecrement lhsInd:
+         "leaq 8(%[rhs]), %[rhs]\n\t"
+         "decq %[lhsInd]\n\t"
+         "jnz Loop1%=\n\t"
+         "movq (%[lhs]), %[lhsValue]\n\t"
+         "imulq (%[rhs]), %[lhsValue]\n\t"
+         "addq %[lhsValue], (%[result])"
          : "+m"(*(std::uint64_t(*)[kSize])result),
-           "=m"(*(std::uint64_t(*)[kSize])tempBuffer),
-           [lhsInd]"+&r"(lhsInd), [rhsInd]"+&r"(rhsInd),
-           [rhsIndCounter]"=&r"(rhsIndCounter), [lhsValue]"+&r"(lhsValue)
-         : [lhs]"r"(lhs), [rhs]"r"(rhs), [result]"r"(result),
-           [tempBuf]"r"(tempBuffer), [kSizeM1]"rm"(kSize - 1),
+           "=m"(*(std::uint64_t(*)[kSize])tempBuffer), [rhs]"+&r"(rhs),
+           [lhsInd]"+&r"(lhsInd), [rhsInd]"=&r"(rhsInd), [lhsValue]"=&r"(lhsValue)
+         : [lhs]"r"(lhs), [result]"r"(result), [tempBuf]"r"(tempBuffer),
            "m"(*(std::uint64_t(*)[kSize])lhs), "m"(*(std::uint64_t(*)[kSize])rhs)
          : "rax", "rdx", "cc");
 }
