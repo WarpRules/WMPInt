@@ -88,7 +88,7 @@ void WMPIntImplementations::doFullLongMultiplication
 
     // tempBuffer size is kSize2+1, result size is kSize1+kSize2
     const std::size_t resultSize = kSize1 + kSize2;
-    std::uint64_t resultStartInd = resultSize - 1, resultInd;
+    std::uint64_t* resultPtr = result + (kSize1 - 1);
     std::uint64_t lhsInd = kSize1 - 1, rhsInd, lhsValue;
     for(std::size_t i = 0; i < resultSize; ++i) result[i] = 0;
 
@@ -113,23 +113,20 @@ void WMPIntImplementations::doFullLongMultiplication
          "jnz L3%=\n\t" // if(rhsInd > 0) goto L3
          /* Inner loop 2: rhsInd = [kSize2, 0] */
          "movq %[kSize2], %[rhsInd]\n\t" // rhsInd = kSize2
-         "movq %[resultStartInd], %[resultInd]\n\t" // resultInd = resultStartInd
          "clc\n"
          "L4%=:\n\t"
          "movq (%[tempBuf],%[rhsInd],8),%%rax\n\t" // rax = tempBuf[rhsInd]
-         "adcq %%rax,(%[result],%[resultInd],8)\n\t" // result[resultInd] += rax
-         "decq %[resultInd]\n\t" // --resultInd
+         "adcq %%rax,(%[result],%[rhsInd],8)\n\t" // result[rhsInd] += rax
          "decq %[rhsInd]\n\t" // --rhsInd
          "jns L4%=\n\t" // if(rhsIndCounter >= 0) goto L4
-         "decq %[resultStartInd]\n\t" // --resultStartInd
+         "leaq -8(%[result]), %[result]\n\t"
          "decq %[lhsInd]\n\t" // --lhsInd
          "jns L1%=" // if(lhsInd >= 0) goto L1
          : "+m"(*(std::uint64_t(*)[resultSize])result),
            "=m"(*(std::uint64_t(*)[kSize2+1])tempBuffer),
            [lhsInd]"+&r"(lhsInd), [rhsInd]"=&r"(rhsInd), [lhsValue]"=&r"(lhsValue),
-           [resultStartInd]"+&r"(resultStartInd), [resultInd]"=&r"(resultInd)
-         : [lhs]"r"(lhs), [rhs]"r"(rhs), [result]"r"(result),
-           [tempBuf]"r"(tempBuffer), [kSize2]"irm"(kSize2),
+           [result]"+&r"(resultPtr)
+         : [lhs]"r"(lhs), [rhs]"r"(rhs), [tempBuf]"r"(tempBuffer), [kSize2]"irm"(kSize2),
            "m"(*(std::uint64_t(*)[kSize1])lhs), "m"(*(std::uint64_t(*)[kSize2])rhs)
          : "rax", "rdx", "cc");
 }
