@@ -551,6 +551,11 @@ void <span class="funcname">fullMultiply</span> (const WMPUInt&lt;kSize2&gt;&amp
   the result of their product will be an object of type
   <code>WMPUInt&lt;size1+size2&gt;</code>.</p>
 
+<p>(Note that there is no version of the <code>fullMultiply()</code> function that would
+  take a multiplier of type <code>std::uint64_t</code>. However, the exact same result
+  (exactly as efficiently) can be obtained by using a multiplier of type
+  <code>WMPUInt&lt;1&gt;</code> instead.)</p>
+
 <p>Example usage:</p>
 
 <pre>WMPUInt&lt;64&gt; value1, value2;
