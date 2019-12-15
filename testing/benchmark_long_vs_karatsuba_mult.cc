@@ -1,134 +1,104 @@
 #include "../WMPInt.hh"
 #include "benchmark_timer.hh"
-#include <random>
+#include "WFLCG.hh"
+#include <memory>
 #include <cassert>
 
 namespace
 {
-    struct SizeData { std::size_t lhsSize, rhsSize, iterations; };
+    WFLCG gRNG;
+}
 
-    constexpr SizeData kSizes[] =
-    {
-        { 12, 12, 2000000 },
-        { 16, 16, 1200000 },
-        { 14, 16, 1100000 },
-        { 10, 16, 1700000 },
-        { 8, 16, 2000000 },
-        { 5, 16, 3000000 },
-        { 25, 25, 450000 },
-        { 20, 25, 600000 },
-        { 15, 25, 700000 },
-        { 10, 25, 1000000 },
-        { 5, 25, 2000000 },
-        { 30, 30, 300000 },
-        { 25, 30, 400000 },
-        { 20, 30, 450000 },
-        { 15, 30, 700000 },
-        { 10, 30, 1000000 },
-        { 5, 30, 2000000 },
-        { 50, 50, 110000 },
-        { 40, 50, 140000 },
-        { 30, 50, 180000 },
-        { 20, 50, 250000 },
-        { 15, 50, 320000 },
-        { 10, 50, 450000 },
-        { 100, 100, 25000 },
-        { 50, 100, 52000 },
-        { 25, 100, 100000 },
-        { 18, 100, 160000 },
-        { 10, 100, 230000 },
-        { 200, 200, 7000 },
-        { 150, 200, 10000 },
-        { 100, 200, 14000 },
-        { 50, 200, 25000 },
-        { 20, 200, 65000 },
-        { 10, 200, 130000 },
-        { 300, 300, 3000 },
-        { 200, 300, 4000 },
-        { 150, 300, 6000 },
-        { 100, 300, 8000 },
-        { 50, 300, 17000 },
-        { 25, 300, 35000 },
-    };
+static void reseedAndInitialize(std::uint64_t* lhs, std::size_t lhsSize,
+                                std::uint64_t* rhs, std::size_t rhsSize)
+{
+    gRNG = WFLCG(static_cast<std::uint32_t>(lhsSize), static_cast<std::uint32_t>(rhsSize));
 
-    constexpr std::size_t getMaxLHSSize()
-    {
-        std::size_t maxSize = 0;
-        for(const SizeData& data: kSizes)
-            if(data.lhsSize > maxSize) maxSize = data.lhsSize;
-        return maxSize;
-    }
+    for(std::size_t i = 0; i < lhsSize; ++i)
+        lhs[i] = static_cast<std::uint64_t>(gRNG()) | ( static_cast<std::uint64_t>(gRNG()) << 32);
 
-    constexpr std::size_t getMaxRHSSize()
-    {
-        std::size_t maxSize = 0;
-        for(const SizeData& data: kSizes)
-            if(data.rhsSize > maxSize) maxSize = data.rhsSize;
-        return maxSize;
-    }
-
-    constexpr std::size_t kMaxLHSSize = getMaxLHSSize();
-    constexpr std::size_t kMaxRHSSize = getMaxRHSSize();
-    constexpr std::size_t kResultMaxSize = kMaxLHSSize + kMaxRHSSize;
-    constexpr std::size_t kTempBufferMaxSize =
-        WMPIntImplementations::fullKaratsubaMultiplicationBufferSize(kMaxLHSSize, kMaxRHSSize);
-
-    std::mt19937_64 rngEngine(0);
-    volatile std::uint64_t gValueSink1;
-    std::uint64_t gLHS[kMaxLHSSize], gRHS[kMaxRHSSize];
-    std::uint64_t gResult[kResultMaxSize];
-    std::uint64_t gTempBuffer[kTempBufferMaxSize];
+    for(std::size_t i = 0; i < rhsSize; ++i)
+        rhs[i] = static_cast<std::uint64_t>(gRNG()) | ( static_cast<std::uint64_t>(gRNG()) << 32);
 }
 
 void runMultiplicationBenchmark
 (std::size_t lhsSize, std::size_t rhsSize, std::size_t totalIterations)
 {
     assert(lhsSize <= rhsSize);
-    std::uint64_t resultSumMSW = 0;
 
-    for(std::size_t i = 0; i < lhsSize; ++i)
-        gLHS[i] = rngEngine();
+    const std::size_t resultSize = lhsSize + rhsSize;
+    const std::size_t longMultBuffersize =
+        WMPIntImplementations::fullLongMultiplicationBufferSize(rhsSize, lhsSize);
+    const std::size_t karatsubaMultBufferSize =
+        WMPIntImplementations::fullKaratsubaMultiplicationBufferSize(lhsSize, rhsSize);
 
-    for(std::size_t i = 0; i < rhsSize; ++i)
-        gRHS[i] = rngEngine();
+    std::unique_ptr<std::uint64_t[]> lhs(new std::uint64_t[lhsSize]);
+    std::unique_ptr<std::uint64_t[]> rhs(new std::uint64_t[rhsSize]);
+    std::unique_ptr<std::uint64_t[]> result(new std::uint64_t[resultSize]);
 
+    std::unique_ptr<std::uint64_t[]> longMultTempBuffer
+        (new std::uint64_t[longMultBuffersize]);
+    std::unique_ptr<std::uint64_t[]> karatsubaMultTempBuffer
+        (new std::uint64_t[karatsubaMultBufferSize]);
+
+    reseedAndInitialize(lhs.get(), lhsSize, rhs.get(), rhsSize);
     Timer timer1;
 
-    for(std::size_t i = 0; i < totalIterations; ++i)
+    for(std::size_t iteration = 0; iteration < totalIterations; ++iteration)
     {
-        WMPIntImplementations::doFullLongMultiplication
-            (gLHS, lhsSize, gRHS, rhsSize, gResult, gTempBuffer);
-        resultSumMSW += gResult[0];
+        for(unsigned subIteration = 0; subIteration < WFLCG::kBufferSize; ++subIteration)
+        {
+            WMPIntImplementations::doFullLongMultiplication
+                (rhs.get(), rhsSize, lhs.get(), lhsSize, result.get(), longMultTempBuffer.get());
+
+            lhs.get()[0] ^= gRNG.buffer()[subIteration];
+        }
+        gRNG.refillBuffer();
     }
 
-    gValueSink1 = resultSumMSW;
     const double seconds1 = timer1.getElapsedSeconds();
 
+    reseedAndInitialize(lhs.get(), lhsSize, rhs.get(), rhsSize);
     Timer timer2;
 
     for(std::size_t i = 0; i < totalIterations; ++i)
     {
-        WMPIntImplementations::doFullKaratsubaMultiplication
-            (gLHS, lhsSize, gRHS, rhsSize, gResult, gTempBuffer);
-        resultSumMSW += gResult[0];
+        for(unsigned subIteration = 0; subIteration < WFLCG::kBufferSize; ++subIteration)
+        {
+            WMPIntImplementations::doFullKaratsubaMultiplication
+                (lhs.get(), lhsSize, rhs.get(), rhsSize, result.get(),
+                 karatsubaMultTempBuffer.get());
+
+            lhs.get()[0] ^= gRNG.buffer()[subIteration];
+        }
+        gRNG.refillBuffer();
     }
 
-    gValueSink1 = resultSumMSW;
     const double seconds2 = timer2.getElapsedSeconds();
 
-    std::printf("lhs:%2zu, rhs:%2zu %c long: %.3f s (", lhsSize, rhsSize,
+    totalIterations *= WFLCG::kBufferSize;
+
+    std::printf("%zux%zu (lbs:%zu, kbs:%zu) %c long: %.3fs (", lhsSize, rhsSize,
+                longMultBuffersize, karatsubaMultBufferSize,
                 seconds1<seconds2?'-':'+', seconds1);
     Timer::printTime(seconds1 / totalIterations);
-    std::printf("), karatsuba: %.3f s (", seconds2);
+    std::printf("), karatsuba: %.3fs (", seconds2);
     Timer::printTime(seconds2 / totalIterations);
-    std::printf(") | %zu/%zu\n",
-                WMPIntImplementations::fullLongMultiplicationBufferSize(lhsSize, rhsSize),
-                WMPIntImplementations::fullKaratsubaMultiplicationBufferSize(lhsSize, rhsSize));
+    std::printf(")\n");
 }
 
 int main()
 {
     std::printf("Long multiplication vs. Karatsuba algorithm benchmarks:\n");
-    for(const SizeData& data: kSizes)
-        runMultiplicationBenchmark(data.lhsSize, data.rhsSize, data.iterations);
+
+    for(std::size_t rhsSize: { 16, 24, 32, 48, 64, 96, 128, 192, 256, 384, 512, 768, 1024, 2048 })
+    {
+        std::printf("---\n");
+        for(std::size_t lhsSize = 16; lhsSize <= 24; ++lhsSize)
+            if(lhsSize <= rhsSize)
+                runMultiplicationBenchmark(lhsSize, rhsSize, 10000000/(lhsSize*rhsSize));
+        for(std::size_t lhsSize: { 64, 128, 192, 256, 384, 512, 768, 1024, 1620, 2048 })
+            if(lhsSize <= rhsSize)
+                runMultiplicationBenchmark(lhsSize, rhsSize, 10000000/(lhsSize*rhsSize));
+    }
 }
