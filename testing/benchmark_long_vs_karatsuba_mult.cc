@@ -94,10 +94,8 @@ int main()
     for(std::size_t rhsSize: { 16, 24, 32, 48, 64, 96, 128, 192, 256, 384, 512, 768, 1024, 2048 })
     {
         std::printf("---\n");
-        for(std::size_t lhsSize = 16; lhsSize <= 24; ++lhsSize)
-            if(lhsSize <= rhsSize)
-                runMultiplicationBenchmark(lhsSize, rhsSize, 10000000/(lhsSize*rhsSize));
-        for(std::size_t lhsSize: { 64, 128, 192, 256, 384, 512, 768, 1024, 1620, 2048 })
+        for(std::size_t lhsSize: { 8, 9, 16, 17, 24, 25, 32, 33, 64, 65, 128, 129, 256, 267,
+                                      512, 513, 768, 769, 1024, 1025, 1620, 2048 })
             if(lhsSize <= rhsSize)
                 runMultiplicationBenchmark(lhsSize, rhsSize, 10000000/(lhsSize*rhsSize));
     }

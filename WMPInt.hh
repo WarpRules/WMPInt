@@ -358,7 +358,8 @@ constexpr std::size_t WMPIntImplementations::fullKaratsubaMultiplicationBufferSi
 constexpr std::size_t WMPIntImplementations::fullKaratsubaMultiplicationBufferSizeForSmallLHS
 (std::size_t lhsSize, std::size_t rhsSize)
 {
-    if(lhsSize <= 2 || rhsSize <= 12) return fullLongMultiplicationBufferSize(rhsSize, lhsSize);
+    if(lhsSize == 1) return 0;
+    if(lhsSize == 2 || rhsSize <= 12) return fullLongMultiplicationBufferSize(rhsSize, lhsSize);
     const std::size_t rhsLowSize = (rhsSize+1) / 2;
     const std::size_t rhsHighSize = rhsSize - rhsLowSize;
     const std::size_t bufferSize1 =

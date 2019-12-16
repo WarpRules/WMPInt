@@ -270,6 +270,25 @@ static inline void doSubtraction(std::uint64_t* lhs, std::size_t lhsSize,
          : "cc");
 }
 
+static void doFullLongMultiplication_1xN
+(std::uint64_t lhs, const std::uint64_t* rhs, std::size_t kSize2,
+ std::uint64_t* result)
+{
+    for(std::size_t i = 0; i < 1+kSize2; ++i) result[i] = 0;
+    std::uint64_t rhsInd = kSize2 - 1;
+    asm ("L1%=:\n\t"
+         "movq (%[rhs],%[rhsInd],8), %%rax\n\t"
+         "mulq %[lhs]\n\t"
+         "addq %%rax, 8(%[result],%[rhsInd],8)\n\t"
+         "adcq %%rdx, (%[result],%[rhsInd],8)\n\t"
+         "decq %[rhsInd]\n\t"
+         "jns L1%="
+         : "+m"(*(std::uint64_t(*)[kSize2+1])result), [rhsInd]"+&r"(rhsInd)
+         : "m"(*(std::uint64_t(*)[kSize2])rhs), [lhs]"r"(lhs), [rhs]"r"(rhs),
+           [result]"r"(result)
+         : "rax", "rdx", "cc");
+}
+
 
 //----------------------------------------------------------------------------
 // Karatsuba long multiplication
@@ -362,7 +381,9 @@ static void doFullKaratsubaMultiplicationForSmallLHS
  const std::uint64_t* rhs, std::size_t rhsSize,
  std::uint64_t* result, std::uint64_t* tempBuffer)
 {
-    if(lhsSize <= 2 || rhsSize <= 12)
+    if(lhsSize == 1)
+        return doFullLongMultiplication_1xN(*lhs, rhs, rhsSize, result);
+    if(lhsSize == 2 || rhsSize <= 12)
         return WMPIntImplementations::doFullLongMultiplication
             (rhs, rhsSize, lhs, lhsSize, result, tempBuffer);
 
