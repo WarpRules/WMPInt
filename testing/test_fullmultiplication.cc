@@ -208,18 +208,24 @@ template<std::size_t kSize1, std::size_t kSize2, std::size_t kIterations>
 static bool testFullMultiplication(std::mt19937& rng)
 {
     std::cout << ++gTestCounter << "/" << kTestsAmount << "\r"; std::cout.flush();
-    //std::cout << kSize1 << "x" << kSize2 << std::endl;
+
     WMPUInt<kSize1> lhs;
     WMPUInt<kSize2> rhs;
     WMPUInt<kSize1 + kSize2> result, expectedResult;
-    const std::size_t tempBufferSize1 = lhs.template fullMultiplyBufferSize<kSize2>();
-    const std::size_t tempBufferSize2 = rhs.template fullMultiplyBufferSize<kSize1>();
-    const std::size_t tempBufferSize =
-        tempBufferSize1 > tempBufferSize2 ? tempBufferSize1 : tempBufferSize2;
-    std::uint64_t tempBuffer[tempBufferSize];
+
+    const std::size_t tempBufferSize1 = WMPUInt<kSize1>::template fullMultiplyBufferSize<kSize2>();
+    const std::size_t tempBufferSize2 = WMPUInt<kSize2>::template fullMultiplyBufferSize<kSize1>();
+    const std::size_t tempBufferSize3 = WMPIntImplementations::fullLongMultiplicationBufferSize(kSize1, kSize2);
+    const std::size_t tempBufferSize4 = WMPIntImplementations::fullLongMultiplicationBufferSize(kSize2, kSize1);
     const std::size_t karatsubaTempBufferSize =
         WMPIntImplementations::fullKaratsubaMultiplicationBufferSize(kSize2, kSize1);
-    std::uint64_t karatsubaTempBuffer[karatsubaTempBufferSize];
+
+    const std::size_t tempBufferSize =
+        std::max(std::max(std::max(std::max(tempBufferSize1, tempBufferSize2),
+                                   tempBufferSize3), tempBufferSize4), karatsubaTempBufferSize);
+
+    std::uint64_t tempBuffer[tempBufferSize];
+
     std::uint32_t lhsArray[kSize1*2], rhsArray[kSize2*2];
     std::uint32_t resultArray[kSize1*2+kSize2*2], tempBuffer2[kSize2*2+1];
 
@@ -337,7 +343,7 @@ static bool testFullMultiplication(std::mt19937& rng)
         {
             result.assign(0);
             WMPIntImplementations::doFullKaratsubaMultiplication
-                (rhs.data(), kSize2, lhs.data(), kSize1, result.data(), karatsubaTempBuffer);
+                (rhs.data(), kSize2, lhs.data(), kSize1, result.data(), tempBuffer);
 
             if(gWMPInt_karatsuba_max_temp_buffer_size != karatsubaTempBufferSize)
                 return DPRINT
@@ -369,7 +375,7 @@ static bool testFullMultiplication(std::mt19937& rng)
                       "\nresulted in\n", result, "\ninstead of\n", expectedResult, "\n");
 
     result.assign(0);
-    lhs.fullMultiply_karatsuba(rhs, result, karatsubaTempBuffer);
+    lhs.fullMultiply_karatsuba(rhs, result, tempBuffer);
     if(result != expectedResult)
         return DPRINT("Error: fullMultiply_karatsuba of\n", rhs, " and\n", lhs,
                       "\nresulted in\n", result, "\ninstead of\n", expectedResult, "\n");
