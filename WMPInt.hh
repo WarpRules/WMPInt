@@ -5,6 +5,21 @@
 #define WMPINT_VERSION_STRING "0.6.3"
 #define WMPINT_COPYRIGHT_STRING "WMPInt v" WMPINT_VERSION_STRING " (C)2019 Juha Nieminen"
 
+#define WMPINT_CPU_TYPE_X86_64 1
+#define WMPINT_CPU_TYPE_ARM64 2
+
+#ifndef WMPINT_CPU_TYPE
+#if __x86_64
+#define WMPINT_CPU_TYPE WMPINT_CPU_TYPE_X86_64
+#elif __aarch64__
+#define WMPINT_CPU_TYPE WMPINT_CPU_TYPE_ARM64
+#endif
+#endif
+
+#if !WMPINT_CPU_TYPE
+#error "Could not detect CPU type (neither __x86_64 nor __aarch64__ are defined). Define the WMPINT_CPU_TYPE macro to choose CPU type."
+#endif
+
 #include <cstdint>
 #include <cstddef>
 #include <initializer_list>
@@ -254,7 +269,11 @@ class WMPUInt<1>
 //============================================================================
 // Implementations
 //============================================================================
+#if WMPINT_CPU_TYPE == WMPINT_CPU_TYPE_X86_64
 #include "WMPInt_x86_64.hh"
+#elif WMPINT_CPU_TYPE == WMPINT_CPU_TYPE_ARM64
+#include "WMPInt_aarch64.hh"
+#endif
 
 //----------------------------------------------------------------------------
 // WMPUInt<1> specializations

@@ -30,6 +30,7 @@ void WMPIntImplementations::doLongMultiplication
        gives an "impossible constraints" error for because of all the "m" constraints (is it trying
        to map them onto registers for some reason?) I haven't figured out a better way. This needs
        to be instantiated in this case anyway, so no harm done. */
+#if WMPINT_CPU_TYPE == WMPINT_CPU_TYPE_X86_64
     asm volatile
         ("L1%=:\n\t"
          "movq %[lhsInd], %[rhsInd]\n\t" // rhsInd = lhsInd
@@ -63,6 +64,7 @@ void WMPIntImplementations::doLongMultiplication
          : [lhs]"r"(lhs), [result]"r"(result)
            //, "m"(*(std::uint64_t(*)[kSize])lhs), "m"(*(std::uint64_t(*)[kSize])rhs)
          : "rax", "rdx", "cc", "memory");
+#endif
 }
 
 
@@ -82,6 +84,7 @@ void WMPIntImplementations::doFullLongMultiplication
        gives an "impossible constraints" error because of all the "m" constraints (is it trying
        to map them onto registers for some reason?) I haven't figured out a better way. This needs
        to be instantiated in this case anyway, so no harm done. */
+#if WMPINT_CPU_TYPE == WMPINT_CPU_TYPE_X86_64
     asm volatile
         ("L1%=:\n\t"
          "movq %[kSize2], %[rhsInd]\n\t" // rhsInd = kSize2
@@ -110,6 +113,7 @@ void WMPIntImplementations::doFullLongMultiplication
          : [lhs]"r"(lhs), [rhs]"r"(rhs), [kSize2]"irm"(kSize2)
            //, "m"(*(std::uint64_t(*)[kSize1])lhs), "m"(*(std::uint64_t(*)[kSize2])rhs)
          : "rax", "rdx", "cc", "memory");
+#endif
 }
 
 
@@ -121,6 +125,7 @@ static void doFullAddition(const std::uint64_t* lhs, std::size_t lhsSize,
                            const std::uint64_t* rhs, std::size_t rhsSize,
                            std::uint64_t* result)
 {
+#if WMPINT_CPU_TYPE == WMPINT_CPU_TYPE_X86_64
     if(lhsSize == rhsSize)
     {
         *result = 0;
@@ -165,11 +170,13 @@ static void doFullAddition(const std::uint64_t* lhs, std::size_t lhsSize,
                "m"(*(std::uint64_t(*)[lhsSize])lhs), "m"(*(std::uint64_t(*)[rhsSize])rhs)
              : "cc");
     }
+#endif
 }
 
 static void doAddition(std::uint64_t* lhs, std::size_t lhsSize,
                        const std::uint64_t* rhs, std::size_t rhsSize)
 {
+#if WMPINT_CPU_TYPE == WMPINT_CPU_TYPE_X86_64
     std::size_t lhsInd = lhsSize - 1;
     std::uint64_t value;
     if(lhsSize <= rhsSize)
@@ -209,10 +216,12 @@ static void doAddition(std::uint64_t* lhs, std::size_t lhsSize,
              : [lhs]"r"(lhs), [rhs]"r"(rhs), "m"(*(std::uint64_t(*)[rhsSize])rhs)
              : "cc");
     }
+#endif
 }
 
 static inline void doAddition(std::uint64_t* lhs, const std::uint64_t* rhs, std::size_t size)
 {
+#if WMPINT_CPU_TYPE == WMPINT_CPU_TYPE_X86_64
     std::size_t index = size - 1;
     std::uint64_t value;
     asm ("clc\n"
@@ -226,12 +235,14 @@ static inline void doAddition(std::uint64_t* lhs, const std::uint64_t* rhs, std:
          : "m"(*(std::uint64_t(*)[size])rhs),
            [lhs]"r"(lhs), [rhs]"r"(rhs)
          : "cc");
+#endif
 }
 
 /* Assumes that lhsSize > rhsSize */
 static inline void doSubtraction(std::uint64_t* lhs, std::size_t lhsSize,
                                  const std::uint64_t* rhs, std::size_t rhsSize)
 {
+#if WMPINT_CPU_TYPE == WMPINT_CPU_TYPE_X86_64
     std::size_t lhsInd = lhsSize - 1, rhsInd = rhsSize - 1;
     std::uint64_t value;
     asm ("clc\n"
@@ -249,11 +260,13 @@ static inline void doSubtraction(std::uint64_t* lhs, std::size_t lhsSize,
            [lhsInd]"+&r"(lhsInd), [rhsInd]"+&r"(rhsInd), [value]"=&r"(value)
          : [lhs]"r"(lhs), [rhs]"r"(rhs), "m"(*(std::uint64_t(*)[rhsSize])rhs)
          : "cc");
+#endif
 }
 
 static void doFullLongMultiplication_1xN
 (std::uint64_t lhs, const std::uint64_t* rhs, std::size_t kSize2, std::uint64_t* result)
 {
+#if WMPINT_CPU_TYPE == WMPINT_CPU_TYPE_X86_64
     for(std::size_t i = 0; i < 1+kSize2; ++i) result[i] = 0;
     std::uint64_t rhsInd = kSize2 - 1;
     asm ("L1%=:\n\t"
@@ -267,6 +280,7 @@ static void doFullLongMultiplication_1xN
          : "m"(*(std::uint64_t(*)[kSize2])rhs), [lhs]"r"(lhs), [rhs]"r"(rhs),
            [result]"r"(result)
          : "rax", "rdx", "cc");
+#endif
 }
 
 
@@ -584,6 +598,8 @@ char* WMPIntImplementations::printAsDecStrAndReset
     {
         std::size_t counter = remainingValueSize;
         std::uint64_t* lhs = value + leftIndex, remainder;
+
+#if WMPINT_CPU_TYPE == WMPINT_CPU_TYPE_X86_64
         asm ("xorl %%edx, %%edx\n"
              "L1%=:\n\t"
              "movq (%[lhs]), %%rax\n\t"
@@ -595,6 +611,7 @@ char* WMPIntImplementations::printAsDecStrAndReset
              : "+m"(*(std::uint64_t(*)[valueSize])value),
                [lhs]"+&r"(lhs), [counter]"+&r"(counter), "=&d"(remainder)
              : [rhs]"r"(rhs) : "rax", "cc");
+#endif
 
         if(!value[leftIndex])
         {

@@ -75,8 +75,8 @@ static bool testAssignmentFromDecStr(const char* str, Values_t&&... values)
 {
     WMPUInt<sizeof...(Values_t)> v1, v2(values...);
     const char* endPtr = v1.assignFromDecStr(str);
-    if(v1 != v2) return DPRINT("Error: Initializing with \"", str, "\" failed:\n",
-                               v1, "\n", v2, "\n");
+    if(v1 != v2) return DPRINT("Error: Initializing with \"", str, "\" failed:\n     Got: ",
+                               v1, "\nExpected: ", v2, "\n");
     if(endPtr != str + std::strlen(str))
         return DPRINT("Error: initializing with \"", str,
                       "\" did not return the correct pointer.\n");
