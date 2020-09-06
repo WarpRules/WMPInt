@@ -69,30 +69,33 @@ inline WMPUInt<kSize>& WMPUInt<kSize>::operator+=(const WMPUInt<kSize>& rhs)
 template<std::size_t kSize>
 inline WMPUInt<kSize>& WMPUInt<kSize>::operator+=(std::uint64_t value)
 {
-    std::uint64_t zero = 0;
-
+    const std::uint64_t zero = 0;
     if constexpr(kSize == 2)
-        asm (""
-             : "+m"(mData) : [lhs]"r"(mData), [value]"r"(value), [zero]"r"(zero) : "cc");
+    {
+        asm ("adds %[lhs1], %[lhs1], %[rhs]\n\t"
+             "adc %[lhs0], %[lhs0], %[zero]"
+             : [lhs0]"+&r"(mData[0]), [lhs1]"+&r"(mData[1])
+             : [rhs]"r"(value), [zero]"r"(zero) : "cc");
+    }
     else if constexpr(kSize == 3)
         asm (""
-             : "+m"(mData) : [lhs]"r"(mData), [value]"r"(value), [zero]"r"(zero) : "cc");
+             : "+m"(mData) : [lhs]"r"(mData), [value]"r"(value) : "cc");
     else if constexpr(kSize == 4)
         asm (""
-             : "+m"(mData) : [lhs]"r"(mData), [value]"r"(value), [zero]"r"(zero) : "cc");
+             : "+m"(mData) : [lhs]"r"(mData), [value]"r"(value) : "cc");
     else if constexpr(kSize % 2 == 0)
     {
         std::uint64_t dataInd = kSize - 3;
         asm (""
              : "+m"(mData), [dataInd]"+&r"(dataInd)
-             : [lhs]"r"(mData), [value]"r"(value), [zero]"r"(zero) : "cc");
+             : [lhs]"r"(mData), [value]"r"(value) : "cc");
     }
     else
     {
         std::uint64_t dataInd = kSize - 2;
         asm (""
              : "+m"(mData), [dataInd]"+&r"(dataInd)
-             : [lhs]"r"(mData), [value]"r"(value), [zero]"r"(zero) : "cc");
+             : [lhs]"r"(mData), [value]"r"(value) : "cc");
     }
 
     return *this;
@@ -275,20 +278,35 @@ inline WMPUInt<kSize>& WMPUInt<kSize>::operator*=(std::uint64_t rhs)
 {
     if constexpr(kSize == 2)
     {
-        std::uint64_t lhs0 = mData[0], lhs1 = mData[1];
-        asm (""
-             : "=m"(mData), [rhs]"+&r"(rhs)
-             : [lhs0]"r"(lhs0), [lhs1]"r"(lhs1), [result]"r"(mData)
-             : "cc");
+        std::uint64_t tmp;
+        asm ("umulh %[tmp], %[lhs1], %[rhs]\n\t"
+             "mul %[lhs1], %[lhs1], %[rhs]\n\t"
+             "madd %[lhs0], %[lhs0], %[rhs], %[tmp]"
+             : [lhs0]"+&r"(mData[0]), [lhs1]"+&r"(mData[1]), [tmp]"=&r"(tmp)
+             : [rhs]"r"(rhs) :);
     }
     else
     {
-        std::uint64_t lhsInd = kSize-1, tempValue = mData[kSize-1];
-        mData[kSize-1] = 0;
-        asm (""
-             : "+m"(mData), [rhs]"+&r"(rhs), [lhsInd]"+&r"(lhsInd), [tempValue]"+&r"(tempValue)
-             : [lhs]"r"(mData)
-             : "cc");
+        std::uint64_t* lhs = mData + (kSize - 1);
+        std::uint64_t res0 = 0, res1, tmp, mulResL, mulResH;
+        asm ("loop%=:\n\t"
+             "mov %[res1], %[res0]\n\t" // res1 = res0
+             "ldr %[tmp], [%[lhs]], #-8\n\t" // tmp = *lhs; lhs -= 8
+             "mov %[res0], #0\n\t" // res0 = 0
+             "mul %[mulResL], %[tmp], %[rhs]\n\t" // mulResL = tmp * rhs (low)
+             "umulh %[mulResH], %[tmp], %[rhs]\n\t" // mulResH = tmp * rhs (high)
+             "adds %[res1], %[res1], %[mulResL]\n\t" // res1 += mulResL
+             "adc %[res0], %[res0], %[mulResH]\n\t" // res0 += mulResH
+             "str %[res1], [%[lhs], #8]\n\t" // *(lhs+8) = res1
+             "cmp %[lhs], %[mData]\n\t" // if(lhs != mData)
+             "bne loop%=\n\t" // goto loop
+             "ldr %[tmp], [%[lhs]]\n\t" // tmp = *lhs
+             "madd %[res0], %[tmp], %[rhs], %[res0]\n\t" // res0 = tmp * rhs + res0
+             "str %[res0], [%[lhs]]" // *lhs = res0
+             : "+m"(mData), [rhs]"+&r"(rhs), [lhs]"+&r"(lhs),
+               [res0]"+%r"(res0), [res1]"=&r"(res1), [tmp]"=&r"(tmp),
+               [mulResL]"=&r"(mulResL), [mulResH]"=&r"(mulResH)
+             : [mData]"r"(mData) : "cc");
     }
 
     return *this;

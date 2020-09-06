@@ -597,9 +597,10 @@ char* WMPIntImplementations::printAsDecStrAndReset
     while(true)
     {
         std::size_t counter = remainingValueSize;
-        std::uint64_t* lhs = value + leftIndex, remainder;
+        std::uint64_t* lhs = value + leftIndex;
 
 #if WMPINT_CPU_TYPE == WMPINT_CPU_TYPE_X86_64
+        std::uint64_t remainder;
         asm ("xorl %%edx, %%edx\n"
              "L1%=:\n\t"
              "movq (%[lhs]), %%rax\n\t"
@@ -611,6 +612,12 @@ char* WMPIntImplementations::printAsDecStrAndReset
              : "+m"(*(std::uint64_t(*)[valueSize])value),
                [lhs]"+&r"(lhs), [counter]"+&r"(counter), "=&d"(remainder)
              : [rhs]"r"(rhs) : "rax", "cc");
+#elif WMPINT_CPU_TYPE == WMPINT_CPU_TYPE_ARM64
+        std::uint64_t remainder = 0;
+        asm (""
+             : "+m"(*(std::uint64_t(*)[valueSize])value),
+               [lhs]"+&r"(lhs), [counter]"+&r"(counter), [remainder]"+&r"(remainder)
+             : [rhs]"r"(rhs) :);
 #endif
 
         if(!value[leftIndex])
