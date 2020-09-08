@@ -78,8 +78,16 @@ static bool testAssignmentFromDecStr(const char* str, Values_t&&... values)
     if(v1 != v2) return DPRINT("Error: Initializing with \"", str, "\" failed:\n     Got: ",
                                v1, "\nExpected: ", v2, "\n");
     if(endPtr != str + std::strlen(str))
-        return DPRINT("Error: initializing with \"", str,
-                      "\" did not return the correct pointer.\n");
+        return DPRINT("Error: initializing with \"", str, "\" did not return the correct pointer.\n");
+
+    WMPUInt<sizeof...(Values_t) + 1> v3, v4(values...);
+    v3.data()[0] = 12345;
+    endPtr = v3.assignFromDecStr(str);
+    if(v3 != v4) return DPRINT("Error: Initializing with \"", str, "\" failed:\n     Got: ",
+                               v3, "\nExpected: ", v4, "\n");
+    if(endPtr != str + std::strlen(str))
+        return DPRINT("Error: initializing with \"", str, "\" did not return the correct pointer.\n");
+
     return true;
 }
 
@@ -154,6 +162,14 @@ static bool testAssignmentFromStr()
                                  UINT64_C(0x6), UINT64_C(0xB14E9F812F366C35))) DRET;
     if(!testAssignmentFromDecStr("123456789012345678901234567890",
                                  UINT64_C(0x18EE90FF6), UINT64_C(0xC373E0EE4E3F0AD2))) DRET;
+    if(!testAssignmentFromDecStr("340282366920938463463374607431768211456",
+                                 UINT64_C(1), UINT64_C(0), UINT64_C(0))) DRET;
+    if(!testAssignmentFromDecStr("6277101735386680763835789423207666416102355444464034512896",
+                                 UINT64_C(1), UINT64_C(0), UINT64_C(0), UINT64_C(0))) DRET;
+    if(!testAssignmentFromDecStr("115792089237316195423570985008687907853269984665640564039457584007913129639936",
+                                 UINT64_C(1), UINT64_C(0), UINT64_C(0), UINT64_C(0), UINT64_C(0))) DRET;
+    if(!testAssignmentFromDecStr("2135987035920910082395021706169552114602704522356652769947041607822219725780640550022962086936576",
+                                 UINT64_C(1), UINT64_C(0), UINT64_C(0), UINT64_C(0), UINT64_C(0), UINT64_C(0))) DRET;
     if(!testAssignmentFromDecStr
        ("1234567890123456789012345678901234567890123456789012345678901234567890",
         UINT64_C(0x0000002DCAEC4C2D), UINT64_C(0xF4268937664439BA),

@@ -329,6 +329,7 @@ inline void WMPUInt<1>::addTo(WMPUInt<1>& target1, WMPUInt<1>& target2) const
 namespace WMPIntImplementations
 {
     char* printAsDecStrAndReset(std::uint64_t*, std::size_t, char*);
+    std::uint32_t divide32(std::uint64_t*, std::size_t, std::uint32_t);
 
     void doLongMultiplication
     (std::size_t, const std::uint64_t*, const std::uint64_t*, std::uint64_t*);

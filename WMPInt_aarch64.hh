@@ -71,31 +71,59 @@ inline WMPUInt<kSize>& WMPUInt<kSize>::operator+=(std::uint64_t value)
 {
     const std::uint64_t zero = 0;
     if constexpr(kSize == 2)
-    {
         asm ("adds %[lhs1], %[lhs1], %[rhs]\n\t"
              "adc %[lhs0], %[lhs0], %[zero]"
              : [lhs0]"+&r"(mData[0]), [lhs1]"+&r"(mData[1])
              : [rhs]"r"(value), [zero]"r"(zero) : "cc");
-    }
     else if constexpr(kSize == 3)
-        asm (""
-             : "+m"(mData) : [lhs]"r"(mData), [value]"r"(value) : "cc");
+        asm ("adds %[lhs2], %[lhs2], %[rhs]\n\t"
+             "adcs %[lhs1], %[lhs1], %[zero]\n\t"
+             "adc %[lhs0], %[lhs0], %[zero]"
+             : [lhs0]"+&r"(mData[0]), [lhs1]"+&r"(mData[1]), [lhs2]"+&r"(mData[2])
+             : [rhs]"r"(value), [zero]"r"(zero) : "cc");
     else if constexpr(kSize == 4)
-        asm (""
-             : "+m"(mData) : [lhs]"r"(mData), [value]"r"(value) : "cc");
+        asm ("adds %[lhs3], %[lhs3], %[rhs]\n\t"
+             "adcs %[lhs2], %[lhs2], %[zero]\n\t"
+             "adcs %[lhs1], %[lhs1], %[zero]\n\t"
+             "adc %[lhs0], %[lhs0], %[zero]"
+             : [lhs0]"+&r"(mData[0]), [lhs1]"+&r"(mData[1]), [lhs2]"+&r"(mData[2]), [lhs3]"+&r"(mData[3])
+             : [rhs]"r"(value), [zero]"r"(zero) : "cc");
     else if constexpr(kSize % 2 == 0)
     {
-        std::uint64_t dataInd = kSize - 3;
-        asm (""
-             : "+m"(mData), [dataInd]"+&r"(dataInd)
-             : [lhs]"r"(mData), [value]"r"(value) : "cc");
+        std::uint64_t *dataPtr = mData + (kSize - 2), counter = kSize / 2 - 1, lhs0, lhs1;
+        asm ("ldp %[lhs0], %[lhs1], [%[dataPtr]]\n\t"
+             "adds %[lhs1], %[lhs1], %[rhs]\n\t"
+             "adcs %[lhs0], %[lhs0], %[zero]\n\t"
+             "stp %[lhs0], %[lhs1], [%[dataPtr]], #-16\n"
+             "loop%=:\n\t"
+             "ldp %[lhs0], %[lhs1], [%[dataPtr]]\n\t"
+             "adcs %[lhs1], %[lhs1], %[zero]\n\t"
+             "adcs %[lhs0], %[lhs0], %[zero]\n\t"
+             "stp %[lhs0], %[lhs1], [%[dataPtr]], #-16\n\t"
+             "b.cc end%=\n\t"
+             "sub %[counter], %[counter], #1\n\t"
+             "cbnz %[counter], loop%=\n"
+             "end%=:"
+             : "+m"(mData), [dataPtr]"+&r"(dataPtr), [counter]"+&r"(counter), [lhs0]"+&r"(lhs0), [lhs1]"+&r"(lhs1)
+             : [rhs]"r"(value), [zero]"r"(zero) : "cc");
     }
     else
     {
-        std::uint64_t dataInd = kSize - 2;
-        asm (""
-             : "+m"(mData), [dataInd]"+&r"(dataInd)
-             : [lhs]"r"(mData), [value]"r"(value) : "cc");
+        std::uint64_t *dataPtr = mData + (kSize - 1), counter = kSize / 2, lhs0, lhs1;
+        asm ("ldr %[lhs0], [%[dataPtr]]\n\t"
+             "adds %[lhs0], %[lhs0], %[rhs]\n\t"
+             "str %[lhs0], [%[dataPtr]], #-16\n"
+             "loop%=:\n\t"
+             "ldp %[lhs0], %[lhs1], [%[dataPtr]]\n\t"
+             "adcs %[lhs1], %[lhs1], %[zero]\n\t"
+             "adcs %[lhs0], %[lhs0], %[zero]\n\t"
+             "stp %[lhs0], %[lhs1], [%[dataPtr]], #-16\n\t"
+             "b.cc end%=\n\t"
+             "sub %[counter], %[counter], #1\n\t"
+             "cbnz %[counter], loop%=\n"
+             "end%=:"
+             : "+m"(mData), [dataPtr]"+&r"(dataPtr), [counter]"+&r"(counter), [lhs0]"+&r"(lhs0), [lhs1]"+&r"(lhs1)
+             : [rhs]"r"(value), [zero]"r"(zero) : "cc");
     }
 
     return *this;

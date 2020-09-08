@@ -579,6 +579,47 @@ static char* print_uint64(std::uint64_t value, char* destination)
     return destination;
 }
 
+#if WMPINT_CPU_TYPE == WMPINT_CPU_TYPE_ARM64
+static char* print_uint32_full_length(std::uint32_t value, char* destination)
+{
+    for(unsigned i = 0; i < 9; ++i)
+    {
+        const std::uint32_t remainder = value % 10;
+        value /= 10;
+        *destination-- = static_cast<char>(remainder) + '0';
+    }
+    return destination;
+}
+
+static char* print_uint32(std::uint32_t value, char* destination)
+{
+    while(value)
+    {
+        const std::uint32_t remainder = value % 10;
+        value /= 10;
+        *destination-- = static_cast<char>(remainder) + '0';
+    }
+    return destination;
+}
+
+std::uint32_t WMPIntImplementations::divide32(std::uint64_t* value, std::size_t valueSize, std::uint32_t rhs)
+{
+    std::uint64_t dividend = 0;
+    for(std::size_t index = 0; index < valueSize; ++index)
+    {
+        const std::uint64_t digit64 = value[index];
+        dividend = (dividend << 32) | (digit64 >> 32);
+        std::uint64_t result = (dividend / rhs) << 32;
+        dividend %= rhs;
+        dividend = (dividend << 32) | (digit64 & 0xFFFFFFFF);
+        result |= dividend / rhs;
+        dividend %= rhs;
+        value[index] = result;
+    }
+    return static_cast<std::uint32_t>(dividend);
+}
+#endif
+
 char* WMPIntImplementations::printAsDecStrAndReset
 (std::uint64_t* value, std::size_t valueSize, char* destination)
 {
@@ -591,6 +632,7 @@ char* WMPIntImplementations::printAsDecStrAndReset
         return destination;
     }
 
+#if WMPINT_CPU_TYPE == WMPINT_CPU_TYPE_X86_64
     std::size_t remainingValueSize = valueSize - leftIndex;
     std::uint64_t rhs = UINT64_C(10000000000000000000);
 
@@ -599,7 +641,6 @@ char* WMPIntImplementations::printAsDecStrAndReset
         std::size_t counter = remainingValueSize;
         std::uint64_t* lhs = value + leftIndex;
 
-#if WMPINT_CPU_TYPE == WMPINT_CPU_TYPE_X86_64
         std::uint64_t remainder;
         asm ("xorl %%edx, %%edx\n"
              "L1%=:\n\t"
@@ -612,13 +653,6 @@ char* WMPIntImplementations::printAsDecStrAndReset
              : "+m"(*(std::uint64_t(*)[valueSize])value),
                [lhs]"+&r"(lhs), [counter]"+&r"(counter), "=&d"(remainder)
              : [rhs]"r"(rhs) : "rax", "cc");
-#elif WMPINT_CPU_TYPE == WMPINT_CPU_TYPE_ARM64
-        std::uint64_t remainder = 0;
-        asm (""
-             : "+m"(*(std::uint64_t(*)[valueSize])value),
-               [lhs]"+&r"(lhs), [counter]"+&r"(counter), [remainder]"+&r"(remainder)
-             : [rhs]"r"(rhs) :);
-#endif
 
         if(!value[leftIndex])
         {
@@ -629,4 +663,26 @@ char* WMPIntImplementations::printAsDecStrAndReset
 
         destination = print_uint64_full_length(remainder, destination);
     }
+
+#elif WMPINT_CPU_TYPE == WMPINT_CPU_TYPE_ARM64
+
+    std::size_t remainingValueSize = valueSize - leftIndex;
+    const std::uint32_t rhs = UINT32_C(1000000000);
+
+    while(true)
+    {
+        std::size_t counter = remainingValueSize;
+        std::uint64_t* lhs = value + leftIndex;
+        std::uint32_t remainder = WMPIntImplementations::divide32(lhs, counter, rhs);
+
+        if(!value[leftIndex])
+        {
+            ++leftIndex;
+            if(--remainingValueSize == 0)
+                return print_uint32(remainder, destination) + 1;
+        }
+
+        destination = print_uint32_full_length(remainder, destination);
+    }
+#endif
 }
