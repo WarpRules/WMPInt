@@ -5,8 +5,12 @@ template<std::size_t kSize2>
 inline void WMPUInt<1>::fullMultiply(const WMPUInt<kSize2>& rhs, WMPUInt<1+kSize2>& result) const
 {
     if constexpr(kSize2 == 1)
-        asm (""
-             ::: "cc");
+    {
+        asm ("umulh %[res0], %[lhs], %[rhs]\n\t"
+             "mul %[res1], %[lhs], %[rhs]"
+             : [res0]"=&r"(result.mData[0]), [res1]"=r"(result.mData[1])
+             : [lhs]"r"(mValue), [rhs]"r"(rhs.mValue):);
+    }
     else if constexpr(kSize2 == 2)
     {
         result.mData[0] = 0;
@@ -331,13 +335,20 @@ inline void WMPUInt<kSize>::multiply_size2
 {
     if constexpr(kSize == 2)
     {
-        /* The case of kSize==2 is simple enough to warrant its own loopless implementation */
-        std::uint64_t tmp;
-        asm (""
-             : "+m"(result.mData), [tmp]"=&r"(tmp)
-             : [lhs]"r"(mData), [rhs]"r"(rhs.mData), [result]"r"(result.mData),
-               "m"(mData), "m"(rhs.mData)
-             : "cc");
+        /*           rhs0 rhs1
+                   * lhs0 lhs1
+             -----------------
+             l1*r1(h) l1*r1(l)  (1a) (1b)
+           + l1*r0(l)           (2)
+           + l0*r1(l)           (3)
+        */
+        asm ("umulh %[res0], %[lhs1], %[rhs1]\n\t"          // res0 = lhs1*rhs1(h)        (1a)
+             "madd %[res0], %[lhs1], %[rhs0], %[res0]\n\t"  // res0 = lhs1*rhs0(l) + res0 (2)
+             "mul %[res1], %[lhs1], %[rhs1]\n\t"            // res1 = lhs1*rhs1(l)        (1b)
+             "madd %[res0], %[lhs0], %[rhs1], %[res0]\n\t"  // res0 = lhs0*rhs1(l) + res0 (3)
+             : [res0]"=&r"(result.mData[0]), [res1]"=&r"(result.mData[1])
+             : [lhs0]"r"(mData[0]), [lhs1]"r"(mData[1]),
+               [rhs0]"r"(rhs.mData[0]), [rhs1]"r"(rhs.mData[1]) :);
     }
 }
 
@@ -406,10 +417,11 @@ inline void WMPUInt<kSize>::multiply(std::uint64_t rhs, std::uint64_t* result) c
 {
     if constexpr(kSize == 2)
     {
-        asm (""
-             : "=m"(*(std::uint64_t(*)[kSize])result), [rhs]"+&r"(rhs)
-             : [lhs]"r"(mData), [result]"r"(result), "m"(mData)
-             : "cc");
+        asm ("umulh %[res0], %[lhs1], %[rhs]\n\t"
+             "mul %[res1], %[lhs1], %[rhs]\n\t"
+             "madd %[res0], %[lhs0], %[rhs], %[res0]"
+             : [res0]"=&r"(result[0]), [res1]"=&r"(result[1])
+             : [lhs0]"r"(mData[0]), [lhs1]"r"(mData[1]), [rhs]"r"(rhs) :);
     }
     else
     {
@@ -420,6 +432,35 @@ inline void WMPUInt<kSize>::multiply(std::uint64_t rhs, std::uint64_t* result) c
              : [lhs]"r"(mData), [result]"r"(result), "m"(mData)
              : "cc");
     }
+}
+
+template<std::size_t kSize>
+inline WMPUInt<kSize>& WMPUInt<kSize>::operator*=(const WMPUInt<kSize>& rhs)
+{
+    if constexpr(kSize == 2)
+    {
+        /*           rhs0 rhs1
+                   * lhs0 lhs1
+             -----------------
+             l1*r1(h) l1*r1(l)  (1a) (1b)
+           + l1*r0(l)           (2)
+           + l0*r1(l)           (3)
+        */
+        std::uint64_t tmp;
+        asm ("umulh %[tmp], %[lhs1], %[rhs1]\n\t"         // tmp  = lhs1*rhs1(h)        (1a)
+             "madd %[tmp], %[lhs1], %[rhs0], %[tmp]\n\t"  // tmp  = lhs1*rhs0(l) + tmp  (2)
+             "mul %[lhs1], %[lhs1], %[rhs1]\n\t"          // lhs1 = lhs1*rhs1(l)        (1b)
+             "madd %[lhs0], %[lhs0], %[rhs1], %[tmp]\n\t" // lhs0 = lhs0*rhs1(l) + tmp  (3)
+             : [lhs0]"+&r"(mData[0]), [lhs1]"+&r"(mData[1]), [tmp]"=&r"(tmp)
+             : [rhs0]"r"(rhs.mData[0]), [rhs1]"r"(rhs.mData[1]) :);
+    }
+    else
+    {
+        /* The result of the multiplication has to be accumulated into a temporary buffer
+           anyway, ie. it cannot be done "in-place", so this is essentially free: */
+        *this = *this * rhs;
+    }
+    return *this;
 }
 
 template<std::size_t kSize>

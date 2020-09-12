@@ -23,7 +23,7 @@ struct sethexw0 { unsigned w; sethexw0(unsigned val): w(val) {}; };
 
 inline std::ostream& operator<<(std::ostream& os, sethexw0 s)
 {
-    return os << std::hex << std::setw(s.w) << std::setfill('0');
+    return os << std::hex << std::setw(s.w) << std::setfill('0') << std::uppercase;
 }
 
 inline std::ostream& operator<<(std::ostream& os, __uint128_t value)

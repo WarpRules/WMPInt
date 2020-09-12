@@ -1319,15 +1319,6 @@ inline WMPUInt<kSize> WMPUInt<kSize>::operator*(const WMPUInt<kSize>& rhs) const
 }
 
 template<std::size_t kSize>
-inline WMPUInt<kSize>& WMPUInt<kSize>::operator*=(const WMPUInt<kSize>& rhs)
-{
-    /* The result of the multiplication has to be accumulated into a temporary buffer
-       anyway, ie. it cannot be done "in-place", so this is essentially free: */
-    *this = *this * rhs;
-    return *this;
-}
-
-template<std::size_t kSize>
 inline void WMPUInt<kSize>::multiply(std::uint64_t rhs, WMPUInt<kSize>& result) const
 {
     multiply(rhs, result.data());

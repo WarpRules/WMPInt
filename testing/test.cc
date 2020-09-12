@@ -394,28 +394,44 @@ static bool testMultiplicationWithSize2(std::uint64_t v1_lsw, std::uint64_t v1_m
                                         std::uint64_t v2_lsw, std::uint64_t v2_msw)
 {
     WMPUInt<2> input1(v1_msw, v1_lsw), input2(v2_msw, v2_lsw);
-    WMPUInt<2> output = input1 * input2;
     const __uint128_t testValue1 = get_uint128(v1_lsw, v1_msw);
     const __uint128_t testValue2 = get_uint128(v2_lsw, v2_msw);
     const __uint128_t resultValue = testValue1 * testValue2;
     const std::uint64_t resultValue_lsw = resultValue;
     const std::uint64_t resultValue_msw = resultValue >> 64;
 
+    WMPUInt<2> output = input1;
+    output *= input2;
+    if(resultValue_msw != output.data()[0] ||
+       resultValue_lsw != output.data()[1])
+        return DPRINT("Error: ", input1, " *= ", input2,
+                      "\ngave result ", output,
+                      "\ninstead of  [", sethexw0(16), resultValue_msw, ",", resultValue_lsw, "]\n");
+
+    output = input1 * input2;
     if(resultValue_msw != output.data()[0] ||
        resultValue_lsw != output.data()[1])
         return DPRINT("Error: ", input1, " * ", input2,
                       "\ngave result ", output,
-                      "\ninstead of  [", resultValue_msw, ",", resultValue_lsw, "]\n");
+                      "\ninstead of  [", sethexw0(16), resultValue_msw, ",", resultValue_lsw, "]\n");
 
-    output = input1 * v2_lsw;
     const __uint128_t testValue3 = get_uint128(v2_lsw, 0);
     const __uint128_t resultValue2 = testValue1 * testValue3;
     const std::uint64_t resultValue2_lsw = resultValue2;
     const std::uint64_t resultValue2_msw = resultValue2 >> 64;
 
+    output = input1;
+    output *= v2_lsw;
     if(resultValue2_msw != output.data()[0] ||
        resultValue2_lsw != output.data()[1])
-        return DPRINT("Error: ", input1, " * ", v2_lsw,
+        return DPRINT("Error: ", input1, " *= ", sethexw0(16), v2_lsw,
+                      "\ngave result ", output,
+                      "\ninstead of  [", resultValue_msw, ",", resultValue_lsw, "]\n");
+
+    output = input1 * v2_lsw;
+    if(resultValue2_msw != output.data()[0] ||
+       resultValue2_lsw != output.data()[1])
+        return DPRINT("Error: ", input1, " * ", sethexw0(16), v2_lsw,
                       "\ngave result ", output,
                       "\ninstead of  [", resultValue_msw, ",", resultValue_lsw, "]\n");
 
@@ -441,7 +457,7 @@ static bool testMultiplicationWithSize2()
         if(resultValue_msw != result.data()[0] || resultValue_lsw != result.data()[1])
             return DPRINT("Error: ", input1, " * ", input2,
                           "\ngave result ", result,
-                          "\ninstead of  [", resultValue_msw, ",", resultValue_lsw, "]\n");
+                          "\ninstead of  [", sethexw0(16), resultValue_msw, ",", resultValue_lsw, "]\n");
     }
 
     return true;
