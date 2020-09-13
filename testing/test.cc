@@ -499,16 +499,25 @@ static bool testMultiplicationWithPatterns(unsigned bitPattern1, unsigned bitPat
     if(bitPattern2 == 1)
     {
         std::uint64_t rhs = UINT64_C(0xFFFFFFFFFFFFFFFF);
+
+        result = value1;
+        result *= rhs;
+        if(result != expectedResult)
+            return DPRINT("Error: ", value1, "*=", sethexw0(16), rhs, " (", value2, ")",
+                          "\ngave result ", result,
+                          "\ninstead of  ", expectedResult,
+                          "\nBit pattern: ", pResult, "\n");
+
         result = value1 * rhs;
         if(result != expectedResult)
-            return DPRINT("Error: ", value1, "*", rhs, " (", value2, ")",
+            return DPRINT("Error: ", value1, "*", sethexw0(16), rhs, " (", value2, ")",
                           "\ngave result ", result,
                           "\ninstead of  ", expectedResult,
                           "\nBit pattern: ", pResult, "\n");
 
         result = rhs * value1;
         if(result != expectedResult)
-            return DPRINT("Error: ", rhs, "*", value1,
+            return DPRINT("Error: ", sethexw0(16), rhs, "*", value1,
                           "\ngave result ", result,
                           "\ninstead of  ", expectedResult,
                           "\nBit pattern: ", pResult, "\n");

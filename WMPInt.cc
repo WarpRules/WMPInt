@@ -23,6 +23,8 @@ void WMPIntImplementations::doLongMultiplication
        + [R0*L4]
     */
     for(std::size_t i = 0; i < kSize; ++i) result[i] = 0;
+
+#if WMPINT_CPU_TYPE == WMPINT_CPU_TYPE_X86_64
     std::uint64_t lhsInd = kSize - 1, rhsInd, lhsValue, temp;
     std::uint8_t carry;
 
@@ -30,7 +32,6 @@ void WMPIntImplementations::doLongMultiplication
        gives an "impossible constraints" error for because of all the "m" constraints (is it trying
        to map them onto registers for some reason?) I haven't figured out a better way. This needs
        to be instantiated in this case anyway, so no harm done. */
-#if WMPINT_CPU_TYPE == WMPINT_CPU_TYPE_X86_64
     asm volatile
         ("L1%=:\n\t"
          "movq %[lhsInd], %[rhsInd]\n\t" // rhsInd = lhsInd
@@ -64,6 +65,55 @@ void WMPIntImplementations::doLongMultiplication
          : [lhs]"r"(lhs), [result]"r"(result)
            //, "m"(*(std::uint64_t(*)[kSize])lhs), "m"(*(std::uint64_t(*)[kSize])rhs)
          : "rax", "rdx", "cc", "memory");
+#else
+    std::uint64_t lhsInd = kSize - 1, rhsInd, lhsValue, rhsValue, temp, res;
+    asm ("Loop1%=:\n\t"
+         // rhs * lhs[lhsInd] into the tempBuf
+         "mov %[rhsInd], %[lhsInd]\n\t" // rhsInd = lhsInd
+         "ldr %[lhsValue], [%[lhs], %[lhsInd], lsl #3]\n\t" // lhsValue = lhs[lhsInd]
+         "mov %[temp], #0\n" // temp = 0
+         "Loop3%=:\n\t"
+         "ldr %[rhsValue], [%[rhs], %[rhsInd], lsl #3]\n\t" // rhsValue = rhs[rhsInd]
+         "mul %[res], %[rhsValue], %[lhsValue]\n\t" // res = rhsValue * lhsValue (low)
+         "adds %[temp], %[temp], %[res]\n\t" // tmp += res
+         "umulh %[res], %[rhsValue], %[lhsValue]\n\t" // res = rhsValue * lhsValue (high)
+         "str %[temp], [%[tempBuf], %[rhsInd], lsl #3]\n\t" // tempBuf[rhsInd] = temp
+         "mov %[temp], xzr\n\t"
+         "adc %[temp], %[temp], %[res]\n\t" // tmp += res (with carry)
+         "sub %[rhsInd], %[rhsInd], #1\n\t" // --rhsInd
+         "cbnz %[rhsInd], Loop3%=\n\t" // if(rhsInd != 0) goto Loop3
+         "ldr %[rhsValue], [%[rhs]]\n\t" // rhsValue = *rhs
+         "madd %[temp], %[rhsValue], %[lhsValue], %[temp]\n\t" // temp = rhsValue * lhsValue + temp
+         "str %[temp], [%[tempBuf]]\n\t" // *tempBuf = temp
+         // Add tempBuf to the result:
+         "mov %[rhsInd], %[lhsInd]\n\t"
+         "msr nzcv, xzr\n"
+         "Loop4%=:\n\t"
+         "ldr %[lhsValue], [%[tempBuf], %[rhsInd], lsl #3]\n\t"
+         "ldr %[rhsValue], [%[result], %[rhsInd], lsl #3]\n\t"
+         "adcs %[lhsValue], %[lhsValue], %[rhsValue]\n\t"
+         "str %[lhsValue], [%[result], %[rhsInd], lsl #3]\n\t"
+         "cbz %[rhsInd], EndLoop4%=\n\t"
+         "sub %[rhsInd], %[rhsInd], #1\n\t"
+         "b Loop4%=\n"
+         "EndLoop4%=:\n\t"
+         // Advance rhs and decrement lhsInd:
+         "add %[rhs], %[rhs], #8\n\t"
+         "sub %[lhsInd], %[lhsInd], #1\n\t"
+         "cbnz %[lhsInd], Loop1%=\n\t"
+         // Do the final result[0] = lhs[0] * rhs[0]
+         "ldr %[lhsValue], [%[lhs]]\n\t"
+         "ldr %[rhsValue], [%[rhs]]\n\t"
+         "ldr %[temp], [%[result]]\n\t"
+         "madd %[temp], %[rhsValue], %[lhsValue], %[temp]\n\t"
+         "str %[temp], [%[result]]"
+         : "+m"(*(std::uint64_t(*)[kSize])result),
+           "=m"(*(std::uint64_t(*)[kSize])tempBuffer), [rhs]"+&r"(rhs),
+           [lhsInd]"+&r"(lhsInd), [rhsInd]"=&r"(rhsInd),
+           [lhsValue]"=&r"(lhsValue), [rhsValue]"=&r"(rhsValue), [temp]"=&r"(temp), [res]"=&r"(res)
+         : [lhs]"r"(lhs), [result]"r"(result), [tempBuf]"r"(tempBuffer),
+           "m"(*(std::uint64_t(*)[kSize])lhs), "m"(*(std::uint64_t(*)[kSize])rhs)
+         : "cc");
 #endif
 }
 

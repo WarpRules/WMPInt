@@ -273,6 +273,8 @@ class WMPUInt<1>
 #include "WMPInt_x86_64.hh"
 #elif WMPINT_CPU_TYPE == WMPINT_CPU_TYPE_ARM64
 #include "WMPInt_aarch64.hh"
+#else
+#error "Invalid value of WMPINT_CPU_TYPE"
 #endif
 
 //----------------------------------------------------------------------------
