@@ -97,6 +97,6 @@ int main()
         for(std::size_t lhsSize: { 8, 9, 16, 17, 24, 25, 32, 33, 64, 65, 128, 129, 256, 267,
                                       512, 513, 768, 769, 1024, 1025, 1620, 2048 })
             if(lhsSize <= rhsSize)
-                runMultiplicationBenchmark(lhsSize, rhsSize, 10000000/(lhsSize*rhsSize));
+                runMultiplicationBenchmark(lhsSize, rhsSize, 30000000/(lhsSize*rhsSize));
     }
 }
