@@ -351,8 +351,14 @@ constexpr std::size_t WMPIntImplementations::fullKaratsubaMultiplicationBufferSi
 {
     if(size <= 32) return fullLongMultiplicationBufferSize(size, size);
     const std::size_t lowSize = (size+1) / 2;
+    const std::size_t highSize = size - lowSize;
     const std::size_t highPlusLowSize = lowSize + 1;
-    return highPlusLowSize*4 + fullKaratsubaMultiplicationBufferSizeForSameSizes(highPlusLowSize);
+    const std::size_t z1Size = highPlusLowSize * 2;
+    const std::size_t z1BufferSize = z1Size + fullKaratsubaMultiplicationBufferSizeForSameSizes(highPlusLowSize);
+    const std::size_t z0BufferSize = z1Size + fullKaratsubaMultiplicationBufferSizeForSameSizes(lowSize);
+    const std::size_t z2BufferSize = z1Size + fullKaratsubaMultiplicationBufferSizeForSameSizes(highSize);
+    const std::size_t maxZ1Z0 = (z1BufferSize > z0BufferSize ? z1BufferSize : z0BufferSize);
+    return (maxZ1Z0 > z2BufferSize ? maxZ1Z0 : z2BufferSize);
 }
 
 constexpr std::size_t WMPIntImplementations::fullKaratsubaMultiplicationBufferSizeForSmallLHS
@@ -379,15 +385,13 @@ constexpr std::size_t WMPIntImplementations::fullKaratsubaMultiplicationBufferSi
     const std::size_t lowSize = (rhsSize+1) / 2;
     const std::size_t rhsHighSize = rhsSize - lowSize;
     const std::size_t lhsHighSize = lhsSize - lowSize;
-    const std::size_t bufferSize1_1 =
-        fullKaratsubaMultiplicationBufferSizeForSameSizes(lowSize);
-    const std::size_t bufferSize1_2 =
-        fullKaratsubaMultiplicationBufferSize(lhsHighSize, rhsHighSize);
     const std::size_t highPlusLowSize = lowSize + 1;
-    const std::size_t bufferSize2 = highPlusLowSize*4 +
-        fullKaratsubaMultiplicationBufferSizeForSameSizes(highPlusLowSize);
-    const std::size_t bufferSize1 = bufferSize1_1 > bufferSize1_2 ? bufferSize1_1 : bufferSize1_2;
-    return bufferSize2 > bufferSize1 ? bufferSize2 : bufferSize1;
+    const std::size_t z1Size = highPlusLowSize * 2;
+    const std::size_t z1BufferSize = z1Size + fullKaratsubaMultiplicationBufferSizeForSameSizes(highPlusLowSize);
+    const std::size_t z0BufferSize = z1Size + fullKaratsubaMultiplicationBufferSizeForSameSizes(lowSize);
+    const std::size_t z2BufferSize = z1Size + fullKaratsubaMultiplicationBufferSize(lhsHighSize, rhsHighSize);
+    const std::size_t maxZ1Z0 = (z1BufferSize > z0BufferSize ? z1BufferSize : z0BufferSize);
+    return (maxZ1Z0 > z2BufferSize ? maxZ1Z0 : z2BufferSize);
 }
 
 constexpr std::size_t WMPIntImplementations::fullKaratsubaMultiplicationBufferSize

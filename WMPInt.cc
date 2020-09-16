@@ -341,25 +341,27 @@ static void doFullKaratsubaMultiplicationForSameSizes
     const std::uint64_t* lhsLow = lhs + highSize;
     const std::uint64_t* rhsLow = rhs + highSize;
 
-    const std::size_t z0Size = lowSize * 2;
-    std::uint64_t* z0 = result + (resultSize - z0Size);
-    doFullKaratsubaMultiplicationForSameSizes(lhsLow, rhsLow, lowSize, z0, tempBuffer);
-
-    const std::size_t z2Size = highSize * 2;
-    std::uint64_t* z2 = result;
-    doFullKaratsubaMultiplicationForSameSizes(lhs, rhs, highSize, z2, tempBuffer);
-
     const std::size_t highPlusLowSize = lowSize + 1;
-    std::uint64_t* lhsHighPlusLow = tempBuffer;
+    std::uint64_t* lhsHighPlusLow = result;
     doFullAddition(lhs, highSize, lhsLow, lowSize, lhsHighPlusLow);
 
     std::uint64_t* rhsHighPlusLow = lhsHighPlusLow + highPlusLowSize;
     doFullAddition(rhs, highSize, rhsLow, lowSize, rhsHighPlusLow);
 
     const std::size_t z1Size = highPlusLowSize * 2;
-    std::uint64_t* z1 = rhsHighPlusLow + highPlusLowSize;
+    std::uint64_t* z1 = tempBuffer;
+    std::uint64_t* tempBuffer2 = tempBuffer + z1Size;
+
     doFullKaratsubaMultiplicationForSameSizes
-        (lhsHighPlusLow, rhsHighPlusLow, highPlusLowSize, z1, z1 + z1Size);
+        (lhsHighPlusLow, rhsHighPlusLow, highPlusLowSize, z1, tempBuffer2);
+
+    const std::size_t z0Size = lowSize * 2;
+    std::uint64_t* z0 = result + (resultSize - z0Size);
+    doFullKaratsubaMultiplicationForSameSizes(lhsLow, rhsLow, lowSize, z0, tempBuffer2);
+
+    const std::size_t z2Size = highSize * 2;
+    std::uint64_t* z2 = result;
+    doFullKaratsubaMultiplicationForSameSizes(lhs, rhs, highSize, z2, tempBuffer2);
 
     doSubtraction(z1, z1Size, z2, z2Size);
     doSubtraction(z1, z1Size, z0, z0Size);
@@ -423,25 +425,27 @@ static void doFullKaratsubaMultiplicationForLargeLHS
     const std::uint64_t* rhsLow = rhs + rhsHighSize;
     const std::uint64_t* lhsLow = lhs + lhsHighSize;
 
-    const std::size_t z0Size = lowSize * 2;
-    std::uint64_t* z0 = result + (resultSize - z0Size);
-    doFullKaratsubaMultiplicationForSameSizes(lhsLow, rhsLow, lowSize, z0, tempBuffer);
-
-    const std::size_t z2Size = lhsHighSize + rhsHighSize;
-    std::uint64_t* z2 = result;
-    ::doFullKaratsubaMultiplication(lhs, lhsHighSize, rhs, rhsHighSize, z2, tempBuffer);
-
     const std::size_t highPlusLowSize = lowSize + 1;
-    std::uint64_t* lhsHighPlusLow = tempBuffer;
+    std::uint64_t* lhsHighPlusLow = result;
     doFullAddition(lhs, lhsHighSize, lhsLow, lowSize, lhsHighPlusLow);
 
     std::uint64_t* rhsHighPlusLow = lhsHighPlusLow + highPlusLowSize;
     doFullAddition(rhs, rhsHighSize, rhsLow, lowSize, rhsHighPlusLow);
 
     const std::size_t z1Size = highPlusLowSize * 2;
-    std::uint64_t* z1 = rhsHighPlusLow + highPlusLowSize;
+    std::uint64_t* z1 = tempBuffer;
+    std::uint64_t* tempBuffer2 = tempBuffer + z1Size;
+
     doFullKaratsubaMultiplicationForSameSizes
-        (lhsHighPlusLow, rhsHighPlusLow, highPlusLowSize, z1, z1 + z1Size);
+        (lhsHighPlusLow, rhsHighPlusLow, highPlusLowSize, z1, tempBuffer2);
+
+    const std::size_t z0Size = lowSize * 2;
+    std::uint64_t* z0 = result + (resultSize - z0Size);
+    doFullKaratsubaMultiplicationForSameSizes(lhsLow, rhsLow, lowSize, z0, tempBuffer2);
+
+    const std::size_t z2Size = lhsHighSize + rhsHighSize;
+    std::uint64_t* z2 = result;
+    ::doFullKaratsubaMultiplication(lhs, lhsHighSize, rhs, rhsHighSize, z2, tempBuffer2);
 
     doSubtraction(z1, z1Size, z2, z2Size);
     doSubtraction(z1, z1Size, z0, z0Size);
