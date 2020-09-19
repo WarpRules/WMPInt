@@ -30,7 +30,13 @@ void WMPIntImplementations::doLongMultiplication
     */
     for(std::size_t i = 0; i < kSize; ++i) result[i] = 0;
     std::uint64_t lhsInd = kSize - 1, rhsInd, lhsValue, temp;
-    asm ("Loop1%=:\n\t"
+
+    /* In principle this shouldn't be 'volatile' nor use the '"memory"' constraint, but gcc -O0
+       gives an "impossible constraints" error for because of all the "m" constraints (is it trying
+       to map them onto registers for some reason?) I haven't figured out a better way. This needs
+       to be instantiated in this case anyway, so no harm done. */
+    asm volatile
+        ("Loop1%=:\n\t"
          // rhs * lhs[lhsInd] into the tempBuf
          "movq %[lhsInd], %[rhsInd]\n\t"
          "movq (%[lhs], %[lhsInd], 8), %[lhsValue]\n\t"
@@ -46,7 +52,7 @@ void WMPIntImplementations::doLongMultiplication
          "jnz Loop3%=\n\t"
          "imulq (%[rhs]), %[lhsValue]\n\t"
          "addq %[lhsValue], %[temp]\n\t"
-         "mov %[temp], (%[tempBuf])\n\t"
+         "movq %[temp], (%[tempBuf])\n\t"
          // Add tempBuf to the result:
          "movq %[lhsInd], %[rhsInd]\n\t"
          "clc\n"
@@ -63,12 +69,12 @@ void WMPIntImplementations::doLongMultiplication
          "movq (%[lhs]), %[lhsValue]\n\t"
          "imulq (%[rhs]), %[lhsValue]\n\t"
          "addq %[lhsValue], (%[result])"
-         : "+m"(*(std::uint64_t(*)[kSize])result),
-           "=m"(*(std::uint64_t(*)[kSize])tempBuffer), [rhs]"+&r"(rhs),
-           [lhsInd]"+&r"(lhsInd), [rhsInd]"=&r"(rhsInd), [lhsValue]"=&r"(lhsValue), [temp]"=&r"(temp)
-         : [lhs]"r"(lhs), [result]"r"(result), [tempBuf]"r"(tempBuffer),
-           "m"(*(std::uint64_t(*)[kSize])lhs), "m"(*(std::uint64_t(*)[kSize])rhs)
-         : "rax", "rdx", "cc");
+         : //"+m"(*(std::uint64_t(*)[kSize])result), "=m"(*(std::uint64_t(*)[kSize])tempBuffer),
+           [rhs]"+&r"(rhs), [lhsInd]"+&r"(lhsInd), [rhsInd]"=&r"(rhsInd), [lhsValue]"=&r"(lhsValue),
+           [temp]"=&r"(temp)
+         : [lhs]"r"(lhs), [result]"r"(result), [tempBuf]"r"(tempBuffer)
+           //, "m"(*(std::uint64_t(*)[kSize])lhs), "m"(*(std::uint64_t(*)[kSize])rhs)
+         : "rax", "rdx", "cc", "memory");
 }
 
 
@@ -90,7 +96,12 @@ void WMPIntImplementations::doFullLongMultiplication
     std::uint64_t lhsInd = kSize1 - 1, rhsInd, lhsValue, temp;
     for(std::size_t i = 0; i < resultSize; ++i) result[i] = 0;
 
-    asm (/* Outer loop: lhsInd = [kSize-1, 0] */
+    /* In principle this shouldn't be 'volatile' nor use the '"memory"' constraint, but gcc -O0
+       gives an "impossible constraints" error because of all the "m" constraints (is it trying
+       to map them onto registers for some reason?) I haven't figured out a better way. This needs
+       to be instantiated in this case anyway, so no harm done. */
+    asm volatile
+        (/* Outer loop: lhsInd = [kSize-1, 0] */
          "L1%=:\n\t"
          /* Inner loop 1: rhsInd = [kSize2, 1] */
          "movq %[kSize2], %[rhsInd]\n\t" // rhsInd = kSize2
@@ -101,7 +112,7 @@ void WMPIntImplementations::doFullLongMultiplication
          "mulq %[lhsValue]\n\t" // (rdx,rax) = rax * lhsValue
          "addq %%rax, %[temp]\n\t" // temp += rax
          "movq %[temp], (%[tempBuf], %[rhsInd], 8)\n\t" // tempBuf[rhsInd] = temp
-         "movl %0, %k[temp]\n\t" // temp = 0
+         "movl $0, %k[temp]\n\t" // temp = 0
          "adcq %%rdx, %[temp]\n\t" // temp += rdx
          "decq %[rhsInd]\n\t" // --rhsInd
          "jnz L3%=\n\t" // if(rhsInd > 0) goto L3
@@ -117,13 +128,12 @@ void WMPIntImplementations::doFullLongMultiplication
          "leaq -8(%[result]), %[result]\n\t"
          "decq %[lhsInd]\n\t" // --lhsInd
          "jns L1%=" // if(lhsInd >= 0) goto L1
-         : "+m"(*(std::uint64_t(*)[resultSize])result),
-           "=m"(*(std::uint64_t(*)[kSize2+1])tempBuffer),
+         : //"+m"(*(std::uint64_t(*)[resultSize])result), "=m"(*(std::uint64_t(*)[kSize2+1])tempBuffer),
            [lhsInd]"+&r"(lhsInd), [rhsInd]"=&r"(rhsInd), [lhsValue]"=&r"(lhsValue), [temp]"=&r"(temp),
            [result]"+&r"(resultPtr)
-         : [lhs]"r"(lhs), [rhs]"r"(rhs), [tempBuf]"r"(tempBuffer), [kSize2]"irm"(kSize2),
-           "m"(*(std::uint64_t(*)[kSize1])lhs), "m"(*(std::uint64_t(*)[kSize2])rhs)
-         : "rax", "rdx", "cc");
+         : [lhs]"r"(lhs), [rhs]"r"(rhs), [tempBuf]"r"(tempBuffer), [kSize2]"irm"(kSize2)
+           //, "m"(*(std::uint64_t(*)[kSize1])lhs), "m"(*(std::uint64_t(*)[kSize2])rhs)
+         : "rax", "rdx", "cc", "memory");
 }
 
 
