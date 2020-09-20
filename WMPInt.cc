@@ -9,14 +9,8 @@ static std::uint64_t* gWMPInt_tempBuffer_max_position = 0;
 // Long multiplication
 //----------------------------------------------------------------------------
 void WMPIntImplementations::doLongMultiplication
-(std::size_t kSize, const std::uint64_t* lhs, const std::uint64_t* rhs,
- std::uint64_t* result, std::uint64_t* tempBuffer)
+(std::size_t kSize, const std::uint64_t* lhs, const std::uint64_t* rhs, std::uint64_t* result)
 {
-#ifdef WMPINT_DEBUG_MODE
-    if(tempBuffer + kSize > gWMPInt_tempBuffer_max_position)
-        gWMPInt_tempBuffer_max_position = tempBuffer + kSize;
-#endif
-
     /* Long multiplication algorithm in base 2^64 (eg. kSize == 5)
        -----------------------------------------------------------
                         [R4][R3][R2][R1][R0] // rhs
@@ -30,49 +24,43 @@ void WMPIntImplementations::doLongMultiplication
     */
     for(std::size_t i = 0; i < kSize; ++i) result[i] = 0;
     std::uint64_t lhsInd = kSize - 1, rhsInd, lhsValue, temp;
+    std::uint8_t carry;
 
     /* In principle this shouldn't be 'volatile' nor use the '"memory"' constraint, but gcc -O0
        gives an "impossible constraints" error for because of all the "m" constraints (is it trying
        to map them onto registers for some reason?) I haven't figured out a better way. This needs
        to be instantiated in this case anyway, so no harm done. */
     asm volatile
-        ("Loop1%=:\n\t"
-         // rhs * lhs[lhsInd] into the tempBuf
-         "movq %[lhsInd], %[rhsInd]\n\t"
-         "movq (%[lhs], %[lhsInd], 8), %[lhsValue]\n\t"
-         "xorl %k[temp], %k[temp]\n"
-         "Loop3%=:\n\t"
-         "movq (%[rhs], %[rhsInd], 8), %%rax\n\t"
-         "mulq %[lhsValue]\n\t"
-         "addq %%rax, %[temp]\n\t"
-         "movq %[temp], (%[tempBuf], %[rhsInd], 8)\n\t"
-         "movl $0, %k[temp]\n\t"
-         "adcq %%rdx, %[temp]\n\t"
-         "decq %[rhsInd]\n\t"
-         "jnz Loop3%=\n\t"
-         "imulq (%[rhs]), %[lhsValue]\n\t"
-         "addq %[lhsValue], %[temp]\n\t"
-         "movq %[temp], (%[tempBuf])\n\t"
-         // Add tempBuf to the result:
-         "movq %[lhsInd], %[rhsInd]\n\t"
-         "clc\n"
-         "Loop4%=:\n\t"
-         "movq (%[tempBuf], %[rhsInd], 8), %[lhsValue]\n\t"
-         "adcq %[lhsValue], (%[result], %[rhsInd], 8)\n\t"
-         "decq %[rhsInd]\n\t"
-         "jns Loop4%=\n\t"
-         // Advance rhs and decrement lhsInd:
-         "leaq 8(%[rhs]), %[rhs]\n\t"
-         "decq %[lhsInd]\n\t"
-         "jnz Loop1%=\n\t"
-         // Do the final result[0] = lhs[0] * rhs[0]
-         "movq (%[lhs]), %[lhsValue]\n\t"
-         "imulq (%[rhs]), %[lhsValue]\n\t"
-         "addq %[lhsValue], (%[result])"
+        ("L1%=:\n\t"
+         "movq %[lhsInd], %[rhsInd]\n\t" // rhsInd = lhsInd
+         "movq (%[lhs], %[lhsInd], 8), %[lhsValue]\n\t" // lhsValue = lhs[lhsInd]
+         "xorl %k[temp], %k[temp]\n\t" // temp = 0
+         "xorb %[carry], %[carry]\n" // carry = 0
+         "L2%=:\n\t"
+         "movq (%[rhs], %[rhsInd], 8), %%rax\n\t" // rax = rhs[rhsInd]
+         "mulq %[lhsValue]\n\t" // (rdx,rax) = rax * lhsValue
+         "addq %[temp], %%rax\n\t" // rax += temp
+         "adcq $0, %%rdx\n\t" // rdx += (c-flag)
+         "addb $255, %[carry]\n\t" // (c-flag) = carry
+         "adcq %%rax, (%[result], %[rhsInd], 8)\n\t" // result[rhsInd] += rax
+         "movq %%rdx, %[temp]\n\t" // temp = rdx
+         "setc %[carry]\n\t" // carry = (c-flag)
+         "decq %[rhsInd]\n\t" // --rhsInd
+         "jnz L2%=\n\t" // if(rhsInd > 0) goto L2
+         "imulq (%[rhs]), %[lhsValue]\n\t" // lhsValue *= *rhs
+         "addq %[lhsValue], %[temp]\n\t" // temp += lhsValue
+         "addb $255, %[carry]\n\t" // (c-flag) = carry
+         "adcq %[temp], (%[result])\n\t" // *result += temp
+         "leaq 8(%[rhs]), %[rhs]\n\t" // ++rhs
+         "decq %[lhsInd]\n\t" // --lhdInd
+         "jnz L1%=\n\t" // if(lhsInd > 0) goto L1
+         "movq (%[lhs]), %[lhsValue]\n\t" // lhsValue = *lhs
+         "imulq (%[rhs]), %[lhsValue]\n\t" // lhsValue *= *rhs
+         "addq %[lhsValue], (%[result])" // result += lhsValue
          : //"+m"(*(std::uint64_t(*)[kSize])result), "=m"(*(std::uint64_t(*)[kSize])tempBuffer),
            [rhs]"+&r"(rhs), [lhsInd]"+&r"(lhsInd), [rhsInd]"=&r"(rhsInd), [lhsValue]"=&r"(lhsValue),
-           [temp]"=&r"(temp)
-         : [lhs]"r"(lhs), [result]"r"(result), [tempBuf]"r"(tempBuffer)
+           [temp]"=&r"(temp), [carry]"=&r"(carry)
+         : [lhs]"r"(lhs), [result]"r"(result)
            //, "m"(*(std::uint64_t(*)[kSize])lhs), "m"(*(std::uint64_t(*)[kSize])rhs)
          : "rax", "rdx", "cc", "memory");
 }
@@ -82,18 +70,12 @@ void WMPIntImplementations::doLongMultiplication
 // Full long multiplication
 //----------------------------------------------------------------------------
 void WMPIntImplementations::doFullLongMultiplication
-(const std::uint64_t* lhs, std::size_t kSize1, const std::uint64_t* rhs, std::size_t kSize2,
- std::uint64_t* result, std::uint64_t* tempBuffer)
+(const std::uint64_t* lhs, std::size_t kSize1, const std::uint64_t* rhs, std::size_t kSize2, std::uint64_t* result)
 {
-#ifdef WMPINT_DEBUG_MODE
-    if(tempBuffer + (kSize2+1) > gWMPInt_tempBuffer_max_position)
-        gWMPInt_tempBuffer_max_position = tempBuffer + (kSize2+1);
-#endif
-
-    // tempBuffer size is kSize2+1, result size is kSize1+kSize2
     const std::size_t resultSize = kSize1 + kSize2;
     std::uint64_t* resultPtr = result + (kSize1 - 1);
     std::uint64_t lhsInd = kSize1 - 1, rhsInd, lhsValue, temp;
+    std::uint8_t carry;
     for(std::size_t i = 0; i < resultSize; ++i) result[i] = 0;
 
     /* In principle this shouldn't be 'volatile' nor use the '"memory"' constraint, but gcc -O0
@@ -101,37 +83,31 @@ void WMPIntImplementations::doFullLongMultiplication
        to map them onto registers for some reason?) I haven't figured out a better way. This needs
        to be instantiated in this case anyway, so no harm done. */
     asm volatile
-        (/* Outer loop: lhsInd = [kSize-1, 0] */
-         "L1%=:\n\t"
-         /* Inner loop 1: rhsInd = [kSize2, 1] */
+        ("L1%=:\n\t"
          "movq %[kSize2], %[rhsInd]\n\t" // rhsInd = kSize2
-         "movq (%[lhs],%[lhsInd],8), %[lhsValue]\n\t" // lhsValue = lhs[lhsInd]
-         "xorl %k[temp], %k[temp]\n" // temp = 0
-         "L3%=:\n\t"
-         "movq -8(%[rhs],%[rhsInd],8), %%rax\n\t" // rax = rhs[rhsInd-1]
+         "movq (%[lhs], %[lhsInd], 8), %[lhsValue]\n\t" // lhsValue = lhs[lhsInd]
+         "xorl %k[temp], %k[temp]\n\t" // temp = 0
+         "xorb %[carry], %[carry]\n" // carry = 0
+         "L2%=:\n\t"
+         "movq -8(%[rhs], %[rhsInd], 8), %%rax\n\t" // rax = rhs[rhsInd-1]
          "mulq %[lhsValue]\n\t" // (rdx,rax) = rax * lhsValue
-         "addq %%rax, %[temp]\n\t" // temp += rax
-         "movq %[temp], (%[tempBuf], %[rhsInd], 8)\n\t" // tempBuf[rhsInd] = temp
-         "movl $0, %k[temp]\n\t" // temp = 0
-         "adcq %%rdx, %[temp]\n\t" // temp += rdx
+         "addq %[temp], %%rax\n\t" // rax += temp
+         "adcq $0, %%rdx\n\t" // rdx += (c-flag)
+         "addb $255, %[carry]\n\t" // (c-flag) = carry
+         "adcq %%rax, (%[result], %[rhsInd], 8)\n\t" // result[rhsInd] += rax
+         "movq %%rdx, %[temp]\n\t" // temp = rdx;
+         "setc %[carry]\n\t" // carry = (c-flag)
          "decq %[rhsInd]\n\t" // --rhsInd
-         "jnz L3%=\n\t" // if(rhsInd > 0) goto L3
-         /* Inner loop 2: rhsInd = [kSize2, 0] */
-         "movq %[kSize2], %[rhsInd]\n\t" // rhsInd = kSize2
-         "clc\n"
-         "L4%=:\n\t"
-         "movq (%[tempBuf],%[rhsInd],8),%%rax\n\t" // rax = tempBuf[rhsInd]
-         "adcq %%rax,(%[result],%[rhsInd],8)\n\t" // result[rhsInd] += rax
-         "decq %[rhsInd]\n\t" // --rhsInd
-         "jnz L4%=\n\t" // if(rhsInd > 0) goto L4
+         "jnz L2%=\n\t" // if(rhsInd > 0) goto L2
+         "addb $255, %[carry]\n\t" // c-flag = carry
          "adcq %[temp], (%[result])\n\t" // *result += temp
-         "leaq -8(%[result]), %[result]\n\t"
+         "leaq -8(%[result]), %[result]\n\t" // --result
          "decq %[lhsInd]\n\t" // --lhsInd
          "jns L1%=" // if(lhsInd >= 0) goto L1
          : //"+m"(*(std::uint64_t(*)[resultSize])result), "=m"(*(std::uint64_t(*)[kSize2+1])tempBuffer),
            [lhsInd]"+&r"(lhsInd), [rhsInd]"=&r"(rhsInd), [lhsValue]"=&r"(lhsValue), [temp]"=&r"(temp),
-           [result]"+&r"(resultPtr)
-         : [lhs]"r"(lhs), [rhs]"r"(rhs), [tempBuf]"r"(tempBuffer), [kSize2]"irm"(kSize2)
+           [result]"+&r"(resultPtr), [carry]"=&r"(carry)
+         : [lhs]"r"(lhs), [rhs]"r"(rhs), [kSize2]"irm"(kSize2)
            //, "m"(*(std::uint64_t(*)[kSize1])lhs), "m"(*(std::uint64_t(*)[kSize2])rhs)
          : "rax", "rdx", "cc", "memory");
 }
@@ -276,8 +252,7 @@ static inline void doSubtraction(std::uint64_t* lhs, std::size_t lhsSize,
 }
 
 static void doFullLongMultiplication_1xN
-(std::uint64_t lhs, const std::uint64_t* rhs, std::size_t kSize2,
- std::uint64_t* result)
+(std::uint64_t lhs, const std::uint64_t* rhs, std::size_t kSize2, std::uint64_t* result)
 {
     for(std::size_t i = 0; i < 1+kSize2; ++i) result[i] = 0;
     std::uint64_t rhsInd = kSize2 - 1;
@@ -342,8 +317,7 @@ static void doFullKaratsubaMultiplicationForSameSizes
  std::uint64_t* result, std::uint64_t* tempBuffer)
 {
     if(size <= 32)
-        return WMPIntImplementations::doFullLongMultiplication
-            (lhs, size, rhs, size, result, tempBuffer);
+        return WMPIntImplementations::doFullLongMultiplication(lhs, size, rhs, size, result);
 
     const std::size_t resultSize = size * 2;
     const std::size_t lowSize = (size+1) / 2;
@@ -376,6 +350,11 @@ static void doFullKaratsubaMultiplicationForSameSizes
     doSubtraction(z1, z1Size, z2, z2Size);
     doSubtraction(z1, z1Size, z0, z0Size);
     doAddition(result, resultSize - lowSize, z1, z1Size);
+
+#ifdef WMPINT_DEBUG_MODE
+    if(tempBuffer2 > gWMPInt_tempBuffer_max_position)
+        gWMPInt_tempBuffer_max_position = tempBuffer2;
+#endif
 }
 
 static void doFullKaratsubaMultiplication
@@ -391,8 +370,7 @@ static void doFullKaratsubaMultiplicationForSmallLHS
     if(lhsSize == 1)
         return doFullLongMultiplication_1xN(*lhs, rhs, rhsSize, result);
     if(lhsSize == 2 || rhsSize <= 32)
-        return WMPIntImplementations::doFullLongMultiplication
-            (rhs, rhsSize, lhs, lhsSize, result, tempBuffer);
+        return WMPIntImplementations::doFullLongMultiplication(rhs, rhsSize, lhs, lhsSize, result);
 
     const std::size_t resultSize = lhsSize + rhsSize;
     const std::size_t rhsLowSize = (rhsSize+1) / 2;
@@ -410,12 +388,19 @@ static void doFullKaratsubaMultiplicationForSmallLHS
 
     const std::size_t z1Size = rhsHighSize + lhsSize;
     std::uint64_t* z1 = tempBuffer;
+    std::uint64_t* tempBuffer2 = tempBuffer + z1Size;
+
     if(lhsSize <= rhsHighSize)
-        ::doFullKaratsubaMultiplication(lhs, lhsSize, rhs, rhsHighSize, z1, tempBuffer+z1Size);
+        ::doFullKaratsubaMultiplication(lhs, lhsSize, rhs, rhsHighSize, z1, tempBuffer2);
     else
-        ::doFullKaratsubaMultiplication(rhs, rhsHighSize, lhs, lhsSize, z1, tempBuffer+z1Size);
+        ::doFullKaratsubaMultiplication(rhs, rhsHighSize, lhs, lhsSize, z1, tempBuffer2);
 
     doAddition(result, z1, z1Size);
+
+#ifdef WMPINT_DEBUG_MODE
+    if(tempBuffer2 > gWMPInt_tempBuffer_max_position)
+        gWMPInt_tempBuffer_max_position = tempBuffer2;
+#endif
 }
 
 /* This must only be called when lhsSize > (rhsSize+1)/2 and lhsSize < rhsSize */
@@ -425,8 +410,7 @@ static void doFullKaratsubaMultiplicationForLargeLHS
  std::uint64_t* result, std::uint64_t* tempBuffer)
 {
     if(rhsSize <= 32)
-        return WMPIntImplementations::doFullLongMultiplication
-            (rhs, rhsSize, lhs, lhsSize, result, tempBuffer);
+        return WMPIntImplementations::doFullLongMultiplication(rhs, rhsSize, lhs, lhsSize, result);
 
     const std::size_t resultSize = lhsSize + rhsSize;
     const std::size_t lowSize = (rhsSize+1) / 2;
@@ -460,6 +444,11 @@ static void doFullKaratsubaMultiplicationForLargeLHS
     doSubtraction(z1, z1Size, z2, z2Size);
     doSubtraction(z1, z1Size, z0, z0Size);
     doAddition(result, resultSize - lowSize, z1, z1Size);
+
+#ifdef WMPINT_DEBUG_MODE
+    if(tempBuffer2 > gWMPInt_tempBuffer_max_position)
+        gWMPInt_tempBuffer_max_position = tempBuffer2;
+#endif
 }
 
 static void doFullKaratsubaMultiplication
@@ -501,7 +490,7 @@ static void doTruncatedKaratsubaMultiplication
  std::uint64_t* result, std::uint64_t* tempBuffer)
 {
     if(size <= 64)
-        return WMPIntImplementations::doLongMultiplication(size, lhs, rhs, result, tempBuffer);
+        return WMPIntImplementations::doLongMultiplication(size, lhs, rhs, result);
 
     const std::size_t lhsLowSize = size / 2;
     const std::size_t lhsHighSize = size - lhsLowSize;
@@ -522,6 +511,11 @@ static void doTruncatedKaratsubaMultiplication
         (lhsLow, rhs, lhsLowSize, tempBuffer, tempBuffer + lhsLowSize);
 
     doAddition(result, tempBuffer, lhsLowSize);
+
+#ifdef WMPINT_DEBUG_MODE
+    if(tempBuffer + lhsHighSize > gWMPInt_tempBuffer_max_position)
+        gWMPInt_tempBuffer_max_position = tempBuffer + lhsHighSize;
+#endif
 }
 
 void WMPIntImplementations::doTruncatedKaratsubaMultiplication

@@ -17,8 +17,7 @@ void runMultiplicationBenchmark(std::size_t totalIterations)
     std::unique_ptr<WMPUInt<kSize2>> value2(new WMPUInt<kSize2>);
     std::unique_ptr<WMPUInt<kSize1+kSize2>> result(new WMPUInt<kSize1+kSize2>);
 
-    const std::size_t tempBufferSize =
-        WMPIntImplementations::fullLongMultiplicationBufferSize(kSize1, kSize2);
+    const std::size_t tempBufferSize = WMPUInt<kSize1>::template fullMultiplyBufferSize<kSize2>();
     std::unique_ptr<std::uint64_t[]> tempBuffer(new std::uint64_t[tempBufferSize]);
     std::uint64_t resultSumMSW = 0;
 
@@ -44,7 +43,7 @@ void runMultiplicationBenchmark(std::size_t totalIterations)
     for(std::size_t i = 0; i < totalIterations; ++i)
     {
         WMPIntImplementations::doFullLongMultiplication
-            (value1.data(), kSize1, value2->data(), kSize2, result->data(), tempBuffer.get());
+            (value1.data(), kSize1, value2->data(), kSize2, result->data());
         resultSumMSW += result->data()[0];
     }
 

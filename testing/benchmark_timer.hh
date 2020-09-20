@@ -32,6 +32,11 @@ class Timer
         const double seconds = getElapsedSeconds();
         std::printf("WMPUInt<%zu>: %.3f s (%zu iterations, ", kSize, seconds, iterationCount);
         printTime(seconds / iterationCount);
-        std::printf(")\n");
+
+        const double opsPerSec = iterationCount / seconds;
+        if(opsPerSec >= 10 && opsPerSec < 100000)
+            std::printf(", %.1f ops/s)\n", opsPerSec);
+        else
+            std::printf(", %.3g ops/s)\n", opsPerSec);
     }
 };

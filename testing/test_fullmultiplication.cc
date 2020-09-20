@@ -215,14 +215,11 @@ static bool testFullMultiplication(std::mt19937& rng)
 
     const std::size_t tempBufferSize1 = WMPUInt<kSize1>::template fullMultiplyBufferSize<kSize2>();
     const std::size_t tempBufferSize2 = WMPUInt<kSize2>::template fullMultiplyBufferSize<kSize1>();
-    const std::size_t tempBufferSize3 = WMPIntImplementations::fullLongMultiplicationBufferSize(kSize1, kSize2);
-    const std::size_t tempBufferSize4 = WMPIntImplementations::fullLongMultiplicationBufferSize(kSize2, kSize1);
     const std::size_t karatsubaTempBufferSize =
         WMPIntImplementations::fullKaratsubaMultiplicationBufferSize(kSize2, kSize1);
 
     const std::size_t tempBufferSize =
-        std::max(std::max(std::max(std::max(tempBufferSize1, tempBufferSize2),
-                                   tempBufferSize3), tempBufferSize4), karatsubaTempBufferSize);
+        std::max(std::max(tempBufferSize1, tempBufferSize2), karatsubaTempBufferSize);
 
     std::uint64_t tempBuffer[tempBufferSize];
 
@@ -274,7 +271,7 @@ static bool testFullMultiplication(std::mt19937& rng)
 
         result.assign(0);
         WMPIntImplementations::doFullLongMultiplication
-            (lhs.data(), kSize1, rhs.data(), kSize2, result.data(), tempBuffer);
+            (lhs.data(), kSize1, rhs.data(), kSize2, result.data());
 
         if(result != expectedResult)
             return DPRINT("Error: doFullLongMultiplication of\n", lhs, " and\n", rhs,
@@ -364,16 +361,13 @@ static bool testFullMultiplication(std::mt19937& rng)
 
     if constexpr(kSize1 > 1 && kSize2 > 1)
     {
-        static_assert(WMPUInt<kSize1>::template fullMultiply_longMultiplicationBufferSize<kSize2>()
-                      ==
-                      WMPIntImplementations::fullLongMultiplicationBufferSize(kSize1, kSize2));
         static_assert(WMPUInt<kSize1>::template fullMultiply_karatsubaBufferSize<kSize2>()
                       ==
                       WMPIntImplementations::fullKaratsubaMultiplicationBufferSize(kSize2, kSize1));
     }
 
     result.assign(0);
-    lhs.fullMultiply_longMultiplication(rhs, result, tempBuffer);
+    lhs.fullMultiply_longMultiplication(rhs, result);
     if(result != expectedResult)
         return DPRINT("Error: fullMultiply_longMultiplication of\n", rhs, " and\n", lhs,
                       "\nresulted in\n", result, "\ninstead of\n", expectedResult, "\n");

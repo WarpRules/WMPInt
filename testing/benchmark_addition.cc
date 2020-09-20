@@ -1,6 +1,7 @@
 #include "../WMPInt.hh"
 #include "benchmark_timer.hh"
 #include <random>
+#include <memory>
 
 namespace
 {
@@ -12,17 +13,17 @@ namespace
 template<std::size_t kSize>
 void runAdditionBenchmark(std::size_t totalIterations)
 {
-    WMPUInt<kSize> sum(0), value;
+    std::unique_ptr<WMPUInt<kSize>> sum(new WMPUInt<kSize>(0)), value(new WMPUInt<kSize>);
 
     for(std::size_t i = 0; i < kSize; ++i)
-        value.data()[i] = rngEngine();
+        value->data()[i] = rngEngine();
 
     Timer timer;
 
     for(std::size_t i = 0; i < totalIterations; ++i)
-        sum += value;
+        *sum += *value;
 
-    gValueSink1 = sum.data()[0]; gValueSink2 = sum.data()[kSize-1];
+    gValueSink1 = sum->data()[0]; gValueSink2 = sum->data()[kSize-1];
     timer.printResult(kSize, totalIterations);
 }
 
@@ -46,4 +47,5 @@ int main()
     runAdditionBenchmark<256>(4500000);
     runAdditionBenchmark<1024>(1200000);
     runAdditionBenchmark<1024*16>(100000);
+    runAdditionBenchmark<1024*64>(25000);
 }

@@ -59,8 +59,7 @@ void runMultiplicationBenchmark
 
     for(std::size_t i = 0; i < totalIterations; ++i)
     {
-        WMPIntImplementations::doLongMultiplication
-            (size, gLHS, gRHS, gResult, gTempBuffer);
+        WMPIntImplementations::doLongMultiplication(size, gLHS, gRHS, gResult);
         resultSumMSW += gResult[0];
     }
 
@@ -84,8 +83,7 @@ void runMultiplicationBenchmark
     Timer::printTime(seconds1 / totalIterations);
     std::printf("), karatsuba: %.3f s (", seconds2);
     Timer::printTime(seconds2 / totalIterations);
-    std::printf(") | %zu/%zu\n",
-                WMPIntImplementations::longMultiplicationBufferSize(size),
+    std::printf(") | 0/%zu\n",
                 WMPIntImplementations::truncatedKaratsubaMultiplicationBufferSize(size));
 }
 

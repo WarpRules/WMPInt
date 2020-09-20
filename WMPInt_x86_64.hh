@@ -524,7 +524,7 @@ inline WMPUInt<kSize>& WMPUInt<kSize>::operator*=(std::uint64_t rhs)
     {
         std::uint64_t lhsInd = kSize-1, tempValue = mData[kSize-1];
         mData[kSize-1] = 0;
-        asm ("loop%=:\n\t"
+        asm ("MLoop%=:\n\t"
              "movq %[tempValue], %%rax\n\t" // rax = tempValue
              "movq -8(%[lhs],%[lhsInd],8), %[tempValue]\n\t" // tempValue = lhs[lhsInd-1]
              "movq $0, -8(%[lhs],%[lhsInd],8)\n\t" // lhs[lhsInd-1] = 0
@@ -532,7 +532,7 @@ inline WMPUInt<kSize>& WMPUInt<kSize>::operator*=(std::uint64_t rhs)
              "addq %%rax, (%[lhs],%[lhsInd],8)\n\t" // lhs[lhsInd] += rax
              "adcq %%rdx, -8(%[lhs],%[lhsInd],8)\n\t" // lhs[lhsInd-1] += rdx
              "decq %[lhsInd]\n\t" // --lhsInd
-             "jnz loop%=\n\t" // if(lhsInd > 0) goto loop
+             "jnz MLoop%=\n\t" // if(lhsInd > 0) goto loop
              "imulq %[tempValue], %[rhs]\n\t" // rhs = tempValue * rhs
              "addq %[rhs], (%[lhs])" // lhs[0] += rhs
              : "+m"(mData), [rhs]"+&r"(rhs), [lhsInd]"+&r"(lhsInd), [tempValue]"+&r"(tempValue)

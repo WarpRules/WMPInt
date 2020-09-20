@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-  <title>WMPInt 0.6.4 documentation</title>
+  <title>WMPInt 0.6.5 documentation</title>
   <style type="text/css"> <!--
 html
 {
@@ -96,7 +96,7 @@ code
 </head>
 
 <body>
-<h1>WMPInt 0.6.4 documentation</h1>
+<h1>WMPInt 0.6.5 documentation</h1>
 
 <p><code>WMPUInt</code> and <code>WMPInt</code> (not yet implemented) are templated
   classes that implement multi-precision integer arithmetic for x86-64 platforms
@@ -476,15 +476,15 @@ WMPUInt&lt;kSize&gt; <span class="funcname">operator*</span> (std::uint64_t, con
 
 <pre class="synopsis">constexpr static std::size_t <span class="funcname">multiplyBufferSize</span> ();
 
+void <span class="funcname">multiply</span> (std::uint64_t rhs, WMPUInt&lt;kSize&gt;&amp; result) const;
+
 void <span class="funcname">multiply</span> (const WMPUInt&lt;kSize&gt;&amp; rhs,
                WMPUInt&lt;kSize&gt;&amp; result,
                std::uint64_t* tempBuffer) const;
-
-void <span class="funcname">multiply</span> (std::uint64_t rhs, WMPUInt&lt;kSize&gt;&amp; result) const;
 </pre>
 
 <p>Note that the multiplication operators <code>operator*()</code> and <code>operator*=()</code>
-  use internally a stack-allocated <code>WMPUInt&lt;kSize&gt;</code> and a buffer of
+  use internally a stack-allocated <code>WMPUInt&lt;kSize&gt;</code> and, if necessary, a buffer of
   <code>multiplyBufferSize()</code> <code>std::uint64_t</code> values. For values of
   <code>kSize</code> up to the hundreds, perhaps even thousands, this shouldn't pose a problem.
   However, if <code>kSize</code> is extremely large (in the tens of thousands or more), this
@@ -497,6 +497,13 @@ void <span class="funcname">multiply</span> (std::uint64_t rhs, WMPUInt&lt;kSize
 <p><code>tempBuffer</code> should be a (separate) array of at least
   <code>multiplyBufferSize()</code> <code>std::uint64_t</code> values. (This array doesn't
   need to be initialized with anything.)</p>
+
+<p><b>Note:</b> <code>multiplyBufferSize()</code> may return 0. Take this into
+  account if using an inbuilt array as the buffer. (Since <code>multiplyBufferSize()</code> is a
+  <code>static constexpr</code> function, its result can be resolved at compile time, and the decision
+  of whether to use a temp buffer at all likewise, eg. using an <code>if constexpr</code> expression or
+  similar.) If the return value is 0, then it's ok to pass <code>nullptr</code> as the <code>tempBuffer</code>
+  parameter.</p>
 
 <p><b class="important">Important!</b> <code>result</code> cannot be this object or the
   <code>rhs</code> object. It must be a third, separate object, else the result will be
@@ -567,14 +574,23 @@ value1.fullMultiply(value2, result);</pre>
   calculations (like the regular <code>multiply()</code> function does), which may be necessary
   for very large values, or in some cases for efficiency. The size of the buffer can be retrieved
   with <code>fullMultiplyBufferSize()</code>, which is a template function taking the size of the
-  second operand as parameter. Example usage:</p>
+  second operand as parameter.</p>
+
+<p><b>Note:</b> <code>fullMultiplyBufferSize()</code> may return 0. Take this into
+  account if using an inbuilt array as the buffer. (Since <code>fullMultiplyBufferSize()</code> is a
+  <code>static constexpr</code> function, its result can be resolved at compile time, and the decision
+  of whether to use a temp buffer at all likewise, eg. using an <code>if constexpr</code> expression or
+  similar.) If the return value is 0, then it's ok to pass <code>nullptr</code> as the <code>tempBuffer</code>
+  parameter.</p>
+
+<p>Example usage:</p>
 
 <pre>WMPUInt&lt;512&gt; value1;
 WMPUInt&lt;1000&gt; value2;
 WMPUInt&lt;512+1000&gt; result;
 
 const std::size_t kTempBufferSize =
-    WMPUInt&lt;512&gt;::fullMultiplyBufferSize&lt;1000&gt;();
+    WMPUInt&lt;512&gt;::template fullMultiplyBufferSize&lt;1000&gt;();
 std::uint64_t tempBuffer[kTempBufferSize];
 
 value1.fullMultiply(value2, result, tempBuffer);</pre>
@@ -917,12 +933,8 @@ result *= result;</pre>
 <p><b>Member functions:</b></p>
 
 <pre class="synopsis">template&lt;std::size_t kSize2&gt;
-constexpr static std::size_t <span class="funcname">fullMultiply_longMultiplicationBufferSize</span>();
-
-template&lt;std::size_t kSize2&gt;
 void <span class="funcname">fullMultiply_longMultiplication</span>
-(const WMPUInt&lt;kSize2&gt;&amp;, WMPUInt&lt;kSize+kSize2&gt;&amp; result,
- std::uint64_t* tempBuffer) const;
+(const WMPUInt&lt;kSize2&gt;&amp;, WMPUInt&lt;kSize+kSize2&gt;&amp; result) const;
 
 template&lt;std::size_t kSize2&gt;
 constexpr static std::size_t <span class="funcname">fullMultiply_karatsubaBufferSize</span>();
@@ -932,8 +944,8 @@ void <span class="funcname">fullMultiply_karatsuba</span>
 (const WMPUInt&lt;kSize2&gt;&amp;, WMPUInt&lt;kSize+kSize2&gt;&amp; result,
  std::uint64_t* tempBuffer) const;</pre>
 
-<p>Only versions that take a temporary buffer for calculations are provided. Be sure to get its
-  size using the corresponding function.</p>
+<p>Long multiplication does not require a temporary buffer, but the Karatsuba multiplication does.
+  Take this into account when choosing the algorithm.</p>
 
 <p>Example:</p>
 
@@ -942,7 +954,7 @@ WMPUInt&lt;256&gt; value2;
 WMPUInt&lt;2048+256&gt; result;
 
 constexpr std::size_t kTempBufferSize =
-    WMPUInt&lt;2048&gt;::fullMultiply_karatsubaBufferSize&lt;256&gt;();
+    WMPUInt&lt;2048&gt;::template fullMultiply_karatsubaBufferSize&lt;256&gt;();
 std::uint64_t tempBuffer[kTempBufferSize];
 
 value1.fullMultiply_karatsuba(value2, result, tempBuffer);</pre>

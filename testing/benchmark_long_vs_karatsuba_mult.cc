@@ -27,8 +27,6 @@ void runMultiplicationBenchmark
     assert(lhsSize <= rhsSize);
 
     const std::size_t resultSize = lhsSize + rhsSize;
-    const std::size_t longMultBuffersize =
-        WMPIntImplementations::fullLongMultiplicationBufferSize(rhsSize, lhsSize);
     const std::size_t karatsubaMultBufferSize =
         WMPIntImplementations::fullKaratsubaMultiplicationBufferSize(lhsSize, rhsSize);
 
@@ -36,8 +34,6 @@ void runMultiplicationBenchmark
     std::unique_ptr<std::uint64_t[]> rhs(new std::uint64_t[rhsSize]);
     std::unique_ptr<std::uint64_t[]> result(new std::uint64_t[resultSize]);
 
-    std::unique_ptr<std::uint64_t[]> longMultTempBuffer
-        (new std::uint64_t[longMultBuffersize]);
     std::unique_ptr<std::uint64_t[]> karatsubaMultTempBuffer
         (new std::uint64_t[karatsubaMultBufferSize]);
 
@@ -49,7 +45,7 @@ void runMultiplicationBenchmark
         for(unsigned subIteration = 0; subIteration < WFLCG::kBufferSize; ++subIteration)
         {
             WMPIntImplementations::doFullLongMultiplication
-                (rhs.get(), rhsSize, lhs.get(), lhsSize, result.get(), longMultTempBuffer.get());
+                (rhs.get(), rhsSize, lhs.get(), lhsSize, result.get());
 
             lhs.get()[0] ^= gRNG.buffer()[subIteration];
         }
@@ -78,9 +74,8 @@ void runMultiplicationBenchmark
 
     totalIterations *= WFLCG::kBufferSize;
 
-    std::printf("%zux%zu (lbs:%zu, kbs:%zu) %c long: %.3fs (", lhsSize, rhsSize,
-                longMultBuffersize, karatsubaMultBufferSize,
-                seconds1<seconds2?'-':'+', seconds1);
+    std::printf("%zux%zu (lbs:0, kbs:%zu) %c long: %.3fs (", lhsSize, rhsSize,
+                karatsubaMultBufferSize, seconds1<seconds2?'-':'+', seconds1);
     Timer::printTime(seconds1 / totalIterations);
     std::printf("), karatsuba: %.3fs (", seconds2);
     Timer::printTime(seconds2 / totalIterations);

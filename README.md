@@ -1,5 +1,5 @@
 # WMPInt
-WMPInt v0.6.4 is a small library for multi-precision integer ("bignum") calculations for x86-64
+WMPInt v0.6.5 is a small library for multi-precision integer ("bignum") calculations for x86-64
 platforms, in C++17 and inline asm, consisting of one header and one source file.
 
 The `WMPInt` (not yet implemented) and `WMPUInt` classes are template classes with a compile-time
@@ -19,3 +19,44 @@ Note that these classes use gcc-style x86-64 inline asm, which means support is 
 to such targets, using compatible compilers (modern gcc and clang tested, icc may work).
 
 Consult the `WMPInt.html` file for full reference documentation and usage tips.
+
+## Benchmarks
+
+These benchmarks were run on an i7-9700K, single-threaded, using gcc 10.2.1 with compiler
+flags `-Ofast -march=native`.
+
+Addition:
+
+| WMPUInt size  | Bits    | Time   | Additions/s          |
+|:--------------|:--------|-------:|---------------------:|
+| 8             | 512     | 3.1 ns | 3.2 ⋅ 10<sup>8</sup> |
+| 32            | 2048    |  11 ns | 9.1 ⋅ 10<sup>7</sup> |
+| 150           | 9600    |  55 ns | 1.8 ⋅ 10<sup>7</sup> |
+| 256           | 16384   |  88 ns | 1.1 ⋅ 10<sup>7</sup> |
+| 1024          | 65536   | 443 ns | 2.3 ⋅ 10<sup>6</sup> |
+| 16386         | 1048576 | 6.1 μs | 1.6 ⋅ 10<sup>5</sup> |
+| 65536         | 4194304 |  27 μs | 3.7 ⋅ 10<sup>4</sup> |
+
+Multiplication (truncated, ie. result size is truncated to input size):
+
+| WMPUInt size  | Bits    | Time    | Multiplications/s    |
+|:--------------|:--------|--------:|---------------------:|
+| 8             | 512     |   31 ns | 3.2 ⋅ 10<sup>7</sup> |
+| 32            | 2048    |  471 ns | 2.1 ⋅ 10<sup>6</sup> |
+| 150           | 9600    |  8.8 μs | 1.1 ⋅ 10<sup>5</sup> |
+| 256           | 16384   |   23 μs |                43285 |
+| 1024          | 65536   |  235 μs |                 4259 |
+| 16386         | 1048576 | 20.7 ms |                 48.2 |
+| 65536         | 4194304 |  189 ms |                  5.3 |
+
+Full multiplication (full double-sized result):
+
+| WMPUInt size  | Bits    | Time    | Multiplications/s    |
+|:--------------|:--------|--------:|---------------------:|
+| 8             | 512     |   62 ns | 1.6 ⋅ 10<sup>7</sup> |
+| 32            | 2048    |  914 ns | 1.1 ⋅ 10<sup>6</sup> |
+| 150           | 9600    | 11.1 μs |                90271 |
+| 256           | 16384   |   27 μs |                36399 |
+| 1024          | 65536   |  251 μs |                 3984 |
+| 16386         | 1048576 | 20.7 ms |                 48.4 |
+| 65536         | 4194304 |  187 ms |                  5.3 |

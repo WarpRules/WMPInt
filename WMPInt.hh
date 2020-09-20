@@ -142,11 +142,7 @@ class WMPUInt
     void fullMultiply(const WMPUInt<kSize2>&, WMPUInt<kSize+kSize2>& result) const;
 
     template<std::size_t kSize2>
-    constexpr static std::size_t fullMultiply_longMultiplicationBufferSize();
-
-    template<std::size_t kSize2>
-    void fullMultiply_longMultiplication(const WMPUInt<kSize2>&, WMPUInt<kSize+kSize2>& result,
-                                         std::uint64_t* tempBuffer) const;
+    void fullMultiply_longMultiplication(const WMPUInt<kSize2>&, WMPUInt<kSize+kSize2>& result) const;
 
     template<std::size_t kSize2>
     constexpr static std::size_t fullMultiply_karatsubaBufferSize();
@@ -233,15 +229,12 @@ class WMPUInt<1>
     template<std::size_t kSize2>
     constexpr static std::size_t fullMultiplyBufferSize() { return 1; }
     template<std::size_t kSize2>
-    void fullMultiply(const WMPUInt<kSize2>&, WMPUInt<1+kSize2>& result,
-                      std::uint64_t* tempBuffer) const;
+    void fullMultiply(const WMPUInt<kSize2>&, WMPUInt<1+kSize2>& result, std::uint64_t* tempBuffer) const;
     template<std::size_t kSize2>
     void fullMultiply(const WMPUInt<kSize2>&, WMPUInt<1+kSize2>& result) const;
 
-    template<std::size_t kSize2>
-    constexpr static std::size_t fullMultiply_longMultiplicationBufferSize() { return 1; }
     template<std::size_t kSize2> void fullMultiply_longMultiplication
-    (const WMPUInt<kSize2>&, WMPUInt<1+kSize2>&, std::uint64_t*) const;
+    (const WMPUInt<kSize2>&, WMPUInt<1+kSize2>&) const;
 
     template<std::size_t kSize2>
     constexpr static std::size_t fullMultiply_karatsubaBufferSize() { return 1; }
@@ -284,7 +277,7 @@ inline void WMPUInt<1>::fullMultiply
 
 template<std::size_t kSize2>
 inline void WMPUInt<1>::fullMultiply_longMultiplication
-(const WMPUInt<kSize2>& rhs, WMPUInt<1+kSize2>& result, std::uint64_t*) const
+(const WMPUInt<kSize2>& rhs, WMPUInt<1+kSize2>& result) const
 {
     fullMultiply(rhs, result);
 }
@@ -319,11 +312,10 @@ namespace WMPIntImplementations
     char* printAsDecStrAndReset(std::uint64_t*, std::size_t, char*);
 
     void doLongMultiplication
-    (std::size_t, const std::uint64_t*, const std::uint64_t*, std::uint64_t*, std::uint64_t*);
+    (std::size_t, const std::uint64_t*, const std::uint64_t*, std::uint64_t*);
 
     void doFullLongMultiplication
-    (const std::uint64_t*, std::size_t, const std::uint64_t*, std::size_t,
-     std::uint64_t*, std::uint64_t*);
+    (const std::uint64_t*, std::size_t, const std::uint64_t*, std::size_t, std::uint64_t*);
 
     void doFullKaratsubaMultiplication
     (const std::uint64_t*, std::size_t, const std::uint64_t*, std::size_t,
@@ -332,12 +324,6 @@ namespace WMPIntImplementations
     void doTruncatedKaratsubaMultiplication
     (const std::uint64_t*, const std::uint64_t*, std::size_t,
      std::uint64_t*, std::uint64_t*);
-
-    constexpr std::size_t longMultiplicationBufferSize(std::size_t lhsSize)
-    { return lhsSize; }
-
-    constexpr std::size_t fullLongMultiplicationBufferSize(std::size_t, std::size_t rhsSize)
-    { return rhsSize + 1; }
 
     constexpr std::size_t fullKaratsubaMultiplicationBufferSize(std::size_t, std::size_t);
     constexpr std::size_t fullKaratsubaMultiplicationBufferSizeForSameSizes(std::size_t);
@@ -349,7 +335,7 @@ namespace WMPIntImplementations
 constexpr std::size_t WMPIntImplementations::fullKaratsubaMultiplicationBufferSizeForSameSizes
 (std::size_t size)
 {
-    if(size <= 32) return fullLongMultiplicationBufferSize(size, size);
+    if(size <= 32) return 0;
     const std::size_t lowSize = (size+1) / 2;
     const std::size_t highSize = size - lowSize;
     const std::size_t highPlusLowSize = lowSize + 1;
@@ -365,7 +351,7 @@ constexpr std::size_t WMPIntImplementations::fullKaratsubaMultiplicationBufferSi
 (std::size_t lhsSize, std::size_t rhsSize)
 {
     if(lhsSize == 1) return 0;
-    if(lhsSize == 2 || rhsSize <= 32) return fullLongMultiplicationBufferSize(rhsSize, lhsSize);
+    if(lhsSize == 2 || rhsSize <= 32) return 0;
     const std::size_t rhsLowSize = (rhsSize+1) / 2;
     const std::size_t rhsHighSize = rhsSize - rhsLowSize;
     const std::size_t bufferSize1 =
@@ -381,7 +367,7 @@ constexpr std::size_t WMPIntImplementations::fullKaratsubaMultiplicationBufferSi
 constexpr std::size_t WMPIntImplementations::fullKaratsubaMultiplicationBufferSizeForLargeLHS
 (std::size_t lhsSize, std::size_t rhsSize)
 {
-    if(rhsSize <= 32) return fullLongMultiplicationBufferSize(rhsSize, lhsSize);
+    if(rhsSize <= 32) return 0;
     const std::size_t lowSize = (rhsSize+1) / 2;
     const std::size_t rhsHighSize = rhsSize - lowSize;
     const std::size_t lhsHighSize = lhsSize - lowSize;
@@ -408,7 +394,7 @@ constexpr std::size_t WMPIntImplementations::fullKaratsubaMultiplicationBufferSi
 constexpr std::size_t WMPIntImplementations::truncatedKaratsubaMultiplicationBufferSize
 (std::size_t size)
 {
-    if(size <= 64) return longMultiplicationBufferSize(size);
+    if(size <= 64) return 0;
     const std::size_t lhsLowSize = size / 2;
     const std::size_t lhsHighSize = size - lhsLowSize;
     const std::size_t rhsLowSize = (size + 1) / 2;
@@ -422,10 +408,8 @@ constexpr std::size_t WMPIntImplementations::truncatedKaratsubaMultiplicationBuf
 template<std::size_t kSize>
 constexpr inline std::size_t WMPUInt<kSize>::multiplyBufferSize()
 {
-    if constexpr(kSize <= 64)
-        return WMPIntImplementations::longMultiplicationBufferSize(kSize);
-    else
-        return WMPIntImplementations::truncatedKaratsubaMultiplicationBufferSize(kSize);
+    if constexpr(kSize <= 64) return 0;
+    else return WMPIntImplementations::truncatedKaratsubaMultiplicationBufferSize(kSize);
 }
 
 template<std::size_t kSize>
@@ -439,18 +423,11 @@ constexpr inline std::size_t WMPUInt<kSize>::fullMultiplyBufferSize()
        (kSize2 >= 50 && kSize2 < 200 && kSize < kSize2/3) ||
        (kSize >= 200 && kSize2 < kSize/4) ||
        (kSize2 >= 200 && kSize < kSize2/4))
-        return WMPIntImplementations::fullLongMultiplicationBufferSize(kSize, kSize2);
+        return 0;
     else if(kSize <= kSize2)
         return WMPIntImplementations::fullKaratsubaMultiplicationBufferSize(kSize, kSize2);
     else
         return WMPIntImplementations::fullKaratsubaMultiplicationBufferSize(kSize2, kSize);
-}
-
-template<std::size_t kSize>
-template<std::size_t kSize2>
-constexpr inline std::size_t WMPUInt<kSize>::fullMultiply_longMultiplicationBufferSize()
-{
-    return WMPIntImplementations::fullLongMultiplicationBufferSize(kSize, kSize2);
 }
 
 template<std::size_t kSize>
@@ -1222,11 +1199,9 @@ inline void WMPUInt<kSize>::multiply
     if constexpr(kSize == 2)
         multiply_size2(rhs, result);
     else if constexpr(kSize <= 64)
-        WMPIntImplementations::doLongMultiplication
-            (kSize, mData, rhs.mData, result.mData, tempBuffer);
+        WMPIntImplementations::doLongMultiplication(kSize, mData, rhs.mData, result.mData);
     else
-        WMPIntImplementations::doTruncatedKaratsubaMultiplication
-            (mData, rhs.mData, kSize, result.mData, tempBuffer);
+        WMPIntImplementations::doTruncatedKaratsubaMultiplication(mData, rhs.mData, kSize, result.mData, tempBuffer);
 }
 
 template<std::size_t kSize>
@@ -1249,7 +1224,7 @@ inline void WMPUInt<kSize>::fullMultiply
                       (kSize2 >= 200 && kSize < kSize2/4))
     {
         WMPIntImplementations::doFullLongMultiplication
-            (mData, kSize, rhs.mData, kSize2, result.mData, tempBuffer);
+            (mData, kSize, rhs.mData, kSize2, result.mData);
     }
     else if constexpr(kSize <= kSize2)
     {
@@ -1280,13 +1255,12 @@ inline void WMPUInt<kSize>::fullMultiply
 template<std::size_t kSize>
 template<std::size_t kSize2>
 inline void WMPUInt<kSize>::fullMultiply_longMultiplication
-(const WMPUInt<kSize2>& rhs, WMPUInt<kSize+kSize2>& result, std::uint64_t* tempBuffer) const
+(const WMPUInt<kSize2>& rhs, WMPUInt<kSize+kSize2>& result) const
 {
     if constexpr(kSize2 == 1)
         rhs.fullMultiply(*this, result);
     else
-        WMPIntImplementations::doFullLongMultiplication
-            (mData, kSize, rhs.mData, kSize2, result.mData, tempBuffer);
+        WMPIntImplementations::doFullLongMultiplication(mData, kSize, rhs.mData, kSize2, result.mData);
 }
 
 template<std::size_t kSize>
