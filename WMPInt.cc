@@ -1,9 +1,9 @@
 #include "WMPInt.hh"
 
 #if WMPINT_CPU_TYPE == WMPINT_CPU_TYPE_X86_64
-#include "WMPInt_x86_64.cc.inc"
+#include "arch_src/WMPInt_x86_64.cc.inc"
 #elif WMPINT_CPU_TYPE == WMPINT_CPU_TYPE_ARM64
-#include "WMPInt_aarch64.cc.inc"
+#include "arch_src/WMPInt_aarch64.cc.inc"
 #else
 #error "Invalid value of WMPINT_CPU_TYPE"
 #endif

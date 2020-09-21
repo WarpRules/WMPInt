@@ -1,8 +1,8 @@
 #ifndef WMPINT_INCLUDE_GUARD
 #define WMPINT_INCLUDE_GUARD
 
-#define WMPINT_VERSION 0x000603
-#define WMPINT_VERSION_STRING "0.6.3"
+#define WMPINT_VERSION 0x000605
+#define WMPINT_VERSION_STRING "0.6.5"
 #define WMPINT_COPYRIGHT_STRING "WMPInt v" WMPINT_VERSION_STRING " (C)2019 Juha Nieminen"
 
 #define WMPINT_CPU_TYPE_X86_64 1
@@ -270,9 +270,9 @@ class WMPUInt<1>
 // Implementations
 //============================================================================
 #if WMPINT_CPU_TYPE == WMPINT_CPU_TYPE_X86_64
-#include "WMPInt_x86_64.hh"
+#include "arch_src/WMPInt_x86_64.hh"
 #elif WMPINT_CPU_TYPE == WMPINT_CPU_TYPE_ARM64
-#include "WMPInt_aarch64.hh"
+#include "arch_src/WMPInt_aarch64.hh"
 #else
 #error "Invalid value of WMPINT_CPU_TYPE"
 #endif
