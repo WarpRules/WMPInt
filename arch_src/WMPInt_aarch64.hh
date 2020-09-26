@@ -418,23 +418,24 @@ inline void WMPUInt<kSize>::multiply(std::uint64_t rhs, std::uint64_t* result) c
     }
     else
     {
-        for(std::size_t i = 0; i < kSize; ++i) result[i] = 0;
-        std::uint64_t lhsInd = kSize-1;
-        /*
+        const std::uint64_t* lhs = mData + (kSize - 1);
+        std::uint64_t* resPtr = result + (kSize - 1);
+        std::uint64_t res = 0, tmp1, tmp2;
         asm ("loop%=:\n\t"
-             "movq (%[lhs],%[lhsInd],8),%%rax\n\t" // rax = lhs[lhsInd]
-             "mulq %[rhs]\n\t" // (rdx,rax) = rax * rhs
-             "addq %%rax,(%[result],%[lhsInd],8)\n\t" // result[lhsInd] += rax
-             "adcq %%rdx,-8(%[result],%[lhsInd],8)\n\t" // result[lhsInd-1] += rdx
-             "decq %[lhsInd]\n\t" // --lhsInd
-             "jnz loop%=\n\t" // if(lhsInd > 0) goto loop
-             "imulq (%[lhs]),%[rhs]\n\t" // rhs = lhs[0] * rhs
-             "addq %[rhs],(%[result])" // result[0] += rhs
-         */
-        asm (""
-             : 
-             : 
-             : "cc");
+             "ldr %[tmp1], [%[lhs]], #-8\n\t"
+             "mul %[tmp2], %[tmp1], %[rhs]\n\t"
+             "umulh %[tmp1], %[tmp1], %[rhs]\n\t"
+             "adds %[res], %[res], %[tmp2]\n\t"
+             "str %[res], [%[result]], #-8\n\t"
+             "adc %[res], xzr, %[tmp1]\n\t"
+             "cmp %[lhs], %[mData]\n\t"
+             "bne loop%=\n\t"
+             "ldr %[tmp1], [%[lhs]]\n\t"
+             "madd %[res], %[tmp1], %[rhs], %[res]\n\t"
+             "str %[res], [%[result]]"
+             : "+m"(*(std::uint64_t(*)[kSize])result), [result]"+&r"(resPtr),
+               [lhs]"+&r"(lhs), [res]"+&r"(res), [tmp1]"=&r"(tmp1), [tmp2]"=&r"(tmp2)
+             : "m"(mData), [mData]"r"(mData), [rhs]"r"(rhs) : "cc");
     }
 }
 
@@ -482,23 +483,20 @@ inline WMPUInt<kSize>& WMPUInt<kSize>::operator*=(std::uint64_t rhs)
     else
     {
         std::uint64_t* lhs = mData + (kSize - 1);
-        std::uint64_t res0 = 0, res1, tmp, mulResL, mulResH;
+        std::uint64_t res = 0, tmp1, tmp2;
         asm ("loop%=:\n\t"
-             "mov %[res1], %[res0]\n\t" // res1 = res0
-             "ldr %[tmp], [%[lhs]], #-8\n\t" // tmp = *lhs; lhs -= 8
-             "mov %[res0], #0\n\t" // res0 = 0
-             "mul %[mulResL], %[tmp], %[rhs]\n\t" // mulResL = tmp * rhs (low)
-             "umulh %[mulResH], %[tmp], %[rhs]\n\t" // mulResH = tmp * rhs (high)
-             "adds %[res1], %[res1], %[mulResL]\n\t" // res1 += mulResL
-             "adc %[res0], %[res0], %[mulResH]\n\t" // res0 += mulResH
-             "str %[res1], [%[lhs], #8]\n\t" // *(lhs+8) = res1
-             "cmp %[lhs], %[mData]\n\t" // if(lhs != mData)
-             "bne loop%=\n\t" // goto loop
-             "ldr %[tmp], [%[lhs]]\n\t" // tmp = *lhs
-             "madd %[res0], %[tmp], %[rhs], %[res0]\n\t" // res0 = tmp * rhs + res0
-             "str %[res0], [%[lhs]]" // *lhs = res0
-             : "+m"(mData), [lhs]"+&r"(lhs), [res0]"+%r"(res0), [res1]"=&r"(res1), [tmp]"=&r"(tmp),
-               [mulResL]"=&r"(mulResL), [mulResH]"=&r"(mulResH)
+             "ldr %[tmp1], [%[lhs]]\n\t"
+             "mul %[tmp2], %[tmp1], %[rhs]\n\t"
+             "umulh %[tmp1], %[tmp1], %[rhs]\n\t"
+             "adds %[res], %[res], %[tmp2]\n\t"
+             "str %[res], [%[lhs]], #-8\n\t"
+             "adc %[res], xzr, %[tmp1]\n\t"
+             "cmp %[lhs], %[mData]\n\t"
+             "bne loop%=\n\t"
+             "ldr %[tmp1], [%[lhs]]\n\t"
+             "madd %[res], %[tmp1], %[rhs], %[res]\n\t"
+             "str %[res], [%[lhs]]"
+             : "+m"(mData), [lhs]"+&r"(lhs), [res]"+&r"(res), [tmp1]"=&r"(tmp1), [tmp2]"=&r"(tmp2)
              : [mData]"r"(mData), [rhs]"r"(rhs) : "cc");
     }
 
