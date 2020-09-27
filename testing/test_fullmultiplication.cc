@@ -245,10 +245,13 @@ static bool testFullMultiplication(std::mt19937& rng)
                           rhs, "\nresulted in\n", result, "\ninstead of\n", expectedResult, "\n");
     }
 
-    for(std::size_t iteration = 0; iteration < kIterations; ++iteration)
+    const std::size_t iterations = (kSize2 == 1 ? kIterations * 2 : kIterations);
+    for(std::size_t iteration = 0; iteration < iterations; ++iteration)
     {
         for(std::size_t i = 0; i < kSize1*2; ++i) lhsArray[i] = rng();
-        for(std::size_t i = 0; i < kSize2*2; ++i) rhsArray[i] = rng();
+
+        if(kSize2 == 1 && iteration % 2 == 1) { rhsArray[0] = 0; rhsArray[1] = rng(); }
+        else for(std::size_t i = 0; i < kSize2*2; ++i) rhsArray[i] = rng();
 
         multiply(lhsArray, kSize1*2, rhsArray, kSize2*2, resultArray, tempBuffer2);
 
@@ -312,6 +315,7 @@ static bool testFullMultiplication(std::mt19937& rng)
         if constexpr(kSize2 == 1)
         {
             WMPUInt<kSize1> expectedShortResult, shortResult = lhs;
+
             shortResult *= rhs.data()[0];
             initWMPUIntWithUint32Array(expectedShortResult, resultArray + 2);
             if(shortResult != expectedShortResult)
@@ -319,14 +323,18 @@ static bool testFullMultiplication(std::mt19937& rng)
                               lhs, " and\n", rhs.data()[0], "\nresulted in\n", shortResult,
                               "\ninstead of\n", expectedShortResult, "\n");
 
-            if(rhs.data()[0] > 0)
+            if(rhs.data()[0] > 0
+#if WMPINT_CPU_TYPE == WMPINT_CPU_TYPE_ARM64
+               && rhs.data()[0] < UINT64_C(0x100000000)
+#endif
+               )
             {
                 result /= rhs.data()[0];
                 shortResult.assign(result);
                 if(result.data()[0] > 0 || shortResult != lhs)
                     return DPRINT(TType::adiv, "Error: WMPUInt<", result.size(),
                                   ">::operator/=(std::uint64_t) of\n", expectedResult,
-                                  " and\n", rhs.data()[0], "\nresulted in\n", result,
+                                  " and\n", sethexw0(16), rhs.data()[0], "\nresulted in\n", result,
                                   "\ninstead of\n", lhs, "\n");
 
                 result.assign(0);
@@ -335,7 +343,7 @@ static bool testFullMultiplication(std::mt19937& rng)
                 if(result.data()[0] > 0 || shortResult != lhs)
                     return DPRINT(TType::div, "Error: WMPUInt<", result.size(),
                                   ">::operator/(std::uint64_t) of\n", expectedResult,
-                                  " and\n", rhs.data()[0], "\nresulted in\n", result,
+                                  " and\n", sethexw0(16), rhs.data()[0], "\nresulted in\n", result,
                                   "\ninstead of\n", lhs, "\n");
             }
         }

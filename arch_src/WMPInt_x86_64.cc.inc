@@ -117,7 +117,6 @@ static void doFullAddition(const std::uint64_t* lhs, std::size_t lhsSize,
 {
     if(lhsSize == rhsSize)
     {
-        *result = 0;
         std::size_t srcInd = lhsSize - 1;
         std::uint64_t value;
         asm ("clc\n"
@@ -127,7 +126,9 @@ static void doFullAddition(const std::uint64_t* lhs, std::size_t lhsSize,
              "movq %[value], 8(%[result],%[srcInd],8)\n\t"
              "decq %[srcInd]\n\t"
              "jns L1%=\n\t"
-             "adcq $0, (%[result])"
+             "setc %b[value]\n\t"
+             "movzx %b[value], %[value]\n\t"
+             "movq %[value], (%[result])"
              : "=m"(*(std::uint64_t(*)[lhsSize+1])result),
                [srcInd]"+&r"(srcInd), [value]"=&r"(value)
              : [lhs]"r"(lhs), [rhs]"r"(rhs), [result]"r"(result),
@@ -136,7 +137,6 @@ static void doFullAddition(const std::uint64_t* lhs, std::size_t lhsSize,
     }
     else
     {
-        for(std::size_t i = 0; i < rhsSize - lhsSize + 1; ++i) result[i] = 0;
         std::size_t lhsInd = lhsSize-1, rhsInd = rhsSize-1;
         std::uint64_t value;
         asm ("clc\n"
@@ -149,10 +149,13 @@ static void doFullAddition(const std::uint64_t* lhs, std::size_t lhsSize,
              "jns L1%=\n"
              "L2%=:\n\t"
              "movq (%[rhs],%[rhsInd],8), %[value]\n\t"
-             "adcq %[value], 8(%[result],%[rhsInd],8)\n\t"
+             "adcq $0, %[value]\n\t"
+             "movq %[value], 8(%[result],%[rhsInd],8)\n\t"
              "decq %[rhsInd]\n\t"
              "jns L2%=\n\t"
-             "adcq $0, (%[result])"
+             "setc %b[value]\n\t"
+             "movzx %b[value], %[value]\n\t"
+             "movq %[value], (%[result])"
              : "=m"(*(std::uint64_t(*)[rhsSize+1])result),
                [lhsInd]"+&r"(lhsInd), [rhsInd]"+&r"(rhsInd), [value]"=&r"(value)
              : [lhs]"r"(lhs), [rhs]"r"(rhs), [result]"r"(result),
@@ -248,17 +251,18 @@ static inline void doSubtraction(std::uint64_t* lhs, std::size_t lhsSize,
 static void doFullLongMultiplication_1xN
 (std::uint64_t lhs, const std::uint64_t* rhs, std::size_t kSize2, std::uint64_t* result)
 {
-    for(std::size_t i = 0; i < 1+kSize2; ++i) result[i] = 0;
-    std::uint64_t rhsInd = kSize2 - 1;
-    asm ("L1%=:\n\t"
-         "movq (%[rhs],%[rhsInd],8), %%rax\n\t"
+    std::uint64_t rhsInd = kSize2 - 1, temp = 0;
+    asm ("Loop%=:\n\t"
+         "movq (%[rhs], %[rhsInd], 8), %%rax\n\t"
          "mulq %[lhs]\n\t"
-         "addq %%rax, 8(%[result],%[rhsInd],8)\n\t"
-         "adcq %%rdx, (%[result],%[rhsInd],8)\n\t"
+         "addq %[temp], %%rax\n\t"
+         "adcq $0, %%rdx\n\t"
+         "movq %%rax, 8(%[result], %[rhsInd], 8)\n\t"
+         "movq %%rdx, %[temp]\n\t"
          "decq %[rhsInd]\n\t"
-         "jns L1%="
-         : "+m"(*(std::uint64_t(*)[kSize2+1])result), [rhsInd]"+&r"(rhsInd)
-         : "m"(*(std::uint64_t(*)[kSize2])rhs), [lhs]"r"(lhs), [rhs]"r"(rhs),
-           [result]"r"(result)
+         "jns Loop%=\n\t"
+         "movq %[temp], (%[result])"
+         : "=m"(*(std::uint64_t(*)[kSize2+1])result), [rhsInd]"+&r"(rhsInd), [temp]"+&r"(temp)
+         : "m"(*(std::uint64_t(*)[kSize2])rhs), [lhs]"r"(lhs), [rhs]"r"(rhs), [result]"r"(result)
          : "rax", "rdx", "cc");
 }

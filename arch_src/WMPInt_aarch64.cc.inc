@@ -67,11 +67,44 @@ void WMPIntImplementations::doFullLongMultiplication
 (const std::uint64_t* lhs, std::size_t kSize1, const std::uint64_t* rhs, std::size_t kSize2, std::uint64_t* result)
 {
     const std::size_t resultSize = kSize1 + kSize2;
-    std::uint64_t* resultPtr = result + (kSize1 - 1);
-    std::uint64_t lhsInd = kSize1 - 1, rhsInd, lhsValue, temp;
-    std::uint8_t carry;
+    const std::uint64_t *rhsPtr = rhs - 1;
+    std::uint64_t *resultPtr = result + (kSize1 - 1);
+    std::uint64_t lhsInd = kSize1 - 1, rhsInd, lhsValue, rhsValue, temp, res0, res1, flags;
     for(std::size_t i = 0; i < resultSize; ++i) result[i] = 0;
 
+    asm volatile
+        ("Loop1%=:\n\t"
+         "mov %[rhsInd], %[kSize2]\n\t"
+         "ldr %[lhsValue], [%[lhs], %[lhsInd], lsl #3]\n\t"
+         "mov %[temp], xzr\n\t"
+         "mov %[flags], xzr\n"
+         "Loop2%=:\n\t"
+         "ldr %[rhsValue], [%[rhs], %[rhsInd], lsl #3]\n\t"
+         "mul %[res1], %[rhsValue], %[lhsValue]\n\t"
+         "umulh %[res0], %[rhsValue], %[lhsValue]\n\t"
+         "ldr %[rhsValue], [%[result], %[rhsInd], lsl #3]\n\t"
+         "adds %[res1], %[res1], %[temp]\n\t"
+         "adc %[temp], %[res0], xzr\n\t"
+         "msr nzcv, %[flags]\n\t"
+         "adcs %[rhsValue], %[rhsValue], %[res1]\n\t"
+         "str %[rhsValue], [%[result], %[rhsInd], lsl #3]\n\t"
+         "mrs %[flags], nzcv\n\t"
+         "sub %[rhsInd], %[rhsInd], #1\n\t"
+         "cbnz %[rhsInd], Loop2%=\n\t"
+         "ldr %[rhsValue], [%[result]]\n\t"
+         "msr nzcv, %[flags]\n\t"
+         "adc %[rhsValue], %[rhsValue], %[temp]\n\t"
+         "str %[rhsValue], [%[result]]\n\t"
+         "sub %[result], %[result], #8\n\t"
+         "subs %[lhsInd], %[lhsInd], #1\n\t"
+         "b.hs Loop1%="
+         : //"+m"(*(std::uint64_t(*)[resultSize])result), "=m"(*(std::uint64_t(*)[kSize2+1])tempBuffer),
+           [lhsInd]"+&r"(lhsInd), [rhsInd]"=&r"(rhsInd), [lhsValue]"=&r"(lhsValue), [rhsValue]"=&r"(rhsValue),
+           [temp]"=&r"(temp), [res0]"=&r"(res0), [res1]"=&r"(res1),
+           [result]"+&r"(resultPtr), [flags]"=&r"(flags)
+         : [lhs]"r"(lhs), [rhs]"r"(rhsPtr), [kSize2]"ir"(kSize2)
+           //, "m"(*(std::uint64_t(*)[kSize1])lhs), "m"(*(std::uint64_t(*)[kSize2])rhs)
+         : "cc", "memory");
 }
 
 

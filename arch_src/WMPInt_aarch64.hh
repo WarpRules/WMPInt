@@ -13,9 +13,15 @@ inline void WMPUInt<1>::fullMultiply(const WMPUInt<kSize2>& rhs, WMPUInt<1+kSize
     }
     else if constexpr(kSize2 == 2)
     {
-        result.mData[0] = 0;
-        asm (""
-             : : : "cc");
+        asm ("mul %[res2], %[rhs1], %[lhs]\n\t"
+             "umulh %[res1], %[rhs1], %[lhs]\n\t"
+             "mul %[res0], %[rhs0], %[lhs]\n\t"
+             "adds %[res1], %[res1], %[res0]\n\t"
+             "umulh %[res0], %[rhs0], %[lhs]\n\t"
+             "adc %[res0], %[res0], xzr"
+             : [res0]"=&r"(result.mData[0]), [res1]"=&r"(result.mData[1]), [res2]"=&r"(result.mData[2])
+             : [lhs]"r"(mValue), [rhs0]"r"(rhs.mData[0]), [rhs1]"r"(rhs.mData[1])
+             : "cc");
     }
     else
     {
@@ -352,18 +358,34 @@ inline void WMPUInt<kSize>::fullMultiply_size2
 {
     if constexpr(kSize == 2 && kSize2 == 2)
     {
-        /* Multiplication of two 2-digit numbers (AB*CD) can be done with the algorithm:
-             A*C = EF, B*D = GH, A*D = IJ, B*C = KL,
-             AB*CD =
-               EFGH
-              + IJ
-              + KL
-           (This is about 4 times faster than calling doFullLongMultiplication().)
-        */
-        asm (""
-             : "=m"(result.mData)
-             : [lhs0]"rm"(mData[0]), [lhs1]"rm"(mData[1]),
-               [rhs0]"rm"(rhs.mData[0]), [rhs1]"rm"(rhs.mData[1]),
+        /*   AB = lhs0|lhs1
+           * CD = rhs0|rhs1
+           ----
+           EFGH
+           0IJ
+           0KL
+         */
+        std::uint64_t res0, res1, res2, temp;
+        asm ("mul %[res0], %[rhs1], %[lhs1]\n\t"   // res0 = H (D*B low)
+             "umulh %[res2], %[rhs1], %[lhs1]\n\t" // res2 = G (D*B high)
+             "str %[res0], [%[result], #24]\n\t"   // result[3] = res0
+             "mul %[res1], %[rhs0], %[lhs0]\n\t"   // res1 = F (C*A low)
+             "umulh %[res0], %[rhs0], %[lhs0]\n\t" // res0 = E (C*A high)
+             "mul %[temp], %[rhs1], %[lhs0]\n\t"   // temp = J (D*A low)
+             "adds %[res2], %[res2], %[temp]\n\t"  // res2 += J
+             "umulh %[temp], %[rhs1], %[lhs0]\n\t" // temp = I (D*A high)
+             "adcs %[res1], %[res1], %[temp]\n\t"  // res1 += I
+             "mul %[temp], %[rhs0], %[lhs1]\n\t"   // temp = L (C*B low)
+             "adc %[res0], %[res0], xzr\n\t"       // res0 += carry
+             "adds %[res2], %[res2], %[temp]\n\t"  // res2 += L
+             "umulh %[temp], %[rhs0], %[lhs1]\n\t" // temp = K (C*B high)
+             "adcs %[res1], %[res1], %[temp]\n\t"  // res1 += K
+             "adc %[res0], %[res0], xzr\n\t"       // res0 += carry
+             "str %[res2], [%[result], #16]\n\t"
+             "stp %[res0], %[res1], [%[result]]"
+             : "=m"(result.mData), [res0]"=&r"(res0), [res1]"=&r"(res1), [res2]"=&r"(res2), [temp]"=&r"(temp)
+             : [lhs0]"r"(mData[0]), [lhs1]"r"(mData[1]),
+               [rhs0]"r"(rhs.mData[0]), [rhs1]"r"(rhs.mData[1]),
                [result]"r"(result.mData)
              : "cc");
     }
@@ -507,77 +529,30 @@ inline WMPUInt<kSize>& WMPUInt<kSize>::operator*=(std::uint64_t rhs)
 //----------------------------------------------------------------------------
 // Division
 //----------------------------------------------------------------------------
-template<std::size_t kSize>
-inline std::uint64_t WMPUInt<kSize>::divide(std::uint64_t rhs, WMPUInt<kSize>& result) const
+namespace WMPIntImplementations
 {
-    std::uint64_t remainder;
-    if constexpr(kSize == 2)
-    {
-        asm (""
-             : "=m"(result.mData)/*, "=&d"(remainder)*/
-             : "m"(mData), [lhs]"r"(mData), [rhs]"rm"(rhs), [result]"r"(result.mData)
-             : "cc");
-    }
-    else
-    {
-        std::size_t counter = kSize, lhsIndex = 0;
-        asm (""
-             : "=m"(result.mData), /*"=&d"(remainder),*/
-               [lhsIndex]"+&r"(lhsIndex), [counter]"+&r"(counter)
-             : "m"(mData), [lhs]"r"(mData), [rhs]"r"(rhs), [result]"r"(result.mData)
-             : "cc");
-    }
-    return remainder;
+    std::uint32_t divide32(std::uint64_t*, std::size_t, std::uint32_t);
+    std::uint32_t divide32(const std::uint64_t*, std::size_t, std::uint32_t, std::uint64_t*);
+    std::uint32_t modulo32(const std::uint64_t*, std::size_t, std::uint32_t);
 }
 
 template<std::size_t kSize>
-inline WMPUInt<kSize>& WMPUInt<kSize>::operator/=(std::uint64_t rhs)
+inline std::uint32_t WMPUInt<kSize>::divide(std::uint32_t rhs, WMPUInt<kSize>& result) const
 {
-    if constexpr(kSize == 2)
-    {
-        asm (""
-             : "+m"(mData)
-             : [lhs]"r"(mData), [rhs]"rm"(rhs)
-             : "cc");
-    }
-    else
-    {
-        std::uint64_t* lhs = mData;
-        std::size_t counter = kSize;
-        asm (""
-             : "+m"(mData), [lhs]"+&r"(lhs), [counter]"+&r"(counter)
-             : [rhs]"r"(rhs) : "cc");
-    }
+    return WMPIntImplementations::divide32(mData, kSize, rhs, result.mData);
+}
 
+template<std::size_t kSize>
+inline WMPUInt<kSize>& WMPUInt<kSize>::operator/=(std::uint32_t rhs)
+{
+    WMPIntImplementations::divide32(mData, kSize, rhs);
     return *this;
 }
 
-
-//----------------------------------------------------------------------------
-// Modulo
-//----------------------------------------------------------------------------
 template<std::size_t kSize>
-inline std::uint64_t WMPUInt<kSize>::modulo(std::uint64_t rhs) const
+inline std::uint32_t WMPUInt<kSize>::modulo(std::uint32_t rhs) const
 {
-    // Since we only need the remainder, we don't need to store the result anywhere
-    std::uint64_t remainder;
-    if constexpr(kSize == 2)
-    {
-        asm (""
-             : /*"=&d"(remainder)*/
-             : "m"(mData), [lhs]"r"(mData), [rhs]"rm"(rhs)
-             : "cc");
-    }
-    else
-    {
-        const std::uint64_t* lhs = mData;
-        std::size_t counter = kSize;
-        asm (""
-             : /*"=&d"(remainder),*/ [lhs]"+&r"(lhs), [counter]"+&r"(counter)
-             : "m"(mData), [rhs]"r"(rhs)
-             : "cc");
-    }
-    return remainder;
+    return WMPIntImplementations::modulo32(mData, kSize, rhs);
 }
 
 

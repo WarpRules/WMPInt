@@ -331,7 +331,8 @@ static char* print_uint32(std::uint32_t value, char* destination)
     return destination;
 }
 
-std::uint32_t WMPIntImplementations::divide32(std::uint64_t* value, std::size_t valueSize, std::uint32_t rhs)
+std::uint32_t WMPIntImplementations::divide32
+(std::uint64_t* value, std::size_t valueSize, std::uint32_t rhs)
 {
     std::uint64_t dividend = 0;
     for(std::size_t index = 0; index < valueSize; ++index)
@@ -347,6 +348,42 @@ std::uint32_t WMPIntImplementations::divide32(std::uint64_t* value, std::size_t 
     }
     return static_cast<std::uint32_t>(dividend);
 }
+
+std::uint32_t WMPIntImplementations::divide32
+(const std::uint64_t* value, std::size_t valueSize, std::uint32_t rhs, std::uint64_t* resultPtr)
+{
+    std::uint64_t dividend = 0;
+    for(std::size_t index = 0; index < valueSize; ++index)
+    {
+        const std::uint64_t digit64 = value[index];
+        dividend = (dividend << 32) | (digit64 >> 32);
+        std::uint64_t result = (dividend / rhs) << 32;
+        dividend %= rhs;
+        dividend = (dividend << 32) | (digit64 & 0xFFFFFFFF);
+        result |= dividend / rhs;
+        dividend %= rhs;
+        resultPtr[index] = result;
+    }
+    return static_cast<std::uint32_t>(dividend);
+}
+
+std::uint32_t WMPIntImplementations::modulo32
+(const std::uint64_t* value, std::size_t valueSize, std::uint32_t rhs)
+{
+    std::uint64_t dividend = 0;
+    for(std::size_t index = 0; index < valueSize; ++index)
+    {
+        const std::uint64_t digit64 = value[index];
+        dividend = (dividend << 32) | (digit64 >> 32);
+        std::uint64_t result = (dividend / rhs) << 32;
+        dividend %= rhs;
+        dividend = (dividend << 32) | (digit64 & 0xFFFFFFFF);
+        result |= dividend / rhs;
+        dividend %= rhs;
+    }
+    return static_cast<std::uint32_t>(dividend);
+}
+
 #endif
 
 char* WMPIntImplementations::printAsDecStrAndReset

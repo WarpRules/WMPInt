@@ -5,37 +5,38 @@ template<std::size_t kSize2>
 inline void WMPUInt<1>::fullMultiply(const WMPUInt<kSize2>& rhs, WMPUInt<1+kSize2>& result) const
 {
     if constexpr(kSize2 == 1)
+    {
         asm ("mulq %[rhs]"
              : "=a"(result.mData[1]), "=d"(result.mData[0])
              : "a"(mValue), [rhs]"rm"(rhs.mValue) : "cc");
+    }
     else if constexpr(kSize2 == 2)
     {
-        result.mData[0] = 0;
-        asm ("movq %[rhs1], %%rax\n\t"
-             "mulq %[lhs]\n\t"
-             "movq %%rax, 16(%[result])\n\t"
-             "movq %%rdx, 8(%[result])\n\t"
+        std::uint64_t temp;
+        asm ("mulq %[lhs]\n\t"
+             "movq %%rax, %[res2]\n\t"
+             "movq %%rdx, %[temp]\n\t"
              "movq %[rhs0], %%rax\n\t"
              "mulq %[lhs]\n\t"
-             "addq %%rax, 8(%[result])\n\t"
-             "adcq %%rdx, (%[result])\n\t"
-             : "+m"(result.mData)
-             : [lhs]"rm"(mValue), [result]"r"(result.mData),
-               [rhs0]"rm"(rhs.mData[0]), [rhs1]"rm"(rhs.mData[1])
-             : "rax", "rdx", "cc");
+             "addq %[temp], %%rax\n\t"
+             "adcq $0, %%rdx"
+             : [temp]"=&r"(temp), "=&d"(result.mData[0]), "=a"(result.mData[1]), [res2]"=&rm"(result.mData[2])
+             : [lhs]"rm"(mValue), [rhs0]"rm"(rhs.mData[0]), "a"(rhs.mData[1]) : "cc");
     }
     else
     {
-        for(std::size_t i = 0; i < 1+kSize2; ++i) result.mData[i] = 0;
-        std::uint64_t rhsInd = kSize2 - 1;
-        asm ("L1%=:\n\t"
-             "movq (%[rhs],%[rhsInd],8), %%rax\n\t"
+        std::uint64_t rhsInd = kSize2 - 1, temp = 0;
+        asm ("Loop%=:\n\t"
+             "movq (%[rhs], %[rhsInd], 8), %%rax\n\t"
              "mulq %[lhs]\n\t"
-             "addq %%rax, 8(%[result],%[rhsInd],8)\n\t"
-             "adcq %%rdx, (%[result],%[rhsInd],8)\n\t"
+             "addq %[temp], %%rax\n\t"
+             "adcq $0, %%rdx\n\t"
+             "movq %%rax, 8(%[result], %[rhsInd], 8)\n\t"
+             "movq %%rdx, %[temp]\n\t"
              "decq %[rhsInd]\n\t"
-             "jns L1%="
-             : "+m"(result.mData), [rhsInd]"+&r"(rhsInd)
+             "jns Loop%=\n\t"
+             "movq %[temp], (%[result])"
+             : "=m"(result.mData), [rhsInd]"+&r"(rhsInd), [temp]"+&r"(temp)
              : "m"(rhs.mData), [lhs]"r"(mValue), [rhs]"r"(rhs.mData), [result]"r"(result.mData)
              : "rax", "rdx", "cc");
     }
@@ -154,9 +155,9 @@ inline WMPUInt<kSize>& WMPUInt<kSize>::operator+=(std::uint64_t value)
     std::uint64_t zero = 0;
 
     if constexpr(kSize == 2)
-        asm ("addq %[value], 8(%[lhs])\n\t"
-             "adcq %[zero], (%[lhs])"
-             : "+m"(mData) : [lhs]"r"(mData), [value]"r"(value), [zero]"r"(zero) : "cc");
+        asm ("addq %[value], %[lhs1]\n\t"
+             "adcq %[zero], %[lhs0]"
+             : [lhs0]"+&rm"(mData[0]), [lhs1]"+&rm"(mData[1]) : [value]"r"(value), [zero]"r"(zero) : "cc");
     else if constexpr(kSize == 3)
         asm ("addq %[value], 16(%[lhs])\n\t"
              "adcq %[zero], 8(%[lhs])\n\t"
@@ -283,9 +284,9 @@ inline WMPUInt<kSize>& WMPUInt<kSize>::operator-=(std::uint64_t value)
     std::uint64_t zero = 0;
 
     if constexpr(kSize == 2)
-        asm ("subq %[value], 8(%[lhs])\n\t"
-             "sbbq %[zero], (%[lhs])"
-             : "+m"(mData) : [lhs]"r"(mData), [value]"r"(value), [zero]"r"(zero) : "cc");
+        asm ("subq %[value], %[lhs1]\n\t"
+             "sbbq %[zero], %[lhs0]"
+             : [lhs0]"+&rm"(mData[0]), [lhs1]"+&rm"(mData[1]) : [value]"r"(value), [zero]"r"(zero) : "cc");
     else if constexpr(kSize == 3)
         asm ("subq %[value], 16(%[lhs])\n\t"
              "sbbq %[zero], 8(%[lhs])\n\t"
