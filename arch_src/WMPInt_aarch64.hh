@@ -25,10 +25,21 @@ inline void WMPUInt<1>::fullMultiply(const WMPUInt<kSize2>& rhs, WMPUInt<1+kSize
     }
     else
     {
-        for(std::size_t i = 0; i < 1+kSize2; ++i) result.mData[i] = 0;
-        std::uint64_t rhsInd = kSize2 - 1;
-        asm (""
-             : : : "cc");
+        std::uint64_t rhsInd = kSize2, temp = 0, rhsValue, mulRes;
+        asm ("Loop%=:\n\t"
+             "sub %[rhsInd], %[rhsInd], #1\n\t"
+             "ldr %[rhsValue], [%[rhs], %[rhsInd], lsl #3]\n\t"
+             "mul %[mulRes], %[rhsValue], %[lhs]\n\t"
+             "adds %[mulRes], %[mulRes], %[temp]\n\t"
+             "str %[mulRes], [%[result]], #-8\n\t"
+             "umulh %[mulRes], %[rhsValue], %[lhs]\n\t"
+             "adc %[temp], %[mulRes], xzr\n\t"
+             "cbnz %[rhsInd], Loop%=\n\t"
+             "str %[temp], [%[result]]"
+             : "=m"(result.mData), [rhsInd]"+&r"(rhsInd), [temp]"+&r"(temp),
+               [rhsValue]"=&r"(rhsValue), [mulRes]"=&r"(mulRes)
+             : "m"(rhs.mData), [lhs]"r"(mValue), [rhs]"r"(rhs.mData), [result]"r"(result.mData + kSize2)
+             : "cc");
     }
 }
 

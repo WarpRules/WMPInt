@@ -94,8 +94,7 @@ void WMPIntImplementations::doFullLongMultiplication
          "ldr %[rhsValue], [%[result]]\n\t"
          "msr nzcv, %[flags]\n\t"
          "adc %[rhsValue], %[rhsValue], %[temp]\n\t"
-         "str %[rhsValue], [%[result]]\n\t"
-         "sub %[result], %[result], #8\n\t"
+         "str %[rhsValue], [%[result]], #-8\n\t"
          "subs %[lhsInd], %[lhsInd], #1\n\t"
          "b.hs Loop1%="
          : //"+m"(*(std::uint64_t(*)[resultSize])result), "=m"(*(std::uint64_t(*)[kSize2+1])tempBuffer),
@@ -116,24 +115,171 @@ static void doFullAddition(const std::uint64_t* lhs, std::size_t lhsSize,
                            const std::uint64_t* rhs, std::size_t rhsSize,
                            std::uint64_t* result)
 {
+    if(lhsSize == rhsSize)
+    {
+        std::size_t srcInd = lhsSize;
+        result += lhsSize;
+        std::uint64_t lhsValue, rhsValue;
+        asm ("msr nzcv, xzr\n"
+             "Loop%=:\n\t"
+             "sub %[srcInd], %[srcInd], #1\n\t"
+             "ldr %[lhsValue], [%[lhs], %[srcInd], lsl #3]\n\t"
+             "ldr %[rhsValue], [%[rhs], %[srcInd], lsl #3]\n\t"
+             "adcs %[lhsValue], %[lhsValue], %[rhsValue]\n\t"
+             "str %[lhsValue], [%[result]], #-8\n\t"
+             "cbnz %[srcInd], Loop%=\n\t"
+             "adc %[lhsValue], xzr, xzr\n\t"
+             "str %[lhsValue], [%[result]]"
+             : "=m"(*(std::uint64_t(*)[lhsSize+1])result), [result]"+&r"(result),
+               [srcInd]"+&r"(srcInd), [lhsValue]"=&r"(lhsValue), [rhsValue]"=&r"(rhsValue)
+             : [lhs]"r"(lhs), [rhs]"r"(rhs),
+               "m"(*(std::uint64_t(*)[lhsSize])lhs), "m"(*(std::uint64_t(*)[rhsSize])rhs)
+             : "cc");
+    }
+    else
+    {
+        std::size_t lhsInd = lhsSize, rhsInd = rhsSize;
+        result += rhsSize;
+        std::uint64_t lhsValue, rhsValue;
+        asm ("msr nzcv, xzr\n"
+             "Loop1%=:\n\t"
+             "sub %[lhsInd], %[lhsInd], #1\n\t"
+             "sub %[rhsInd], %[rhsInd], #1\n\t"
+             "ldr %[lhsValue], [%[lhs], %[lhsInd], lsl #3]\n\t"
+             "ldr %[rhsValue], [%[rhs], %[rhsInd], lsl #3]\n\t"
+             "adcs %[lhsValue], %[lhsValue], %[rhsValue]\n\t"
+             "str %[lhsValue], [%[result]], #-8\n\t"
+             "cbnz %[lhsInd], Loop1%=\n"
+             "Loop2%=:\n\t"
+             "sub %[rhsInd], %[rhsInd], #1\n\t"
+             "ldr %[rhsValue], [%[rhs], %[rhsInd], lsl #3]\n\t"
+             "adcs %[rhsValue], %[rhsValue], xzr\n\t"
+             "str %[rhsValue], [%[result]], #-8\n\t"
+             "cbnz %[lhsInd], Loop2%=\n"
+             "adc %[rhsValue], xzr, xzr\n\t"
+             "str %[rhsValue], [%[result]]"
+             : "=m"(*(std::uint64_t(*)[lhsSize+1])result), [result]"+&r"(result),
+               [lhsInd]"+&r"(lhsInd), [rhsInd]"+&r"(rhsInd), [lhsValue]"=&r"(lhsValue), [rhsValue]"=&r"(rhsValue)
+             : [lhs]"r"(lhs), [rhs]"r"(rhs),
+               "m"(*(std::uint64_t(*)[lhsSize])lhs), "m"(*(std::uint64_t(*)[rhsSize])rhs)
+             : "cc");
+    }
 }
 
 static void doAddition(std::uint64_t* lhs, std::size_t lhsSize,
                        const std::uint64_t* rhs, std::size_t rhsSize)
 {
+    std::size_t lhsInd = lhsSize;
+    std::uint64_t lhsValue, rhsValue;
+    if(lhsSize <= rhsSize)
+    {
+        const std::uint64_t* rhsPtr = rhs + (rhsSize - 1);
+        asm ("msr nzcv, xzr\n"
+             "Loop%=:\n\t"
+             "sub %[lhsInd], %[lhsInd], #1\n\t"
+             "ldr %[rhsValue], [%[rhs]], #-8\n\t"
+             "ldr %[lhsValue], [%[lhs], %[lhsInd], lsl #3]\n\t"
+             "adcs %[lhsValue], %[lhsValue], %[rhsValue]\n\t"
+             "str %[lhsValue], [%[lhs], %[lhsInd], lsl #3]\n\t"
+             "cbnz %[lhsInd], Loop%="
+             : "+m"(*(std::uint64_t(*)[lhsSize])lhs),
+               [lhsInd]"+&r"(lhsInd), [rhs]"+&r"(rhsPtr), [lhsValue]"=&r"(lhsValue), [rhsValue]"=&r"(rhsValue)
+             : [lhs]"r"(lhs), "m"(*(std::uint64_t(*)[rhsSize])rhs)
+             : "cc");
+    }
+    else
+    {
+        std::size_t rhsInd = rhsSize;
+        asm ("msr nzcv, xzr\n"
+             "Loop1%=:\n\t"
+             "sub %[lhsInd], %[lhsInd], #1\n\t"
+             "sub %[rhsInd], %[rhsInd], #1\n\t"
+             "ldr %[lhsValue], [%[lhs], %[lhsInd], lsl #3]\n\t"
+             "ldr %[rhsValue], [%[rhs], %[rhsInd], lsl #3]\n\t"
+             "adcs %[lhsValue], %[lhsValue], %[rhsValue]\n\t"
+             "str %[lhsValue], [%[lhs], %[lhsInd], lsl #3]\n\t"
+             "cbnz %[rhsInd], Loop1%=\n"
+             "Loop2%=:\n\t"
+             "b.cc EndLoop%=\n\t"
+             "sub %[lhsInd], %[lhsInd], #1\n\t"
+             "ldr %[lhsValue], [%[lhs], %[lhsInd], lsl #3]\n\t"
+             "adcs %[lhsValue], %[lhsValue], xzr\n\t"
+             "str %[lhsValue], [%[lhs], %[lhsInd], lsl #3]\n\t"
+             "cbnz %[lhsInd], Loop2%=\n"
+             "EndLoop%=:"
+             : "+m"(*(std::uint64_t(*)[lhsSize])lhs),
+               [lhsInd]"+&r"(lhsInd), [rhsInd]"+&r"(rhsInd), [lhsValue]"=&r"(lhsValue), [rhsValue]"=&r"(rhsValue)
+             : [lhs]"r"(lhs), [rhs]"r"(rhs), "m"(*(std::uint64_t(*)[rhsSize])rhs)
+             : "cc");
+    }
 }
 
 static inline void doAddition(std::uint64_t* lhs, const std::uint64_t* rhs, std::size_t size)
 {
+
+    std::uint64_t lhsValue, rhsValue;
+    asm ("msr nzcv, xzr\n"
+         "Loop%=:\n\t"
+         "sub %[index], %[index], #1\n\t"
+         "ldr %[lhsValue], [%[lhs], %[index], lsl #3]\n\t"
+         "ldr %[rhsValue], [%[rhs], %[index], lsl #3]\n\t"
+         "adcs %[lhsValue], %[lhsValue], %[rhsValue]\n\t"
+         "str %[lhsValue], [%[lhs], %[index], lsl #3]\n\t"
+         "cbnz %[index], Loop%="
+         : "+m"(*(std::uint64_t(*)[size])lhs),
+           [index]"+&r"(size), [lhsValue]"=&r"(lhsValue), [rhsValue]"=&r"(rhsValue)
+         : "m"(*(std::uint64_t(*)[size])rhs), [lhs]"r"(lhs), [rhs]"r"(rhs)
+         : "cc");
 }
 
 /* Assumes that lhsSize > rhsSize */
 static inline void doSubtraction(std::uint64_t* lhs, std::size_t lhsSize,
                                  const std::uint64_t* rhs, std::size_t rhsSize)
 {
+    std::size_t lhsInd = lhsSize - 1, rhsInd = rhsSize - 1;
+    std::uint64_t lhsValue, rhsValue;
+    asm ("ldr %[lhsValue], [%[lhs], %[lhsIndex], lsl #3]\n\t"
+         "ldr %[rhsValue], [%[rhs], %[rhsIndex], lsl #3]\n\t"
+         "subs %[lhsValue], %[lhsValue], %[rhsValue]\n\t"
+         "str %[lhsValue], [%[lhs], %[lhsIndex], lsl #3]\n"
+         "Loop1%=:\n\t"
+         "sub %[lhsIndex], %[lhsIndex], #1\n\t"
+         "sub %[rhsIndex], %[rhsIndex], #1\n\t"
+         "ldr %[lhsValue], [%[lhs], %[lhsIndex], lsl #3]\n\t"
+         "ldr %[rhsValue], [%[rhs], %[rhsIndex], lsl #3]\n\t"
+         "sbcs %[lhsValue], %[lhsValue], %[rhsValue]\n\t"
+         "str %[lhsValue], [%[lhs], %[lhsIndex], lsl #3]\n\n"
+         "cbnz %[rhsIndex], Loop1%=\n"
+         "Loop2%=:\n\t"
+         "b.cs EndLoop%=\n\t"
+         "sub %[lhsIndex], %[lhsIndex], #1\n\t"
+         "ldr %[lhsValue], [%[lhs], %[lhsIndex], lsl #3]\n\t"
+         "sbcs %[lhsValue], %[lhsValue], xzr\n\t"
+         "str %[lhsValue], [%[lhs], %[lhsIndex], lsl #3]\n\n"
+         "cbnz %[lhsIndex], Loop2%=\n"
+         "EndLoop%=:"
+         : "+m"(*(std::uint64_t(*)[lhsSize])lhs),
+           [lhsIndex]"+&r"(lhsInd), [rhsIndex]"+&r"(rhsInd), [lhsValue]"=&r"(lhsValue), [rhsValue]"=&r"(rhsValue)
+         : [lhs]"r"(lhs), [rhs]"r"(rhs), "m"(*(std::uint64_t(*)[rhsSize])rhs)
+         : "cc");
 }
 
 static void doFullLongMultiplication_1xN
 (std::uint64_t lhs, const std::uint64_t* rhs, std::size_t kSize2, std::uint64_t* result)
 {
+    std::uint64_t rhsValue, mulRes, temp = 0;
+    asm ("Loop%=:\n\t"
+         "sub %[rhsInd], %[rhsInd], #1\n\t"
+         "ldr %[rhsValue], [%[rhs], %[rhsInd], lsl #3]\n\t"
+         "mul %[mulRes], %[rhsValue], %[lhs]\n\t"
+         "adds %[mulRes], %[mulRes], %[temp]\n\t"
+         "str %[mulRes], [%[result]], #-8\n\t"
+         "umulh %[mulRes], %[rhsValue], %[lhs]\n\t"
+         "adc %[temp], %[mulRes], xzr\n\t"
+         "cbnz %[rhsInd], Loop%=\n\t"
+         "str %[temp], [%[result]]"
+         : "=m"(*(std::uint64_t(*)[kSize2+1])result), [rhsInd]"+&r"(kSize2),
+           [temp]"+&r"(temp), [rhsValue]"=&r"(rhsValue), [mulRes]"=&r"(mulRes)
+         : "m"(*(std::uint64_t(*)[kSize2])rhs), [lhs]"r"(lhs), [rhs]"r"(rhs), [result]"r"(result + kSize2)
+         : "cc");
 }
