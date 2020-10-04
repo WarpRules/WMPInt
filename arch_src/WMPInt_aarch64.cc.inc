@@ -155,7 +155,7 @@ static void doFullAddition(const std::uint64_t* lhs, std::size_t lhsSize,
              "ldr %[rhsValue], [%[rhs], %[rhsInd], lsl #3]\n\t"
              "adcs %[rhsValue], %[rhsValue], xzr\n\t"
              "str %[rhsValue], [%[result]], #-8\n\t"
-             "cbnz %[lhsInd], Loop2%=\n"
+             "cbnz %[rhsInd], Loop2%=\n"
              "adc %[rhsValue], xzr, xzr\n\t"
              "str %[rhsValue], [%[result]]"
              : "=m"(*(std::uint64_t(*)[lhsSize+1])result), [result]"+&r"(result),

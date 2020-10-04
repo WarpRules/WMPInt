@@ -402,39 +402,8 @@ inline void WMPUInt<kSize>::fullMultiply_size2
     }
     else if constexpr(kSize == 2)
     {
-        /* Specialization for kSize == 2.
-           In essence this does short multiplication on 128-bit values.
-           This is almost three times faster than calling doFullLongMultiplication().
-        */
-        for(std::size_t i = 0; i < kSize+kSize2; ++i) result.mData[i] = 0;
-        std::uint64_t *targetPtr = result.mData + (kSize+kSize2-4);
-        std::uint64_t temp0, temp1;
-        std::size_t rhsIndex = kSize2 - 1;
-        asm (""
-             : "=m"(result.mData), [result]"+&r"(targetPtr), [rhsIndex]"+&r"(rhsIndex),
-               [temp0]"=&r"(temp0), [temp1]"=&r"(temp1)
-             : "m"(rhs.mData), [lhs0]"rm"(mData[0]), [lhs1]"rm"(mData[1]),
-               [rhs]"r"(rhs.mData)
-             : "cc");
-
-        if constexpr(kSize2 % 2 == 1)
-        {
-            /* With an odd rhs size, we need to take care of the most significant word separately.
-
-                   ABBCCDD          JJJ ->   0A            JJJ ->   A
-                      * EF                 * EF                  * EF
-               -----------                 ----                   ---
-               +      GGGG = EF*DD         00KK = (E*0|F*A)        KK = F*A
-               +    HHHH   = EF*CC        + LL  = E*A           + LL  = E*A
-               +  IIII     = EF*BB        + 00  = F*0
-               + JJJ       = EF*A
-            */
-            asm (""
-                 : "=m"(result.mData)
-                 : [lhs0]"rm"(mData[0]), [lhs1]"rm"(mData[1]),
-                   [rhs0]"rm"(rhs.mData[0]), [result]"r"(result.mData)
-                 : "cc");
-        }
+        WMPIntImplementations::doFullLongMultiplication
+            (mData, kSize, rhs.mData, kSize2, result.mData);
     }
 }
 

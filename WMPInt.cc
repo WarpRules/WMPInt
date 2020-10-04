@@ -113,7 +113,8 @@ static void doFullKaratsubaMultiplicationForSmallLHS
     if(lhsSize == 1)
         return doFullLongMultiplication_1xN(*lhs, rhs, rhsSize, result);
     if(lhsSize == 2 || rhsSize <= 32)
-        return WMPIntImplementations::doFullLongMultiplication(rhs, rhsSize, lhs, lhsSize, result);
+        // Note: The first parameter should be the smaller one because it's faster that way:
+        return WMPIntImplementations::doFullLongMultiplication(lhs, lhsSize, rhs, rhsSize, result);
 
     const std::size_t resultSize = lhsSize + rhsSize;
     const std::size_t rhsLowSize = (rhsSize+1) / 2;
@@ -153,7 +154,8 @@ static void doFullKaratsubaMultiplicationForLargeLHS
  std::uint64_t* result, std::uint64_t* tempBuffer)
 {
     if(rhsSize <= 32)
-        return WMPIntImplementations::doFullLongMultiplication(rhs, rhsSize, lhs, lhsSize, result);
+        // Note: The first parameter should be the smaller one because it's faster that way:
+        return WMPIntImplementations::doFullLongMultiplication(lhs, lhsSize, rhs, rhsSize, result);
 
     const std::size_t resultSize = lhsSize + rhsSize;
     const std::size_t lowSize = (rhsSize+1) / 2;
