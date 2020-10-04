@@ -25,6 +25,7 @@ inline void WMPUInt<1>::fullMultiply(const WMPUInt<kSize2>& rhs, WMPUInt<1+kSize
     }
     else
     {
+        std::uint64_t *resultPtr = result.mData + kSize2;
         std::uint64_t rhsInd = kSize2, temp = 0, rhsValue, mulRes;
         asm ("Loop%=:\n\t"
              "sub %[rhsInd], %[rhsInd], #1\n\t"
@@ -37,8 +38,8 @@ inline void WMPUInt<1>::fullMultiply(const WMPUInt<kSize2>& rhs, WMPUInt<1+kSize
              "cbnz %[rhsInd], Loop%=\n\t"
              "str %[temp], [%[result]]"
              : "=m"(result.mData), [rhsInd]"+&r"(rhsInd), [temp]"+&r"(temp),
-               [rhsValue]"=&r"(rhsValue), [mulRes]"=&r"(mulRes)
-             : "m"(rhs.mData), [lhs]"r"(mValue), [rhs]"r"(rhs.mData), [result]"r"(result.mData + kSize2)
+               [rhsValue]"=&r"(rhsValue), [mulRes]"=&r"(mulRes), [result]"+&r"(resultPtr)
+             : "m"(rhs.mData), [lhs]"r"(mValue), [rhs]"r"(rhs.mData)
              : "cc");
     }
 }
@@ -544,9 +545,9 @@ inline void WMPUInt<kSize>::neg_size2()
 {
     if constexpr(kSize == 2)
     {
-        /* For kSize == 2, this can be done with 3 operations instead of 4. */
-        asm (""
-             : "+m"(mData) : [lhs]"r"(mData) : "cc");
+        asm ("negs %[lhs1], %[lhs1]\n\t"
+             "sbc %[lhs0], xzr, %[lhs0]"
+             : [lhs0]"+r"(mData[0]), [lhs1]"+r"(mData[1]) : : "cc");
     }
 }
 

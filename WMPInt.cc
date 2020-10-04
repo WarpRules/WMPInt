@@ -288,28 +288,6 @@ void WMPIntImplementations::doTruncatedKaratsubaMultiplication
    char array, to the last character where the outputted string should be put (it will be
    decremented as the value is outputted).
 */
-static char* print_uint64_full_length(std::uint64_t value, char* destination)
-{
-    for(unsigned i = 0; i < 19; ++i)
-    {
-        const std::uint64_t remainder = value % 10;
-        value /= 10;
-        *destination-- = static_cast<char>(remainder) + '0';
-    }
-    return destination;
-}
-
-static char* print_uint64(std::uint64_t value, char* destination)
-{
-    while(value)
-    {
-        const std::uint64_t remainder = value % 10;
-        value /= 10;
-        *destination-- = static_cast<char>(remainder) + '0';
-    }
-    return destination;
-}
-
 #if WMPINT_CPU_TYPE == WMPINT_CPU_TYPE_ARM64
 static char* print_uint32_full_length(std::uint32_t value, char* destination)
 {
@@ -385,7 +363,28 @@ std::uint32_t WMPIntImplementations::modulo32
     }
     return static_cast<std::uint32_t>(dividend);
 }
+#else
+static char* print_uint64_full_length(std::uint64_t value, char* destination)
+{
+    for(unsigned i = 0; i < 19; ++i)
+    {
+        const std::uint64_t remainder = value % 10;
+        value /= 10;
+        *destination-- = static_cast<char>(remainder) + '0';
+    }
+    return destination;
+}
 
+static char* print_uint64(std::uint64_t value, char* destination)
+{
+    while(value)
+    {
+        const std::uint64_t remainder = value % 10;
+        value /= 10;
+        *destination-- = static_cast<char>(remainder) + '0';
+    }
+    return destination;
+}
 #endif
 
 char* WMPIntImplementations::printAsDecStrAndReset

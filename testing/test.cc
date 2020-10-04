@@ -1165,6 +1165,10 @@ static bool testModulo()
     if(!testModuloForSize<3>(gRngEngine)) DRET;
     if(!testModuloForSize<4>(gRngEngine)) DRET;
     if(!testModuloForSize<5>(gRngEngine)) DRET;
+    if(!testModuloForSize<6>(gRngEngine)) DRET;
+    if(!testModuloForSize<7>(gRngEngine)) DRET;
+    if(!testModuloForSize<8>(gRngEngine)) DRET;
+    if(!testModuloForSize<9>(gRngEngine)) DRET;
     if(!testModuloForSize<10>(gRngEngine)) DRET;
     return true;
 }
@@ -1459,16 +1463,57 @@ bool testFullMultiplication();
 //============================================================================
 // main()
 //============================================================================
-int main()
+static void printHelp()
 {
-    if(!testSize1Operators()) DRETM;
-    if(!testAssignmentFromStr()) DRETM;
-    if(!testAddition()) DRETM;
-    if(!testMultiplication()) DRETM;
-    if(!testFullMultiplication()) DRETM;
-    if(!testModulo()) DRETM;
-    if(!testNegation()) DRETM;
-    if(!testShifting()) DRETM;
+    std::cout << "Usage: test [<options>]\n\n"
+        "<options>:\n"
+        "  -h\n"
+        "  --help : This text\n"
+        "  -t1    : Run test 1 (size 1 operators)\n"
+        "  -t2    : Run test 2 (assignment from string)\n"
+        "  -t3    : Run test 3 (addition and subtraction)\n"
+        "  -t4    : Run test 4 (multiplication)\n"
+        "  -t5    : Run test 5 (full multiplication)\n"
+        "  -t6    : Run test 6 (modulo)\n"
+        "  -t7    : Run test 7 (negation)\n"
+        "  -t8    : Run test 8 (bitshifting)\n";
+}
+
+int main(int argc, char** argv)
+{
+    bool runAllTests = true;
+    bool runTest[8] = { false };
+
+    for(int argInd = 1; argInd < argc; ++argInd)
+    {
+        if(std::strcmp(argv[argInd], "-h") == 0 || std::strcmp(argv[argInd], "--help") == 0)
+        {
+            printHelp();
+            return 0;
+        }
+        else if(argv[argInd][0] == '-' && argv[argInd][1] == 't' &&
+                argv[argInd][2] >= '1' && argv[argInd][2] <= '8' && argv[argInd][3] == 0)
+        {
+            runTest[argv[argInd][2] - '1'] = true;
+            runAllTests = false;
+        }
+        else
+        {
+            std::printf("Unknown parameter: %s\n", argv[argInd]);
+            return 1;
+        }
+    }
+
+    if(runAllTests) for(bool& b: runTest) b = true;
+
+    if(runTest[0] && !testSize1Operators()) DRETM;
+    if(runTest[1] && !testAssignmentFromStr()) DRETM;
+    if(runTest[2] && !testAddition()) DRETM;
+    if(runTest[3] && !testMultiplication()) DRETM;
+    if(runTest[4] && !testFullMultiplication()) DRETM;
+    if(runTest[5] && !testModulo()) DRETM;
+    if(runTest[6] && !testNegation()) DRETM;
+    if(runTest[7] && !testShifting()) DRETM;
     std::cout << "All tests OK.\n";
     //runBenchmarks();
 }
