@@ -241,14 +241,17 @@ static bool testFullMultiplication(std::mt19937& rng)
         lhs.fullMultiply(rhs, result, tempBuffer);
 
         if(result != expectedResult)
-            return DPRINT("Error: (", kSize1, "x", kSize2, ") fullMultiply of\n", lhs, " and\n",
+            return DPRINT(TType::fmult, "Error: (", kSize1, "x", kSize2, ") fullMultiply of\n", lhs, " and\n",
                           rhs, "\nresulted in\n", result, "\ninstead of\n", expectedResult, "\n");
     }
 
-    for(std::size_t iteration = 0; iteration < kIterations; ++iteration)
+    const std::size_t iterations = (kSize2 == 1 ? kIterations * 2 : kIterations);
+    for(std::size_t iteration = 0; iteration < iterations; ++iteration)
     {
         for(std::size_t i = 0; i < kSize1*2; ++i) lhsArray[i] = rng();
-        for(std::size_t i = 0; i < kSize2*2; ++i) rhsArray[i] = rng();
+
+        if(kSize2 == 1 && iteration % 2 == 1) { rhsArray[0] = 0; rhsArray[1] = rng(); }
+        else for(std::size_t i = 0; i < kSize2*2; ++i) rhsArray[i] = rng();
 
         multiply(lhsArray, kSize1*2, rhsArray, kSize2*2, resultArray, tempBuffer2);
 
@@ -259,14 +262,14 @@ static bool testFullMultiplication(std::mt19937& rng)
         lhs.fullMultiply(rhs, result, tempBuffer);
 
         if(result != expectedResult)
-            return DPRINT("Error: fullMultiply of\n", lhs, " and\n", rhs,
+            return DPRINT(TType::fmult, "Error: fullMultiply of\n", lhs, " and\n", rhs,
                           "\nresulted in\n", result, "\ninstead of\n", expectedResult, "\n");
 
         result.assign(0);
         rhs.fullMultiply(lhs, result, tempBuffer);
 
         if(result != expectedResult)
-            return DPRINT("Error: fullMultiply of\n", rhs, " and\n", lhs,
+            return DPRINT(TType::fmult, "Error: fullMultiply of\n", rhs, " and\n", lhs,
                           "\nresulted in\n", result, "\ninstead of\n", expectedResult, "\n");
 
         result.assign(0);
@@ -274,7 +277,7 @@ static bool testFullMultiplication(std::mt19937& rng)
             (lhs.data(), kSize1, rhs.data(), kSize2, result.data());
 
         if(result != expectedResult)
-            return DPRINT("Error: doFullLongMultiplication of\n", lhs, " and\n", rhs,
+            return DPRINT(TType::flmult, "Error: doFullLongMultiplication of\n", lhs, " and\n", rhs,
                           "\nresulted in\n", result, "\ninstead of\n", expectedResult, "\n");
 
         if constexpr(kSize1 == kSize2)
@@ -282,7 +285,7 @@ static bool testFullMultiplication(std::mt19937& rng)
             WMPUInt<kSize1> expectedShortResult, shortResult = lhs * rhs;
             initWMPUIntWithUint32Array(expectedShortResult, resultArray + kSize1*2);
             if(shortResult != expectedShortResult)
-                return DPRINT("Error: WMPUInt<", kSize1, ">::operator*(WMPUInt<", kSize1,
+                return DPRINT(TType::mult, "Error: WMPUInt<", kSize1, ">::operator*(WMPUInt<", kSize1,
                               ">) of\n", lhs, " and\n", rhs, "\nresulted in\n", shortResult,
                               "\ninstead of\n", expectedShortResult, "\n");
 
@@ -298,7 +301,7 @@ static bool testFullMultiplication(std::mt19937& rng)
 
                 if(gWMPInt_karatsuba_max_temp_buffer_size != truncatedKaratsubaTempBufferSize)
                     return DPRINT
-                        ("Error: truncatedKaratsubaMultiplicationBufferSize(",
+                        (TType::tkmult, "Error: truncatedKaratsubaMultiplicationBufferSize(",
                          kSize1, ")\nreturned the value ", truncatedKaratsubaTempBufferSize,
                          "\nbut the calculation used a buffer size of ",
                          gWMPInt_karatsuba_max_temp_buffer_size, ".\n");
@@ -312,30 +315,35 @@ static bool testFullMultiplication(std::mt19937& rng)
         if constexpr(kSize2 == 1)
         {
             WMPUInt<kSize1> expectedShortResult, shortResult = lhs;
+
             shortResult *= rhs.data()[0];
             initWMPUIntWithUint32Array(expectedShortResult, resultArray + 2);
             if(shortResult != expectedShortResult)
-                return DPRINT("Error: WMPUInt<", kSize1, ">::operator*=(std::uint64_t) of\n",
+                return DPRINT(TType::amult, "Error: WMPUInt<", kSize1, ">::operator*=(std::uint64_t) of\n",
                               lhs, " and\n", rhs.data()[0], "\nresulted in\n", shortResult,
                               "\ninstead of\n", expectedShortResult, "\n");
 
-            if(rhs.data()[0] > 0)
+            if(rhs.data()[0] > 0
+#if WMPINT_CPU_TYPE == WMPINT_CPU_TYPE_ARM64
+               && rhs.data()[0] < UINT64_C(0x100000000)
+#endif
+               )
             {
                 result /= rhs.data()[0];
                 shortResult.assign(result);
                 if(result.data()[0] > 0 || shortResult != lhs)
-                    return DPRINT("Error: WMPUInt<", result.size(),
+                    return DPRINT(TType::adiv, "Error: WMPUInt<", result.size(),
                                   ">::operator/=(std::uint64_t) of\n", expectedResult,
-                                  " and\n", rhs.data()[0], "\nresulted in\n", result,
+                                  " and\n", sethexw0(16), rhs.data()[0], "\nresulted in\n", result,
                                   "\ninstead of\n", lhs, "\n");
 
                 result.assign(0);
                 result = expectedResult / rhs.data()[0];
                 shortResult.assign(result);
                 if(result.data()[0] > 0 || shortResult != lhs)
-                    return DPRINT("Error: WMPUInt<", result.size(),
+                    return DPRINT(TType::div, "Error: WMPUInt<", result.size(),
                                   ">::operator/(std::uint64_t) of\n", expectedResult,
-                                  " and\n", rhs.data()[0], "\nresulted in\n", result,
+                                  " and\n", sethexw0(16), rhs.data()[0], "\nresulted in\n", result,
                                   "\ninstead of\n", lhs, "\n");
             }
         }
@@ -348,13 +356,13 @@ static bool testFullMultiplication(std::mt19937& rng)
 
             if(gWMPInt_karatsuba_max_temp_buffer_size != karatsubaTempBufferSize)
                 return DPRINT
-                    ("Error: WMPIntImplementations::fullKaratsubaMultiplicationBufferSize(",
+                    (TType::fkmult, "Error: WMPIntImplementations::fullKaratsubaMultiplicationBufferSize(",
                      kSize2, ", ", kSize1, ")\nreturned the value ", karatsubaTempBufferSize,
                      "\nbut the calculation used a buffer size of ",
                      gWMPInt_karatsuba_max_temp_buffer_size, ".\n");
 
             if(result != expectedResult)
-                return DPRINT("Error: doFullKaratsubaMultiplication of\n", rhs, " and\n", lhs,
+                return DPRINT(TType::fkmult, "Error: doFullKaratsubaMultiplication of\n", rhs, " and\n", lhs,
                               "\nresulted in\n", result, "\ninstead of\n", expectedResult, "\n");
         }
     }
@@ -369,13 +377,13 @@ static bool testFullMultiplication(std::mt19937& rng)
     result.assign(0);
     lhs.fullMultiply_longMultiplication(rhs, result);
     if(result != expectedResult)
-        return DPRINT("Error: fullMultiply_longMultiplication of\n", rhs, " and\n", lhs,
+        return DPRINT(TType::flmult, "Error: fullMultiply_longMultiplication of\n", rhs, " and\n", lhs,
                       "\nresulted in\n", result, "\ninstead of\n", expectedResult, "\n");
 
     result.assign(0);
     lhs.fullMultiply_karatsuba(rhs, result, tempBuffer);
     if(result != expectedResult)
-        return DPRINT("Error: fullMultiply_karatsuba of\n", rhs, " and\n", lhs,
+        return DPRINT(TType::fkmult, "Error: fullMultiply_karatsuba of\n", rhs, " and\n", lhs,
                       "\nresulted in\n", result, "\ninstead of\n", expectedResult, "\n");
 
     return true;

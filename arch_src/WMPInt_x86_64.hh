@@ -5,37 +5,38 @@ template<std::size_t kSize2>
 inline void WMPUInt<1>::fullMultiply(const WMPUInt<kSize2>& rhs, WMPUInt<1+kSize2>& result) const
 {
     if constexpr(kSize2 == 1)
+    {
         asm ("mulq %[rhs]"
              : "=a"(result.mData[1]), "=d"(result.mData[0])
              : "a"(mValue), [rhs]"rm"(rhs.mValue) : "cc");
+    }
     else if constexpr(kSize2 == 2)
     {
-        result.mData[0] = 0;
-        asm ("movq %[rhs1], %%rax\n\t"
-             "mulq %[lhs]\n\t"
-             "movq %%rax, 16(%[result])\n\t"
-             "movq %%rdx, 8(%[result])\n\t"
+        std::uint64_t temp;
+        asm ("mulq %[lhs]\n\t"
+             "movq %%rax, %[res2]\n\t"
+             "movq %%rdx, %[temp]\n\t"
              "movq %[rhs0], %%rax\n\t"
              "mulq %[lhs]\n\t"
-             "addq %%rax, 8(%[result])\n\t"
-             "adcq %%rdx, (%[result])\n\t"
-             : "+m"(result.mData)
-             : [lhs]"rm"(mValue), [result]"r"(result.mData),
-               [rhs0]"rm"(rhs.mData[0]), [rhs1]"rm"(rhs.mData[1])
-             : "rax", "rdx", "cc");
+             "addq %[temp], %%rax\n\t"
+             "adcq $0, %%rdx"
+             : [temp]"=&r"(temp), "=&d"(result.mData[0]), "=a"(result.mData[1]), [res2]"=&rm"(result.mData[2])
+             : [lhs]"rm"(mValue), [rhs0]"rm"(rhs.mData[0]), "a"(rhs.mData[1]) : "cc");
     }
     else
     {
-        for(std::size_t i = 0; i < 1+kSize2; ++i) result.mData[i] = 0;
-        std::uint64_t rhsInd = kSize2 - 1;
-        asm ("L1%=:\n\t"
-             "movq (%[rhs],%[rhsInd],8), %%rax\n\t"
+        std::uint64_t rhsInd = kSize2 - 1, temp = 0;
+        asm ("Loop%=:\n\t"
+             "movq (%[rhs], %[rhsInd], 8), %%rax\n\t"
              "mulq %[lhs]\n\t"
-             "addq %%rax, 8(%[result],%[rhsInd],8)\n\t"
-             "adcq %%rdx, (%[result],%[rhsInd],8)\n\t"
+             "addq %[temp], %%rax\n\t"
+             "adcq $0, %%rdx\n\t"
+             "movq %%rax, 8(%[result], %[rhsInd], 8)\n\t"
+             "movq %%rdx, %[temp]\n\t"
              "decq %[rhsInd]\n\t"
-             "jns L1%="
-             : "+m"(result.mData), [rhsInd]"+&r"(rhsInd)
+             "jns Loop%=\n\t"
+             "movq %[temp], (%[result])"
+             : "=m"(result.mData), [rhsInd]"+&r"(rhsInd), [temp]"+&r"(temp)
              : "m"(rhs.mData), [lhs]"r"(mValue), [rhs]"r"(rhs.mData), [result]"r"(result.mData)
              : "rax", "rdx", "cc");
     }
@@ -154,9 +155,9 @@ inline WMPUInt<kSize>& WMPUInt<kSize>::operator+=(std::uint64_t value)
     std::uint64_t zero = 0;
 
     if constexpr(kSize == 2)
-        asm ("addq %[value], 8(%[lhs])\n\t"
-             "adcq %[zero], (%[lhs])"
-             : "+m"(mData) : [lhs]"r"(mData), [value]"r"(value), [zero]"r"(zero) : "cc");
+        asm ("addq %[value], %[lhs1]\n\t"
+             "adcq %[zero], %[lhs0]"
+             : [lhs0]"+&rm"(mData[0]), [lhs1]"+&rm"(mData[1]) : [value]"r"(value), [zero]"r"(zero) : "cc");
     else if constexpr(kSize == 3)
         asm ("addq %[value], 16(%[lhs])\n\t"
              "adcq %[zero], 8(%[lhs])\n\t"
@@ -283,9 +284,9 @@ inline WMPUInt<kSize>& WMPUInt<kSize>::operator-=(std::uint64_t value)
     std::uint64_t zero = 0;
 
     if constexpr(kSize == 2)
-        asm ("subq %[value], 8(%[lhs])\n\t"
-             "sbbq %[zero], (%[lhs])"
-             : "+m"(mData) : [lhs]"r"(mData), [value]"r"(value), [zero]"r"(zero) : "cc");
+        asm ("subq %[value], %[lhs1]\n\t"
+             "sbbq %[zero], %[lhs0]"
+             : [lhs0]"+&rm"(mData[0]), [lhs1]"+&rm"(mData[1]) : [value]"r"(value), [zero]"r"(zero) : "cc");
     else if constexpr(kSize == 3)
         asm ("subq %[value], 16(%[lhs])\n\t"
              "sbbq %[zero], 8(%[lhs])\n\t"
@@ -402,71 +403,16 @@ inline void WMPUInt<kSize>::fullMultiply_size2
     }
     else if constexpr(kSize == 2)
     {
-        /* Specialization for kSize == 2.
-           In essence this does short multiplication on 128-bit values.
-           This is almost three times faster than calling doFullLongMultiplication().
+        /* (There was previously a specialized 2xN multiplication implementation here,
+           but improvements in doFullLongMultiplication() actually made it faster than
+           the specialized implementation, so it became obsolete.)
+
+           Note that the first parameter being the smaller one is deliberate:
+           doFullLongMultiplication() is faster when the first parameter is smaller than
+           the second one.
         */
-        for(std::size_t i = 0; i < kSize+kSize2; ++i) result.mData[i] = 0;
-        std::uint64_t *targetPtr = result.mData + (kSize+kSize2-4);
-        std::uint64_t temp0, temp1;
-        std::size_t rhsIndex = kSize2 - 1;
-        asm ("Loop%=:\n\t"
-             "movq (%[rhs], %[rhsIndex], 8), %%rax\n\t" // rax = rhs[rhsIndex]
-             "mulq %[lhs1]\n\t" // (rdx,rax) = rax * lhs1
-             "movq %%rax, %[temp1]\n\t" // temp1 = rax
-             "movq %%rdx, %[temp0]\n\t" // temp0 = rdx
-             "movq -8(%[rhs], %[rhsIndex], 8), %%rax\n\t" // rax = rhs[rhsIndex-1]
-             "mulq %[lhs0]\n\t" // (rdx,rax) = rax * lhs0
-             "addq %[temp1], 24(%[result])\n\t" // result[3] += temp1
-             "adcq %[temp0], 16(%[result])\n\t" // result[2] += temp0
-             "adcq %%rax, 8(%[result])\n\t" // result[1] += rax
-             "adcq %%rdx, (%[result])\n\t" // result[0] += rdx
-             "movq (%[rhs], %[rhsIndex], 8), %%rax\n\t" // rax = rhs[rhsIndex]
-             "mulq %[lhs0]\n\t" // (rdx,rax) = rax * lhs0
-             "addq %%rax, 16(%[result])\n\t" // result[2] += rax
-             "adcq %%rdx, 8(%[result])\n\t" // result[1] += rdx
-             "adcq $0, (%[result])\n\t" // result[0] += 0
-             "movq -8(%[rhs], %[rhsIndex], 8), %%rax\n\t" // rax = rhs[rhsIndex-1]
-             "mulq %[lhs1]\n\t" // (rdx,rax) = rax * lhs1
-             "addq %%rax, 16(%[result])\n\t" // result[2] += rax
-             "adcq %%rdx, 8(%[result])\n\t" // result[1] += rdx
-             "adcq $0, (%[result])\n\t" // result[0] += 0
-             "leaq -2(%[rhsIndex]), %[rhsIndex]\n\t" // rhsIndex -= 2
-             "leaq -16(%[result]), %[result]\n\t" // result -= 2
-             "testq %[rhsIndex], %[rhsIndex]\n\t"
-             "jg Loop%=" // if(rhsIndex > 0) goto Loop
-             : "=m"(result.mData), [result]"+&r"(targetPtr), [rhsIndex]"+&r"(rhsIndex),
-               [temp0]"=&r"(temp0), [temp1]"=&r"(temp1)
-             : "m"(rhs.mData), [lhs0]"rm"(mData[0]), [lhs1]"rm"(mData[1]),
-               [rhs]"r"(rhs.mData)
-             : "rax", "rdx", "cc");
-
-        if constexpr(kSize2 % 2 == 1)
-        {
-            /* With an odd rhs size, we need to take care of the most significant word separately.
-
-                   ABBCCDD          JJJ ->   0A            JJJ ->   A
-                      * EF                 * EF                  * EF
-               -----------                 ----                   ---
-               +      GGGG = EF*DD         00KK = (E*0|F*A)        KK = F*A
-               +    HHHH   = EF*CC        + LL  = E*A           + LL  = E*A
-               +  IIII     = EF*BB        + 00  = F*0
-               + JJJ       = EF*A
-            */
-            asm ("movq %[rhs0], %%rax\n\t"
-                 "mulq %[lhs1]\n\t"
-                 "addq %%rax, 16(%[result])\n\t"
-                 "adcq %%rdx, 8(%[result])\n\t"
-                 "adcq $0, (%[result])\n\t"
-                 "movq %[rhs0], %%rax\n\t"
-                 "mulq %[lhs0]\n\t"
-                 "addq %%rax, 8(%[result])\n\t"
-                 "adcq %%rdx, (%[result])"
-                 : "=m"(result.mData)
-                 : [lhs0]"rm"(mData[0]), [lhs1]"rm"(mData[1]),
-                   [rhs0]"rm"(rhs.mData[0]), [result]"r"(result.mData)
-                 : "rax", "rdx", "cc");
-        }
+        WMPIntImplementations::doFullLongMultiplication
+            (mData, kSize, rhs.mData, kSize2, result.mData);
     }
 }
 
@@ -502,6 +448,15 @@ inline void WMPUInt<kSize>::multiply(std::uint64_t rhs, std::uint64_t* result) c
              : [lhs]"r"(mData), [result]"r"(result), "m"(mData)
              : "rax", "rdx", "cc");
     }
+}
+
+template<std::size_t kSize>
+inline WMPUInt<kSize>& WMPUInt<kSize>::operator*=(const WMPUInt<kSize>& rhs)
+{
+    /* The result of the multiplication has to be accumulated into a temporary buffer
+       anyway, ie. it cannot be done "in-place", so this is essentially free: */
+    *this = *this * rhs;
+    return *this;
 }
 
 template<std::size_t kSize>

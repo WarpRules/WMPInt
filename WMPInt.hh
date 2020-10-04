@@ -1,9 +1,24 @@
 #ifndef WMPINT_INCLUDE_GUARD
 #define WMPINT_INCLUDE_GUARD
 
-#define WMPINT_VERSION 0x000603
-#define WMPINT_VERSION_STRING "0.6.3"
+#define WMPINT_VERSION 0x000700
+#define WMPINT_VERSION_STRING "0.7.0"
 #define WMPINT_COPYRIGHT_STRING "WMPInt v" WMPINT_VERSION_STRING " (C)2019 Juha Nieminen"
+
+#define WMPINT_CPU_TYPE_X86_64 1
+#define WMPINT_CPU_TYPE_ARM64 2
+
+#ifndef WMPINT_CPU_TYPE
+#if __x86_64
+#define WMPINT_CPU_TYPE WMPINT_CPU_TYPE_X86_64
+#elif __aarch64__
+#define WMPINT_CPU_TYPE WMPINT_CPU_TYPE_ARM64
+#endif
+#endif
+
+#if !WMPINT_CPU_TYPE
+#error "Could not detect CPU type (neither __x86_64 nor __aarch64__ are defined). Define the WMPINT_CPU_TYPE macro to choose CPU type."
+#endif
 
 #include <cstdint>
 #include <cstddef>
@@ -119,10 +134,16 @@ class WMPUInt
     WMPUInt<kSize> operator*(const WMPUInt<kSize>&) const;
     WMPUInt<kSize>& operator*=(std::uint64_t);
     WMPUInt<kSize> operator*(std::uint64_t) const;
-    WMPUInt<kSize>& operator/=(std::uint64_t);
-    WMPUInt<kSize> operator/(std::uint64_t) const;
-    WMPUInt<kSize>& operator%=(std::uint64_t);
-    WMPUInt<kSize> operator%(std::uint64_t) const;
+
+#if WMPINT_CPU_TYPE == WMPINT_CPU_TYPE_ARM64
+    using UInt_Divisor_t = std::uint32_t;
+#else
+    using UInt_Divisor_t = std::uint64_t;
+#endif
+    WMPUInt<kSize>& operator/=(UInt_Divisor_t);
+    WMPUInt<kSize> operator/(UInt_Divisor_t) const;
+    WMPUInt<kSize>& operator%=(UInt_Divisor_t);
+    WMPUInt<kSize> operator%(UInt_Divisor_t) const;
 
     WMPUInt<kSize> operator-() const;
     void neg();
@@ -151,8 +172,8 @@ class WMPUInt
     void fullMultiply_karatsuba(const WMPUInt<kSize2>&, WMPUInt<kSize+kSize2>& result,
                                 std::uint64_t* tempBuffer) const;
 
-    std::uint64_t divide(std::uint64_t, WMPUInt<kSize>& result) const;
-    std::uint64_t modulo(std::uint64_t rhs) const;
+    UInt_Divisor_t divide(UInt_Divisor_t, WMPUInt<kSize>& result) const;
+    UInt_Divisor_t modulo(UInt_Divisor_t) const;
 
     void addTo(WMPUInt<kSize>& target1, WMPUInt<kSize>& target2) const;
 
@@ -251,10 +272,44 @@ class WMPUInt<1>
 };
 
 
+
 //============================================================================
 // Implementations
 //============================================================================
-#include "WMPInt_x86_64.hh"
+//----------------------------------------------------------------------------
+// Declarations of functions with large implementations.
+//----------------------------------------------------------------------------
+namespace WMPIntImplementations
+{
+    char* printAsDecStrAndReset(std::uint64_t*, std::size_t, char*);
+
+    void doLongMultiplication
+    (std::size_t, const std::uint64_t*, const std::uint64_t*, std::uint64_t*);
+
+    void doFullLongMultiplication
+    (const std::uint64_t*, std::size_t, const std::uint64_t*, std::size_t, std::uint64_t*);
+
+    void doFullKaratsubaMultiplication
+    (const std::uint64_t*, std::size_t, const std::uint64_t*, std::size_t,
+     std::uint64_t*, std::uint64_t*);
+
+    void doTruncatedKaratsubaMultiplication
+    (const std::uint64_t*, const std::uint64_t*, std::size_t,
+     std::uint64_t*, std::uint64_t*);
+}
+
+
+//----------------------------------------------------------------------------
+// Architecture-dependent inline function implementations
+//----------------------------------------------------------------------------
+#if WMPINT_CPU_TYPE == WMPINT_CPU_TYPE_X86_64
+#include "arch_src/WMPInt_x86_64.hh"
+#elif WMPINT_CPU_TYPE == WMPINT_CPU_TYPE_ARM64
+#include "arch_src/WMPInt_aarch64.hh"
+#else
+#error "Invalid value of WMPINT_CPU_TYPE"
+#endif
+
 
 //----------------------------------------------------------------------------
 // WMPUInt<1> specializations
@@ -305,26 +360,10 @@ inline void WMPUInt<1>::addTo(WMPUInt<1>& target1, WMPUInt<1>& target2) const
 
 
 //----------------------------------------------------------------------------
-// Functions with large implementations.
+// Multiplication buffer size
 //----------------------------------------------------------------------------
 namespace WMPIntImplementations
 {
-    char* printAsDecStrAndReset(std::uint64_t*, std::size_t, char*);
-
-    void doLongMultiplication
-    (std::size_t, const std::uint64_t*, const std::uint64_t*, std::uint64_t*);
-
-    void doFullLongMultiplication
-    (const std::uint64_t*, std::size_t, const std::uint64_t*, std::size_t, std::uint64_t*);
-
-    void doFullKaratsubaMultiplication
-    (const std::uint64_t*, std::size_t, const std::uint64_t*, std::size_t,
-     std::uint64_t*, std::uint64_t*);
-
-    void doTruncatedKaratsubaMultiplication
-    (const std::uint64_t*, const std::uint64_t*, std::size_t,
-     std::uint64_t*, std::uint64_t*);
-
     constexpr std::size_t fullKaratsubaMultiplicationBufferSize(std::size_t, std::size_t);
     constexpr std::size_t fullKaratsubaMultiplicationBufferSizeForSameSizes(std::size_t);
     constexpr std::size_t fullKaratsubaMultiplicationBufferSizeForSmallLHS(std::size_t,std::size_t);
@@ -1299,15 +1338,6 @@ inline WMPUInt<kSize> WMPUInt<kSize>::operator*(const WMPUInt<kSize>& rhs) const
 }
 
 template<std::size_t kSize>
-inline WMPUInt<kSize>& WMPUInt<kSize>::operator*=(const WMPUInt<kSize>& rhs)
-{
-    /* The result of the multiplication has to be accumulated into a temporary buffer
-       anyway, ie. it cannot be done "in-place", so this is essentially free: */
-    *this = *this * rhs;
-    return *this;
-}
-
-template<std::size_t kSize>
 inline void WMPUInt<kSize>::multiply(std::uint64_t rhs, WMPUInt<kSize>& result) const
 {
     multiply(rhs, result.data());
@@ -1332,7 +1362,7 @@ inline WMPUInt<kSize> operator*(std::uint64_t lhs, const WMPUInt<kSize>& rhs)
 // Division
 //----------------------------------------------------------------------------
 template<std::size_t kSize>
-inline WMPUInt<kSize> WMPUInt<kSize>::operator/(std::uint64_t rhs) const
+inline WMPUInt<kSize> WMPUInt<kSize>::operator/(UInt_Divisor_t rhs) const
 {
     WMPUInt<kSize> result;
     divide(rhs, result);
@@ -1344,14 +1374,14 @@ inline WMPUInt<kSize> WMPUInt<kSize>::operator/(std::uint64_t rhs) const
 // Modulo
 //----------------------------------------------------------------------------
 template<std::size_t kSize>
-WMPUInt<kSize>& WMPUInt<kSize>::operator%=(std::uint64_t rhs)
+WMPUInt<kSize>& WMPUInt<kSize>::operator%=(UInt_Divisor_t rhs)
 {
     assign(modulo(rhs));
     return *this;
 }
 
 template<std::size_t kSize>
-WMPUInt<kSize> WMPUInt<kSize>::operator%(std::uint64_t rhs) const
+WMPUInt<kSize> WMPUInt<kSize>::operator%(UInt_Divisor_t rhs) const
 {
     return WMPUInt<kSize>(modulo(rhs));
 }

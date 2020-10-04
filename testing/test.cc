@@ -5,6 +5,37 @@
 #include <cstring>
 #include <cctype>
 
+static const char* const kTTypes[] =
+{
+    "WMPUInt::<1> operators",
+    "WMPUInt::assignFromHexStr()",
+    "WMPUInt::printAsHexStr()",
+    "WMPUInt::assignFromDecStr()",
+    "WMPUInt::printAsDecStr()",
+    "operator+()",
+    "WMPUInt::operator+=()",
+    "operator-()",
+    "WMPUInt::operator-=()",
+    "operator*()",
+    "WMPUInt::operator*=()",
+    "WMPUInt::fullMultiply()",
+    "WMPUInt::modulo()",
+    "WMPUInt::operator%()",
+    "WMPUInt::operator%=()",
+    "WMPUInt::neg()",
+    "WMPUInt::operator-()",
+    "WMPUInt::fullLongMultiplication()",
+    "WMPUInt::fullKaratsubaMultiplication()",
+    "WMPUInt::truncatedKaratsubaMultiplication()",
+    "WMPUInt::operator/()",
+    "WMPUInt::operator/=()",
+};
+
+std::ostream& operator<<(std::ostream& os, TType ttype)
+{
+    return os << "[INFO] Testing " << kTTypes[unsigned(ttype)] << ":\n";
+}
+
 namespace
 {
     std::mt19937_64 gRngEngine(0);
@@ -16,15 +47,15 @@ namespace
 static bool testSize1Operators()
 {
     WMPUInt<1> a(20), b({ 10 });
-    if(a + b != 30) return DPRINT("Error\n");
-    if(a + 30 != 50) return DPRINT("Error\n");
-    if(a - b != 10) return DPRINT("Error\n");
-    if(a - 5 != 15) return DPRINT("Error\n");
-    if(a * b != 200) return DPRINT("Error\n");
-    if(a * 5 != 100) return DPRINT("Error\n");
-    if((a & b) != 0) return DPRINT("Error\n");
-    if((a | b) != 30) return DPRINT("Error\n");
-    if((a ^ b) != 30) return DPRINT("Error\n");
+    if(a + b != 30) return DPRINT(TType::s1Op, "Error\n");
+    if(a + 30 != 50) return DPRINT(TType::s1Op, "Error\n");
+    if(a - b != 10) return DPRINT(TType::s1Op, "Error\n");
+    if(a - 5 != 15) return DPRINT(TType::s1Op, "Error\n");
+    if(a * b != 200) return DPRINT(TType::s1Op, "Error\n");
+    if(a * 5 != 100) return DPRINT(TType::s1Op, "Error\n");
+    if((a & b) != 0) return DPRINT(TType::s1Op, "Error\n");
+    if((a | b) != 30) return DPRINT(TType::s1Op, "Error\n");
+    if((a ^ b) != 30) return DPRINT(TType::s1Op, "Error\n");
     return true;
 }
 
@@ -40,10 +71,10 @@ static bool testAssignmentFromHexStr(const char* str, Values_t&&... values)
     const std::size_t strLength = std::strlen(str);
 
     const char* endPtr = v1.assignFromHexStr(str);
-    if(v1 != v2) return DPRINT("Error: Initializing with \"", str, "\" failed:\n",
+    if(v1 != v2) return DPRINT(TType::aHex, "Error: Initializing with \"", str, "\" failed:\n",
                                v1, "\n", v2, "\n");
     if(endPtr != str + strLength)
-        return DPRINT("Error: initializing with \"", str,
+        return DPRINT(TType::aHex, "Error: initializing with \"", str,
                       "\" did not return the correct pointer.\n");
 
     const std::size_t outputLength = v2.maxHexadecimalDigits();
@@ -64,7 +95,7 @@ static bool testAssignmentFromHexStr(const char* str, Values_t&&... values)
     if(!*ptr && ptr > outputStr) --ptr;
 
     if(std::strcmp(uppercaseStr, ptr) != 0)
-        return DPRINT("Error: printAsHexStr resulted in\n\"", ptr,
+        return DPRINT(TType::pHex, "Error: printAsHexStr resulted in\n\"", ptr,
                       "\"\ninstead of\n\"", uppercaseStr, "\"\n");
 
     return true;
@@ -75,11 +106,19 @@ static bool testAssignmentFromDecStr(const char* str, Values_t&&... values)
 {
     WMPUInt<sizeof...(Values_t)> v1, v2(values...);
     const char* endPtr = v1.assignFromDecStr(str);
-    if(v1 != v2) return DPRINT("Error: Initializing with \"", str, "\" failed:\n",
-                               v1, "\n", v2, "\n");
+    if(v1 != v2) return DPRINT(TType::aDec, "Error: Initializing with \"", str, "\" failed:\n     Got: ",
+                               v1, "\nExpected: ", v2, "\n");
     if(endPtr != str + std::strlen(str))
-        return DPRINT("Error: initializing with \"", str,
-                      "\" did not return the correct pointer.\n");
+        return DPRINT(TType::aDec, "Error: initializing with \"", str, "\" did not return the correct pointer.\n");
+
+    WMPUInt<sizeof...(Values_t) + 1> v3, v4(values...);
+    v3.data()[0] = 12345;
+    endPtr = v3.assignFromDecStr(str);
+    if(v3 != v4) return DPRINT(TType::aDec, "Error: Initializing with \"", str, "\" failed:\n     Got: ",
+                               v3, "\nExpected: ", v4, "\n");
+    if(endPtr != str + std::strlen(str))
+        return DPRINT("Error: initializing with \"", str, "\" did not return the correct pointer.\n");
+
     return true;
 }
 
@@ -104,12 +143,12 @@ static bool testAssignmentAndPrintingAsDecStr()
             const char* resultStr = value.printAsDecStr(outputStr);
 
             if(resultStr < outputStr)
-                return DPRINT("Error: WMPUInt<", kSize,
+                return DPRINT(TType::pDec, "Error: WMPUInt<", kSize,
                               ">::printAsDecStr() outputted too many characters for value\n",
                               value, "\n");
 
             if(std::strcmp(inputStr, resultStr) != 0)
-                return DPRINT("Error: WMPUInt<", kSize,
+                return DPRINT(TType::pDec, "Error: WMPUInt<", kSize,
                               ">::printAsDecStr() outputted\n\"", resultStr,
                               "\"\ninstead of\n\"", inputStr, "\"\n");
         }
@@ -154,6 +193,14 @@ static bool testAssignmentFromStr()
                                  UINT64_C(0x6), UINT64_C(0xB14E9F812F366C35))) DRET;
     if(!testAssignmentFromDecStr("123456789012345678901234567890",
                                  UINT64_C(0x18EE90FF6), UINT64_C(0xC373E0EE4E3F0AD2))) DRET;
+    if(!testAssignmentFromDecStr("340282366920938463463374607431768211456",
+                                 UINT64_C(1), UINT64_C(0), UINT64_C(0))) DRET;
+    if(!testAssignmentFromDecStr("6277101735386680763835789423207666416102355444464034512896",
+                                 UINT64_C(1), UINT64_C(0), UINT64_C(0), UINT64_C(0))) DRET;
+    if(!testAssignmentFromDecStr("115792089237316195423570985008687907853269984665640564039457584007913129639936",
+                                 UINT64_C(1), UINT64_C(0), UINT64_C(0), UINT64_C(0), UINT64_C(0))) DRET;
+    if(!testAssignmentFromDecStr("2135987035920910082395021706169552114602704522356652769947041607822219725780640550022962086936576",
+                                 UINT64_C(1), UINT64_C(0), UINT64_C(0), UINT64_C(0), UINT64_C(0), UINT64_C(0))) DRET;
     if(!testAssignmentFromDecStr
        ("1234567890123456789012345678901234567890123456789012345678901234567890",
         UINT64_C(0x0000002DCAEC4C2D), UINT64_C(0xF4268937664439BA),
@@ -178,8 +225,15 @@ static bool checkAddition(const Value_t1& value1, const Value_t2& value2,
 {
     const WMPUInt<kSize> result = value1 + value2;
     if(result != expectedResult)
-        return DPRINT("Error: ", value1, "+", value2,
+        return DPRINT(TType::plus, "Error: ", value1, "+", value2,
                       "\nresulted in ", result,
+                      "\n instead of ", expectedResult, "\n");
+
+    WMPUInt<kSize> result2(value1);
+    result2 += value2;
+    if(result2 != expectedResult)
+        return DPRINT(TType::aplus, "Error: ", value1, "+=", value2,
+                      "\nresulted in ", result2,
                       "\n instead of ", expectedResult, "\n");
     return true;
 }
@@ -190,8 +244,15 @@ static bool checkSubtraction(const Value_t1& value1, const Value_t2& value2,
 {
     const WMPUInt<kSize> result = value1 - value2;
     if(result != expectedResult)
-        return DPRINT("Error: ", value1, "-", value2,
+        return DPRINT(TType::minus, "Error: ", value1, "-", value2,
                       "\nresulted in ", result,
+                      "\n instead of ", expectedResult, "\n");
+
+    WMPUInt<kSize> result2(value1);
+    result2 -= value2;
+    if(result2 != expectedResult)
+        return DPRINT(TType::aminus, "Error: ", value1, "-=", value2,
+                      "\nresulted in ", result2,
                       "\n instead of ", expectedResult, "\n");
     return true;
 }
@@ -202,10 +263,16 @@ static bool checkMultiplication(const Value_t1& value1, const Value_t2& value2,
 {
     const WMPUInt<kSize> result = value1 * value2;
     if(result != expectedResult)
-        return DPRINT("Error: ", value1, "*", value2,
+        return DPRINT(TType::mult, "Error: ", value1, "*", value2,
                       "\nresulted in ", result,
                       "\n instead of ", expectedResult, "\n");
 
+    WMPUInt<kSize> result2(value1);
+    result2 *= value2;
+    if(result2 != expectedResult)
+        return DPRINT(TType::amult, "Error: ", value1, "*=", value2,
+                      "\nresulted in ", result2,
+                      "\n instead of ", expectedResult, "\n");
     return true;
 }
 
@@ -378,28 +445,44 @@ static bool testMultiplicationWithSize2(std::uint64_t v1_lsw, std::uint64_t v1_m
                                         std::uint64_t v2_lsw, std::uint64_t v2_msw)
 {
     WMPUInt<2> input1(v1_msw, v1_lsw), input2(v2_msw, v2_lsw);
-    WMPUInt<2> output = input1 * input2;
     const __uint128_t testValue1 = get_uint128(v1_lsw, v1_msw);
     const __uint128_t testValue2 = get_uint128(v2_lsw, v2_msw);
     const __uint128_t resultValue = testValue1 * testValue2;
     const std::uint64_t resultValue_lsw = resultValue;
     const std::uint64_t resultValue_msw = resultValue >> 64;
 
+    WMPUInt<2> output = input1;
+    output *= input2;
     if(resultValue_msw != output.data()[0] ||
        resultValue_lsw != output.data()[1])
-        return DPRINT("Error: ", input1, " * ", input2,
+        return DPRINT(TType::amult, "Error: ", input1, " *= ", input2,
                       "\ngave result ", output,
-                      "\ninstead of  [", resultValue_msw, ",", resultValue_lsw, "]\n");
+                      "\ninstead of  [", sethexw0(16), resultValue_msw, ",", resultValue_lsw, "]\n");
 
-    output = input1 * v2_lsw;
+    output = input1 * input2;
+    if(resultValue_msw != output.data()[0] ||
+       resultValue_lsw != output.data()[1])
+        return DPRINT(TType::mult, "Error: ", input1, " * ", input2,
+                      "\ngave result ", output,
+                      "\ninstead of  [", sethexw0(16), resultValue_msw, ",", resultValue_lsw, "]\n");
+
     const __uint128_t testValue3 = get_uint128(v2_lsw, 0);
     const __uint128_t resultValue2 = testValue1 * testValue3;
     const std::uint64_t resultValue2_lsw = resultValue2;
     const std::uint64_t resultValue2_msw = resultValue2 >> 64;
 
+    output = input1;
+    output *= v2_lsw;
     if(resultValue2_msw != output.data()[0] ||
        resultValue2_lsw != output.data()[1])
-        return DPRINT("Error: ", input1, " * ", v2_lsw,
+        return DPRINT(TType::amult, "Error: ", input1, " *= ", sethexw0(16), v2_lsw,
+                      "\ngave result ", output,
+                      "\ninstead of  [", resultValue_msw, ",", resultValue_lsw, "]\n");
+
+    output = input1 * v2_lsw;
+    if(resultValue2_msw != output.data()[0] ||
+       resultValue2_lsw != output.data()[1])
+        return DPRINT(TType::mult, "Error: ", input1, " * ", sethexw0(16), v2_lsw,
                       "\ngave result ", output,
                       "\ninstead of  [", resultValue_msw, ",", resultValue_lsw, "]\n");
 
@@ -423,9 +506,9 @@ static bool testMultiplicationWithSize2()
         const std::uint64_t resultValue_msw = resultValue >> 64;
 
         if(resultValue_msw != result.data()[0] || resultValue_lsw != result.data()[1])
-            return DPRINT("Error: ", input1, " * ", input2,
+            return DPRINT(TType::mult, "Error: ", input1, " * ", input2,
                           "\ngave result ", result,
-                          "\ninstead of  [", resultValue_msw, ",", resultValue_lsw, "]\n");
+                          "\ninstead of  [", sethexw0(16), resultValue_msw, ",", resultValue_lsw, "]\n");
     }
 
     return true;
@@ -459,7 +542,7 @@ static bool testMultiplicationWithPatterns(unsigned bitPattern1, unsigned bitPat
     }
 
     if(result != expectedResult)
-        return DPRINT("Error: ", value1, "*", value2,
+        return DPRINT(TType::mult, "Error: ", value1, "*", value2,
                       "\ngave result ", result,
                       "\ninstead of  ", expectedResult,
                       "\nBit pattern: ", pResult, "\n");
@@ -467,16 +550,25 @@ static bool testMultiplicationWithPatterns(unsigned bitPattern1, unsigned bitPat
     if(bitPattern2 == 1)
     {
         std::uint64_t rhs = UINT64_C(0xFFFFFFFFFFFFFFFF);
+
+        result = value1;
+        result *= rhs;
+        if(result != expectedResult)
+            return DPRINT(TType::amult, "Error: ", value1, "*=", sethexw0(16), rhs, " (", value2, ")",
+                          "\ngave result ", result,
+                          "\ninstead of  ", expectedResult,
+                          "\nBit pattern: ", pResult, "\n");
+
         result = value1 * rhs;
         if(result != expectedResult)
-            return DPRINT("Error: ", value1, "*", rhs, " (", value2, ")",
+            return DPRINT(TType::mult, "Error: ", value1, "*", sethexw0(16), rhs, " (", value2, ")",
                           "\ngave result ", result,
                           "\ninstead of  ", expectedResult,
                           "\nBit pattern: ", pResult, "\n");
 
         result = rhs * value1;
         if(result != expectedResult)
-            return DPRINT("Error: ", rhs, "*", value1,
+            return DPRINT(TType::amult, "Error: ", sethexw0(16), rhs, "*", value1,
                           "\ngave result ", result,
                           "\ninstead of  ", expectedResult,
                           "\nBit pattern: ", pResult, "\n");
@@ -564,7 +656,7 @@ static bool checkFullMultiplication
         std::uint64_t tempBuffer[kSize];
         value1.fullMultiply(value2, result3, tempBuffer);
         if(result3 != result2)
-            return DPRINT("Error: fullMultiply of values\n", value1, "\nand\n", value2,
+            return DPRINT(TType::fmult, "Error: fullMultiply of values\n", value1, "\nand\n", value2,
                           "\nresulted in ", result3,
                           "\ninstead of  ", result2, "\n");
     }
@@ -1042,20 +1134,20 @@ static bool testModuloForSize(std::mt19937_64& rng)
             const std::uint64_t result1 = product.modulo(divisor);
 
             if(result1 != expectedResult)
-                return DPRINT("Error: WMPUInt<", kSize+1, ">::modulo(", divisor, ") of\n",
+                return DPRINT(TType::mod, "Error: WMPUInt<", kSize+1, ">::modulo(", divisor, ") of\n",
                               product, "\nreturned ", result1, " instead of ",
                               expectedResult, "\n");
 
             result2 = product % divisor;
             if(result2 != expectedResult)
-                return DPRINT("Error: WMPUInt<", kSize+1, ">::operator%(", divisor, ") of\n",
+                return DPRINT(TType::modop, "Error: WMPUInt<", kSize+1, ">::operator%(", divisor, ") of\n",
                               product, "\nreturned ", result1, " instead of ",
                               expectedResult, "\n");
 
             result2 = product;
             result2 %= divisor;
             if(result2 != expectedResult)
-                return DPRINT("Error: WMPUInt<", kSize+1, ">::operator%=(", divisor, ") of\n",
+                return DPRINT(TType::amodop, "Error: WMPUInt<", kSize+1, ">::operator%=(", divisor, ") of\n",
                               product, "\nreturned ", result1, " instead of ",
                               expectedResult, "\n");
 
@@ -1073,6 +1165,10 @@ static bool testModulo()
     if(!testModuloForSize<3>(gRngEngine)) DRET;
     if(!testModuloForSize<4>(gRngEngine)) DRET;
     if(!testModuloForSize<5>(gRngEngine)) DRET;
+    if(!testModuloForSize<6>(gRngEngine)) DRET;
+    if(!testModuloForSize<7>(gRngEngine)) DRET;
+    if(!testModuloForSize<8>(gRngEngine)) DRET;
+    if(!testModuloForSize<9>(gRngEngine)) DRET;
     if(!testModuloForSize<10>(gRngEngine)) DRET;
     return true;
 }
@@ -1099,13 +1195,13 @@ static bool testNegationWithSize()
 
         result = positive;
         result.neg();
-        if(result != negative) return DPRINT("Error: ", result, " instead of ", negative, "\n");
+        if(result != negative) return DPRINT(TType::neg, "Error: ", result, " instead of ", negative, "\n");
         result.neg();
-        if(result != positive) return DPRINT("Error: ", result, " instead of ", positive, "\n");
+        if(result != positive) return DPRINT(TType::neg, "Error: ", result, " instead of ", positive, "\n");
         result = -positive;
-        if(result != negative) return DPRINT("Error: ", result, " instead of ", negative, "\n");
+        if(result != negative) return DPRINT(TType::negop, "Error: ", result, " instead of ", negative, "\n");
         result = -negative;
-        if(result != positive) return DPRINT("Error: ", result, " instead of ", positive, "\n");
+        if(result != positive) return DPRINT(TType::negop, "Error: ", result, " instead of ", positive, "\n");
     }
 
     return true;
@@ -1367,16 +1463,57 @@ bool testFullMultiplication();
 //============================================================================
 // main()
 //============================================================================
-int main()
+static void printHelp()
 {
-    if(!testSize1Operators()) DRETM;
-    if(!testAssignmentFromStr()) DRETM;
-    if(!testAddition()) DRETM;
-    if(!testMultiplication()) DRETM;
-    if(!testFullMultiplication()) DRETM;
-    if(!testModulo()) DRETM;
-    if(!testNegation()) DRETM;
-    if(!testShifting()) DRETM;
+    std::cout << "Usage: test [<options>]\n\n"
+        "<options>:\n"
+        "  -h\n"
+        "  --help : This text\n"
+        "  -t1    : Run test 1 (size 1 operators)\n"
+        "  -t2    : Run test 2 (assignment from string)\n"
+        "  -t3    : Run test 3 (addition and subtraction)\n"
+        "  -t4    : Run test 4 (multiplication)\n"
+        "  -t5    : Run test 5 (full multiplication)\n"
+        "  -t6    : Run test 6 (modulo)\n"
+        "  -t7    : Run test 7 (negation)\n"
+        "  -t8    : Run test 8 (bitshifting)\n";
+}
+
+int main(int argc, char** argv)
+{
+    bool runAllTests = true;
+    bool runTest[8] = { false };
+
+    for(int argInd = 1; argInd < argc; ++argInd)
+    {
+        if(std::strcmp(argv[argInd], "-h") == 0 || std::strcmp(argv[argInd], "--help") == 0)
+        {
+            printHelp();
+            return 0;
+        }
+        else if(argv[argInd][0] == '-' && argv[argInd][1] == 't' &&
+                argv[argInd][2] >= '1' && argv[argInd][2] <= '8' && argv[argInd][3] == 0)
+        {
+            runTest[argv[argInd][2] - '1'] = true;
+            runAllTests = false;
+        }
+        else
+        {
+            std::printf("Unknown parameter: %s\n", argv[argInd]);
+            return 1;
+        }
+    }
+
+    if(runAllTests) for(bool& b: runTest) b = true;
+
+    if(runTest[0] && !testSize1Operators()) DRETM;
+    if(runTest[1] && !testAssignmentFromStr()) DRETM;
+    if(runTest[2] && !testAddition()) DRETM;
+    if(runTest[3] && !testMultiplication()) DRETM;
+    if(runTest[4] && !testFullMultiplication()) DRETM;
+    if(runTest[5] && !testModulo()) DRETM;
+    if(runTest[6] && !testNegation()) DRETM;
+    if(runTest[7] && !testShifting()) DRETM;
     std::cout << "All tests OK.\n";
     //runBenchmarks();
 }

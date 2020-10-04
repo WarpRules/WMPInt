@@ -23,7 +23,7 @@ struct sethexw0 { unsigned w; sethexw0(unsigned val): w(val) {}; };
 
 inline std::ostream& operator<<(std::ostream& os, sethexw0 s)
 {
-    return os << std::hex << std::setw(s.w) << std::setfill('0');
+    return os << std::hex << std::setw(s.w) << std::setfill('0') << std::uppercase;
 }
 
 inline std::ostream& operator<<(std::ostream& os, __uint128_t value)
@@ -52,6 +52,14 @@ inline std::ostream& operator<<(std::ostream& os, __uint128_t value)
     }
 }
 
+enum class TType: unsigned char
+{
+    s1Op, aHex, pHex, aDec, pDec, plus, aplus, minus, aminus, mult, amult, fmult,
+    mod, modop, amodop, neg, negop, flmult, fkmult, tkmult, div, adiv
+};
+
+std::ostream& operator<<(std::ostream&, TType);
+
 inline bool dprint() { return false; }
 
 template<typename T, typename... Rest>
@@ -59,6 +67,13 @@ inline bool dprint(T&& param, Rest&&... rest)
 {
     std::cout << param;
     return dprint(std::forward<Rest>(rest)...);
+}
+
+template<typename... Rest>
+inline bool dprint(const char* str, TType ttype, Rest&&... rest)
+{
+    std::cout << ttype;
+    return dprint(str, std::forward<Rest>(rest)...);
 }
 
 #define STRINGIFY_HLP(x) #x
