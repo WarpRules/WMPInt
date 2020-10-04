@@ -106,6 +106,7 @@ code
   <li><a href="#license">License</a></li>
   <li><a href="#summary">Feature and usage summary</a></li>
   <li><a href="#compatibility">Compiler and platform compatibility</a></li>
+  <li><a href="#platforms">Platform configuration and differences</a></li>
   <li>Function reference</li>
   <ul>
     <li><a href="#initialization">Value initialization</a></li>
@@ -191,17 +192,45 @@ b = a*a + b*b + c*c;</pre>
 <!---------------------------------------------------------------------------->
 <h2 id="compatibility">Compiler and platform compatibility</h2>
 
-<p>These classes use x86-64 inline assembly for efficiency. They have been tested with the
+<p>These classes use x86-64 and ARM64 inline assembly for efficiency. They have been tested with the
   following platforms and compilers:</p>
 
 <ul>
   <li>Windows 10: mingw64 (gcc 7.1.0)</li>
   <li>Linux: gcc (7, 8 and 9), clang (5, 6 and 7)</li>
   <li>macOS High Sierra: Apple LLVM version 10.0.0 (clang-1000.11.45.5)</li>
+  <li>Raspberry Pi 4: gcc 10</li>
 </ul>
 
 <p>Note that the classes require C++17, so the <code>-std=c++17</code> compiler
   option or bigger may be necessary.</p>
+
+<h2 id="platforms">Platform configuration and differences</h2>
+
+<h3>Explicitly choosing the target CPU</h3>
+
+<p>When using gcc or clang, the library should compile automatically for either x86-64 or ARM64
+  without requiring any configuration. This is done by examining the <code>__x86_64</code> and
+  <code>__aarch64__</code> precompiler macros, which these compilers set for those target platforms.
+  Thus, usually, no configuration is required.</p>
+
+<p>However, if for some reason one of the two supported target architectures should be chosen explicitly,
+  this can be done by declaring the precompiler macro <code>WMPINT_CPU_TYPE</code> to expand as either
+  one of the names:</p>
+
+<pre>WMPINT_CPU_TYPE_X86_64
+WMPINT_CPU_TYPE_ARM64</pre>
+
+<p>For example:</p>
+
+<pre>g++ -std=c++17 -Wall -Ofast -march=native -DWMPINT_CPU_TYPE=WMPINT_CPU_TYPE_X86_64 test.cc WMPInt/WMPInt.cc</pre>
+
+<h3>Differences between the two targets</h3>
+
+<p>Currently the only difference between the two targets is in the parameter type of the division and modulo
+  operators and functions. While a parameter of type <code>std::uint64_t</code> is supported on x86-64, on
+  ARM64 only a parameter type of <code>std::uint32_t</code> is currently supported.</p>
+
 
 <!---------------------------------------------------------------------------->
 <h2 id="initialization">Value initialization</h2>
@@ -427,13 +456,23 @@ WMPUInt&lt;kSize&gt;&amp; <span class="funcname">operator*=</span> (const WMPUIn
 WMPUInt&lt;kSize&gt;  <span class="funcname">operator*</span>  (const WMPUInt&lt;kSize&gt;&amp;) const;
 WMPUInt&lt;kSize&gt;&amp; <span class="funcname">operator*=</span> (std::uint64_t);
 WMPUInt&lt;kSize&gt;  <span class="funcname">operator*</span>  (std::uint64_t) const;
-WMPUInt&lt;kSize&gt;&amp; <span class="funcname">operator/=</span> (std::uint64_t);
-WMPUInt&lt;kSize&gt;  <span class="funcname">operator/</span>  (std::uint64_t) const;
-WMPUInt&lt;kSize&gt;&amp; <span class="funcname">operator%=</span> (std::uint64_t);
-WMPUInt&lt;kSize&gt;  <span class="funcname">operator%</span>  (std::uint64_t) const;
 WMPUInt&lt;kSize&gt;  <span class="funcname">operator-</span>  () const;
 
 void neg ();</pre>
+
+<p>x86-64 specific:</p>
+
+<pre class="synopsis">WMPUInt&lt;kSize&gt;&amp; <span class="funcname">operator/=</span> (std::uint64_t);
+WMPUInt&lt;kSize&gt;  <span class="funcname">operator/</span>  (std::uint64_t) const;
+WMPUInt&lt;kSize&gt;&amp; <span class="funcname">operator%=</span> (std::uint64_t);
+WMPUInt&lt;kSize&gt;  <span class="funcname">operator%</span>  (std::uint64_t) const;</pre>
+
+<p>ARM64 specific:</p>
+
+<pre class="synopsis">WMPUInt&lt;kSize&gt;&amp; <span class="funcname">operator/=</span> (std::uint32_t);
+WMPUInt&lt;kSize&gt;  <span class="funcname">operator/</span>  (std::uint32_t) const;
+WMPUInt&lt;kSize&gt;&amp; <span class="funcname">operator%=</span> (std::uint32_t);
+WMPUInt&lt;kSize&gt;  <span class="funcname">operator%</span>  (std::uint32_t) const;</pre>
 
 <p><b>Non-member functions:</b></p>
 
@@ -589,9 +628,17 @@ value1.fullMultiply(value2, result, tempBuffer);</pre>
 
 <p><b>Member functions:</b></p>
 
+<p>x86-64 specific:</p>
+
 <pre class="synopsis">std::uint64_t <span class="funcname">divide</span> (std::uint64_t, WMPUInt&lt;kSize&gt;&amp; result) const;
 
 std::uint64_t <span class="funcname">modulo</span> (std::uint64_t rhs) const;</pre>
+
+<p>ARM64 specific:</p>
+
+<pre class="synopsis">std::uint32_t <span class="funcname">divide</span> (std::uint32_t, WMPUInt&lt;kSize&gt;&amp; result) const;
+
+std::uint32_t <span class="funcname">modulo</span> (std::uint32_t rhs) const;</pre>
 
 <p>If you need the quotient <em>and</em> remainder of a division operation, it's much more
   efficient to get them both at the same time with a single function call, rather than calling
@@ -625,6 +672,8 @@ std::uint64_t remainder = value.modulo(divisor);</pre>
   do <em>not</em> check if the divisor is zero. If it is, this will most probably cause a CPU
   exception to be thrown. Doing this check is up to the calling code, if needed, before calling
   these functions.</p>
+
+<p><b>Note:</b> Currently on the ARM64 only a <code>std::uint32_t</code> parameter is supported.</p>
 
 
 <!---------------------------------------------------------------------------->
