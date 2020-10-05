@@ -187,7 +187,6 @@ class WMPUInt
     void multiply(std::uint64_t, std::uint64_t* result) const;
     template<std::size_t kSize2>
     void fullMultiply_size2(const WMPUInt<kSize2>&, WMPUInt<kSize+kSize2>&) const;
-    void neg_size2();
     template<std::size_t> friend class WMPUInt;
 };
 
@@ -1384,38 +1383,5 @@ template<std::size_t kSize>
 WMPUInt<kSize> WMPUInt<kSize>::operator%(UInt_Divisor_t rhs) const
 {
     return WMPUInt<kSize>(modulo(rhs));
-}
-
-
-//----------------------------------------------------------------------------
-// Negation
-//----------------------------------------------------------------------------
-template<std::size_t kSize>
-inline WMPUInt<kSize> WMPUInt<kSize>::operator-() const
-{
-    /* It's unlikely for there to exist a faster way of doing this.
-       If there is, this may be changed to use that method. */
-    WMPUInt<kSize> result;
-    const std::uint64_t allBits = ~UINT64_C(0);
-    for(std::size_t i = 0; i < kSize; ++i)
-        result.mData[i] = mData[i] ^ allBits;
-    ++result;
-    return result;
-}
-
-template<std::size_t kSize>
-inline void WMPUInt<kSize>::neg()
-{
-    if constexpr(kSize == 2)
-        neg_size2();
-    else
-    {
-        /* It's unlikely for there to exist a faster way of doing this.
-           If there is, this may be changed to use that method. */
-        const std::uint64_t allBits = ~UINT64_C(0);
-        for(std::size_t i = 0; i < kSize; ++i)
-            mData[i] ^= allBits;
-        ++*this;
-    }
 }
 #endif

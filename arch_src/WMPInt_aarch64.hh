@@ -541,13 +541,158 @@ inline std::uint32_t WMPUInt<kSize>::modulo(std::uint32_t rhs) const
 // Negation
 //----------------------------------------------------------------------------
 template<std::size_t kSize>
-inline void WMPUInt<kSize>::neg_size2()
+inline WMPUInt<kSize> WMPUInt<kSize>::operator-() const
+{
+    WMPUInt<kSize> result;
+
+    if constexpr(kSize == 2)
+    {
+        asm ("negs %[res1], %[lhs1]\n\t"
+             "sbc %[res0], xzr, %[lhs0]"
+             : [res0]"=r"(result.mData[0]), [res1]"=&r"(result.mData[1])
+             : [lhs0]"r"(mData[0]), [lhs1]"r"(mData[1]) : "cc");
+    }
+    else if constexpr(kSize == 3)
+    {
+        asm ("negs %[res2], %[lhs2]\n\t"
+             "sbc %[res1], xzr, %[lhs1]\n\t"
+             "sbc %[res0], xzr, %[lhs0]"
+             : [res0]"=r"(result.mData[0]), [res1]"=&r"(result.mData[1]), [res2]"=&r"(result.mData[2])
+             : [lhs0]"r"(mData[0]), [lhs1]"r"(mData[1]), [lhs2]"r"(mData[2]) : "cc");
+    }
+    else if constexpr(kSize == 4)
+    {
+        asm ("negs %[res3], %[lhs3]\n\t"
+             "sbc %[res2], xzr, %[lhs2]\n\t"
+             "sbc %[res1], xzr, %[lhs1]\n\t"
+             "sbc %[res0], xzr, %[lhs0]"
+             : [res0]"=r"(result.mData[0]), [res1]"=&r"(result.mData[1]),
+               [res2]"=&r"(result.mData[2]), [res3]"=&r"(result.mData[3])
+             : [lhs0]"r"(mData[0]), [lhs1]"r"(mData[1]), [lhs2]"r"(mData[2]), [lhs3]"r"(mData[3]) : "cc");
+    }
+    else if constexpr(kSize % 2 == 1)
+    {
+        const std::uint64_t *data = mData + (kSize-3);
+        std::uint64_t *dest = result.mData + (kSize-1);
+        std::uint64_t lhs0 = mData[kSize-1], lhs1, counter = kSize/2;
+        asm ("negs %[lhs0], %[lhs0]\n\t"
+             "str %[lhs0], [%[dest]], #-16\n"
+             "Loop%=:\n\t"
+             "ldp %[lhs0], %[lhs1], [%[data]], #-16\n\t"
+             "sbcs %[lhs1], xzr, %[lhs1]\n\t"
+             "sbcs %[lhs0], xzr, %[lhs0]\n\t"
+             "stp %[lhs0], %[lhs1], [%[dest]], #-16\n\t"
+             "sub %[counter], %[counter], #1\n\t"
+             "cbnz %[counter], Loop%="
+             : "=m"(result.mData), [data]"+&r"(data), [dest]"+&r"(dest),
+               [lhs0]"+&r"(lhs0), [lhs1]"=&r"(lhs1), [counter]"+&r"(counter)
+             : "m"(mData) : "cc");
+    }
+    else
+    {
+        const std::uint64_t *data = mData + (kSize-4);
+        std::uint64_t *dest = result.mData + (kSize-2);
+        std::uint64_t lhs0 = mData[kSize-2], lhs1 = mData[kSize-1], counter = kSize/2 - 1;
+        asm ("negs %[lhs1], %[lhs1]\n\t"
+             "sbcs %[lhs0], xzr, %[lhs0]\n\t"
+             "stp %[lhs0], %[lhs1], [%[dest]], #-16\n\t"
+             "Loop%=:\n\t"
+             "ldp %[lhs0], %[lhs1], [%[data]], #-16\n\t"
+             "sbcs %[lhs1], xzr, %[lhs1]\n\t"
+             "sbcs %[lhs0], xzr, %[lhs0]\n\t"
+             "stp %[lhs0], %[lhs1], [%[dest]], #-16\n\t"
+             "sub %[counter], %[counter], #1\n\t"
+             "cbnz %[counter], Loop%="
+             : "=m"(result.mData), [data]"+&r"(data), [dest]"+&r"(dest),
+               [lhs0]"+&r"(lhs0), [lhs1]"+&r"(lhs1), [counter]"+&r"(counter)
+             : "m"(mData) : "cc");
+    }
+    return result;
+}
+
+template<std::size_t kSize>
+inline void WMPUInt<kSize>::neg()
 {
     if constexpr(kSize == 2)
     {
         asm ("negs %[lhs1], %[lhs1]\n\t"
              "sbc %[lhs0], xzr, %[lhs0]"
              : [lhs0]"+r"(mData[0]), [lhs1]"+r"(mData[1]) : : "cc");
+    }
+    else if constexpr(kSize == 3)
+    {
+        asm ("negs %[lhs2], %[lhs2]\n\t"
+             "sbcs %[lhs1], xzr, %[lhs1]\n\t"
+             "sbc %[lhs0], xzr, %[lhs0]"
+             : [lhs0]"+r"(mData[0]), [lhs1]"+r"(mData[1]), [lhs2]"+r"(mData[2]) : : "cc");
+    }
+    else if constexpr(kSize == 4)
+    {
+        asm ("negs %[lhs3], %[lhs3]\n\t"
+             "sbcs %[lhs2], xzr, %[lhs2]\n\t"
+             "sbcs %[lhs1], xzr, %[lhs1]\n\t"
+             "sbc %[lhs0], xzr, %[lhs0]"
+             : [lhs0]"+r"(mData[0]), [lhs1]"+r"(mData[1]), [lhs2]"+r"(mData[2]), [lhs3]"+r"(mData[3]) : : "cc");
+    }
+    else if constexpr(kSize == 5)
+    {
+        std::uint64_t *data = mData + 4, lhs0 = mData[4], lhs1;
+        asm ("negs %[lhs0], %[lhs0]\n\t"
+             "str %[lhs0], [%[data]], #-16\n\t"
+             "ldp %[lhs0], %[lhs1], [%[data]]\n\t"
+             "sbcs %[lhs1], xzr, %[lhs1]\n\t"
+             "sbcs %[lhs0], xzr, %[lhs0]\n\t"
+             "stp %[lhs0], %[lhs1], [%[data]], #-16\n\t"
+             "ldp %[lhs0], %[lhs1], [%[data]]\n\t"
+             "sbcs %[lhs1], xzr, %[lhs1]\n\t"
+             "sbc %[lhs0], xzr, %[lhs0]\n\t"
+             "stp %[lhs0], %[lhs1], [%[data]]"
+             : "+m"(mData), [data]"+&r"(data), [lhs0]"+&r"(lhs0), [lhs1]"=&r"(lhs1) : : "cc");
+    }
+    else if constexpr(kSize == 6)
+    {
+        std::uint64_t *data = mData + 4, lhs0 = mData[4], lhs1 = mData[5];
+        asm ("negs %[lhs1], %[lhs1]\n\t"
+             "sbcs %[lhs0], xzr, %[lhs0]\n\t"
+             "stp %[lhs0], %[lhs1], [%[data]], #-16\n\t"
+             "ldp %[lhs0], %[lhs1], [%[data]]\n\t"
+             "sbcs %[lhs1], xzr, %[lhs1]\n\t"
+             "sbcs %[lhs0], xzr, %[lhs0]\n\t"
+             "stp %[lhs0], %[lhs1], [%[data]], #-16\n\t"
+             "ldp %[lhs0], %[lhs1], [%[data]]\n\t"
+             "sbcs %[lhs1], xzr, %[lhs1]\n\t"
+             "sbc %[lhs0], xzr, %[lhs0]\n\t"
+             "stp %[lhs0], %[lhs1], [%[data]]"
+             : "+m"(mData), [data]"+&r"(data), [lhs0]"+&r"(lhs0), [lhs1]"+&r"(lhs1) : : "cc");
+    }
+    else if constexpr(kSize % 2 == 1)
+    {
+        std::uint64_t *data = mData + (kSize-1), lhs0 = mData[kSize-1], lhs1, counter = kSize/2;
+        asm ("negs %[lhs0], %[lhs0]\n\t"
+             "str %[lhs0], [%[data]], #-16\n"
+             "Loop%=:\n\t"
+             "ldp %[lhs0], %[lhs1], [%[data]]\n\t"
+             "sbcs %[lhs1], xzr, %[lhs1]\n\t"
+             "sbcs %[lhs0], xzr, %[lhs0]\n\t"
+             "stp %[lhs0], %[lhs1], [%[data]], #-16\n\t"
+             "sub %[counter], %[counter], #1\n\t"
+             "cbnz %[counter], Loop%="
+             : "+m"(mData), [data]"+&r"(data), [lhs0]"+&r"(lhs0), [lhs1]"=&r"(lhs1), [counter]"+&r"(counter) : : "cc");
+    }
+    else
+    {
+        std::uint64_t *data = mData + (kSize-2), lhs0 = mData[kSize-2], lhs1 = mData[kSize-1], counter = kSize/2 - 1;
+        asm ("negs %[lhs1], %[lhs1]\n\t"
+             "sbcs %[lhs0], xzr, %[lhs0]\n\t"
+             "stp %[lhs0], %[lhs1], [%[data]], #-16\n\t"
+             "Loop%=:\n\t"
+             "ldp %[lhs0], %[lhs1], [%[data]]\n\t"
+             "sbcs %[lhs1], xzr, %[lhs1]\n\t"
+             "sbcs %[lhs0], xzr, %[lhs0]\n\t"
+             "stp %[lhs0], %[lhs1], [%[data]], #-16\n\t"
+             "sub %[counter], %[counter], #1\n\t"
+             "cbnz %[counter], Loop%="
+             : "+m"(mData), [data]"+&r"(data), [lhs0]"+&r"(lhs0), [lhs1]"+&r"(lhs1), [counter]"+&r"(counter) : : "cc");
     }
 }
 

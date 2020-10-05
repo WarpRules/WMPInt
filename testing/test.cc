@@ -1178,15 +1178,24 @@ static bool testModulo()
 // Test negation
 //============================================================================
 template<std::size_t kSize>
+static bool negationError(TType ttype, const WMPUInt<kSize>& original,
+                          const WMPUInt<kSize>& result, const WMPUInt<kSize>& expected)
+{
+    return DPRINT(ttype, "Error: Negation of\n", original, "\nresulted in\n", result,
+                  "\ninstead of\n", expected, "\n");
+}
+
+template<std::size_t kSize>
 static bool testNegationWithSize()
 {
-    WMPUInt<kSize> positive, negative, result;
+    WMPUInt<kSize> positive(0), negative, result;
 
     for(std::size_t i = 0; i < kSize-1; ++i)
-    {
-        positive.data()[i] = 0;
         negative.data()[i] = -1;
-    }
+
+    result = positive;
+    result.neg();
+    if(result != positive) { negationError(TType::neg, positive, result, positive); DRET; }
 
     for(std::uint64_t value = 1; value < 100; ++value)
     {
@@ -1195,13 +1204,31 @@ static bool testNegationWithSize()
 
         result = positive;
         result.neg();
-        if(result != negative) return DPRINT(TType::neg, "Error: ", result, " instead of ", negative, "\n");
+        if(result != negative) { negationError(TType::neg, positive, result, negative); DRET; }
         result.neg();
-        if(result != positive) return DPRINT(TType::neg, "Error: ", result, " instead of ", positive, "\n");
+        if(result != positive) { negationError(TType::neg, negative, result, positive); DRET; }
         result = -positive;
-        if(result != negative) return DPRINT(TType::negop, "Error: ", result, " instead of ", negative, "\n");
+        if(result != negative) { negationError(TType::negop, positive, result, negative); DRET; }
         result = -negative;
-        if(result != positive) return DPRINT(TType::negop, "Error: ", result, " instead of ", positive, "\n");
+        if(result != positive) { negationError(TType::negop, negative, result, positive); DRET; }
+    }
+
+    const std::uint64_t allBits = -1;
+    for(unsigned i = 0; i < 1000000; ++i)
+    {
+        for(std::size_t i = 0; i < kSize; ++i) positive.data()[i] = gRngEngine();
+        for(std::size_t i = 0; i < kSize; ++i) negative.data()[i] = positive.data()[i] ^ allBits;
+        ++negative;
+
+        result = positive;
+        result.neg();
+        if(result != negative) { negationError(TType::neg, positive, result, negative); DRET; }
+        result.neg();
+        if(result != positive) { negationError(TType::neg, negative, result, positive); DRET; }
+        result = -positive;
+        if(result != negative) { negationError(TType::negop, positive, result, negative); DRET; }
+        result = -negative;
+        if(result != positive) { negationError(TType::negop, negative, result, positive); DRET; }
     }
 
     return true;
@@ -1217,7 +1244,11 @@ static bool testNegation()
     if(!testNegationWithSize<6>()) DRET;
     if(!testNegationWithSize<7>()) DRET;
     if(!testNegationWithSize<8>()) DRET;
-    if(!testNegationWithSize<100>()) DRET;
+    if(!testNegationWithSize<9>()) DRET;
+    if(!testNegationWithSize<10>()) DRET;
+    if(!testNegationWithSize<11>()) DRET;
+    if(!testNegationWithSize<12>()) DRET;
+    if(!testNegationWithSize<50>()) DRET;
     return true;
 }
 

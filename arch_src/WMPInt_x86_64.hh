@@ -616,7 +616,20 @@ inline std::uint64_t WMPUInt<kSize>::modulo(std::uint64_t rhs) const
 // Negation
 //----------------------------------------------------------------------------
 template<std::size_t kSize>
-inline void WMPUInt<kSize>::neg_size2()
+inline WMPUInt<kSize> WMPUInt<kSize>::operator-() const
+{
+    /* It's unlikely for there to exist a faster way of doing this.
+       If there is, this may be changed to use that method. */
+    WMPUInt<kSize> result;
+    const std::uint64_t allBits = ~UINT64_C(0);
+    for(std::size_t i = 0; i < kSize; ++i)
+        result.mData[i] = mData[i] ^ allBits;
+    ++result;
+    return result;
+}
+
+template<std::size_t kSize>
+inline void WMPUInt<kSize>::neg()
 {
     if constexpr(kSize == 2)
     {
@@ -625,6 +638,15 @@ inline void WMPUInt<kSize>::neg_size2()
              "adcq $0, (%[lhs])\n\t"
              "negq (%[lhs])"
              : "+m"(mData) : [lhs]"r"(mData) : "cc");
+    }
+    else
+    {
+        /* It's unlikely for there to exist a faster way of doing this.
+           If there is, this may be changed to use that method. */
+        const std::uint64_t allBits = ~UINT64_C(0);
+        for(std::size_t i = 0; i < kSize; ++i)
+            mData[i] ^= allBits;
+        ++*this;
     }
 }
 
