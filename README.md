@@ -1,5 +1,5 @@
 # WMPInt
-WMPInt v0.7.0 is a small library for multi-precision integer ("bignum") calculations for x86-64
+WMPInt v0.7.1 is a small library for multi-precision integer ("bignum") calculations for x86-64
 and ARM64 platforms, in C++17 and inline asm, consisting of one header and one source file.
 
 The `WMPInt` (not yet implemented) and `WMPUInt` classes are template classes with a compile-time

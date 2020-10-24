@@ -55,7 +55,7 @@ inline std::ostream& operator<<(std::ostream& os, __uint128_t value)
 enum class TType: unsigned char
 {
     s1Op, aHex, pHex, aDec, pDec, plus, aplus, minus, aminus, mult, amult, fmult,
-    mod, modop, amodop, neg, negop, flmult, fkmult, tkmult, div, adiv
+    mod, modop, amodop, neg, negop, flmult, fkmult, tkmult, div, adiv, comp
 };
 
 std::ostream& operator<<(std::ostream&, TType);
@@ -81,3 +81,35 @@ inline bool dprint(const char* str, TType ttype, Rest&&... rest)
 #define DPRINT(...) dprint("[" __FILE__ ":" STRINGIFY(__LINE__) "]: ", __VA_ARGS__)
 #define DRET return DPRINT("Called from here.\n")
 #define DRETM return !DPRINT("Called from here.\n")
+
+constexpr const char* const kTTypes[] =
+{
+    "WMPUInt::<1> operators",
+    "WMPUInt::assignFromHexStr()",
+    "WMPUInt::printAsHexStr()",
+    "WMPUInt::assignFromDecStr()",
+    "WMPUInt::printAsDecStr()",
+    "operator+()",
+    "WMPUInt::operator+=()",
+    "operator-()",
+    "WMPUInt::operator-=()",
+    "operator*()",
+    "WMPUInt::operator*=()",
+    "WMPUInt::fullMultiply()",
+    "WMPUInt::modulo()",
+    "WMPUInt::operator%()",
+    "WMPUInt::operator%=()",
+    "WMPUInt::neg()",
+    "WMPUInt::operator-()",
+    "WMPUInt::fullLongMultiplication()",
+    "WMPUInt::fullKaratsubaMultiplication()",
+    "WMPUInt::truncatedKaratsubaMultiplication()",
+    "WMPUInt::operator/()",
+    "WMPUInt::operator/=()",
+    "comparison operators",
+};
+
+inline std::ostream& operator<<(std::ostream& os, TType ttype)
+{
+    return os << "[INFO] Testing " << kTTypes[unsigned(ttype)] << ":\n";
+}

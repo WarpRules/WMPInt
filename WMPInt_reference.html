@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-  <title>WMPInt 0.7.0 reference documentation</title>
+  <title>WMPInt 0.7.1 reference documentation</title>
   <style type="text/css"> <!--
 html
 {
@@ -96,7 +96,7 @@ code
 </head>
 
 <body>
-<h1>WMPInt 0.7.0 reference documentation</h1>
+<h1>WMPInt 0.7.1 reference documentation</h1>
 
 <p>Consult the main <a href="WMPInt.html">WMPInt.html</a> file for an introduction and practical examples.</p>
 
@@ -383,18 +383,27 @@ const std::uint64_t*         <span class="funcname">data</span>() const;</pre>
 
 <p><b>Member functions:</b></p>
 
-<pre class="synopsis">bool <span class="funcname">operator==</span> (const WMPUInt&lt;kSize&gt;&amp;) const;
+<pre class="synopsis">template&lt;std::size_t kSize2&gt;
+bool <span class="funcname">operator==</span> (const WMPUInt&lt;kSize2&gt;&amp;) const;
+template&lt;std::size_t kSize2&gt;
+bool <span class="funcname">operator!=</span> (const WMPUInt&lt;kSize2&gt;&amp;) const;
+template&lt;std::size_t kSize2&gt;
+bool <span class="funcname">operator&lt;</span>  (const WMPUInt&lt;kSize2&gt;&amp;) const;
+template&lt;std::size_t kSize2&gt;
+bool <span class="funcname">operator&lt;=</span> (const WMPUInt&lt;kSize2&gt;&amp;) const;
+template&lt;std::size_t kSize2&gt;
+bool <span class="funcname">operator&gt;</span>  (const WMPUInt&lt;kSize2&gt;&amp;) const;
+template&lt;std::size_t kSize2&gt;
+bool <span class="funcname">operator&gt;=</span> (const WMPUInt&lt;kSize2&gt;&amp;) const;
+
 bool <span class="funcname">operator==</span> (std::uint64_t) const;
-bool <span class="funcname">operator!=</span> (const WMPUInt&lt;kSize&gt;&amp;) const;
 bool <span class="funcname">operator!=</span> (std::uint64_t) const;
-bool <span class="funcname">operator&lt;</span>  (const WMPUInt&lt;kSize&gt;&amp;) const;
 bool <span class="funcname">operator&lt;</span>  (std::uint64_t) const;
-bool <span class="funcname">operator&lt;=</span> (const WMPUInt&lt;kSize&gt;&amp;) const;
 bool <span class="funcname">operator&lt;=</span> (std::uint64_t) const;
-bool <span class="funcname">operator&gt;</span>  (const WMPUInt&lt;kSize&gt;&amp;) const;
 bool <span class="funcname">operator&gt;</span>  (std::uint64_t) const;
-bool <span class="funcname">operator&gt;=</span> (const WMPUInt&lt;kSize&gt;&amp;) const;
 bool <span class="funcname">operator&gt;=</span> (std::uint64_t) const;</pre>
+
+<p>Comparisons are supported between <code>WMPUInt</code> objects of any size.</p>
 
 <p><b>Non-member functions:</b></p>
 

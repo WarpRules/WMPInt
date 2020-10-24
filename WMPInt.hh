@@ -1,9 +1,9 @@
 #ifndef WMPINT_INCLUDE_GUARD
 #define WMPINT_INCLUDE_GUARD
 
-#define WMPINT_VERSION 0x000700
-#define WMPINT_VERSION_STRING "0.7.0"
-#define WMPINT_COPYRIGHT_STRING "WMPInt v" WMPINT_VERSION_STRING " (C)2019 Juha Nieminen"
+#define WMPINT_VERSION 0x000701
+#define WMPINT_VERSION_STRING "0.7.1"
+#define WMPINT_COPYRIGHT_STRING "WMPInt v" WMPINT_VERSION_STRING " (C)2019-2020 Juha Nieminen"
 
 #define WMPINT_CPU_TYPE_X86_64 1
 #define WMPINT_CPU_TYPE_ARM64 2
@@ -80,17 +80,17 @@ class WMPUInt
     //------------------------------------------------------------------------
     // Comparison operators
     //------------------------------------------------------------------------
-    bool operator==(const WMPUInt<kSize>&) const;
+    template<std::size_t kSize2> bool operator==(const WMPUInt<kSize2>&) const;
     bool operator==(std::uint64_t) const;
-    bool operator!=(const WMPUInt<kSize>&) const;
+    template<std::size_t kSize2> bool operator!=(const WMPUInt<kSize2>&) const;
     bool operator!=(std::uint64_t) const;
-    bool operator<(const WMPUInt<kSize>&) const;
+    template<std::size_t kSize2> bool operator<(const WMPUInt<kSize2>&) const;
     bool operator<(std::uint64_t) const;
-    bool operator<=(const WMPUInt<kSize>&) const;
+    template<std::size_t kSize2> bool operator<=(const WMPUInt<kSize2>&) const;
     bool operator<=(std::uint64_t) const;
-    bool operator>(const WMPUInt<kSize>&) const;
+    template<std::size_t kSize2> bool operator>(const WMPUInt<kSize2>&) const;
     bool operator>(std::uint64_t) const;
-    bool operator>=(const WMPUInt<kSize>&) const;
+    template<std::size_t kSize2> bool operator>=(const WMPUInt<kSize2>&) const;
     bool operator>=(std::uint64_t) const;
 
     //------------------------------------------------------------------------
@@ -214,6 +214,12 @@ class WMPUInt<1>
     bool operator<=(const WMPUInt<1>& rhs) const { return mValue <= rhs.mValue; }
     bool operator>(const WMPUInt<1>& rhs) const { return mValue > rhs.mValue; }
     bool operator>=(const WMPUInt<1>& rhs) const { return mValue >= rhs.mValue; }
+    template<std::size_t kSize2> bool operator==(const WMPUInt<kSize2>& rhs) const { return rhs == mValue; }
+    template<std::size_t kSize2> bool operator!=(const WMPUInt<kSize2>& rhs) const { return rhs != mValue; }
+    template<std::size_t kSize2> bool operator<(const WMPUInt<kSize2>& rhs) const { return rhs > mValue; }
+    template<std::size_t kSize2> bool operator<=(const WMPUInt<kSize2>& rhs) const { return rhs >= mValue; }
+    template<std::size_t kSize2> bool operator>(const WMPUInt<kSize2>& rhs) const { return rhs < mValue; }
+    template<std::size_t kSize2> bool operator>=(const WMPUInt<kSize2>& rhs) const { return rhs <= mValue; }
     WMPUInt<1>& operator&=(const WMPUInt<1>& rhs) { mValue &= rhs.mValue; return *this; }
     WMPUInt<1> operator&(const WMPUInt<1>& rhs) const { return WMPUInt<1>(mValue & rhs.mValue); }
     WMPUInt<1>& operator|=(const WMPUInt<1>& rhs) { mValue |= rhs.mValue; return *this; }
@@ -699,18 +705,29 @@ inline char* WMPUInt<kSize>::printAsDecStrAndReset(char* destination)
 // Comparison operators
 //----------------------------------------------------------------------------
 template<std::size_t kSize>
-inline bool WMPUInt<kSize>::operator==(const WMPUInt<kSize>& rhs) const
+template<std::size_t kSize2>
+inline bool WMPUInt<kSize>::operator==(const WMPUInt<kSize2>& rhs) const
 {
-    for(std::size_t i = 0; i < kSize; ++i)
-        if(mData[i] != rhs.mData[i]) return false;
-    return true;
+    if constexpr(kSize2 == 1) return *this == *rhs.data();
+    else if constexpr(kSize > kSize2) return rhs == *this;
+    else if constexpr(kSize == kSize2)
+    {
+        for(std::size_t i = 0; i < kSize; ++i) if(mData[i] != rhs.mData[i]) return false;
+        return true;
+    }
+    else
+    {
+        for(std::size_t i = 0; i < kSize2 - kSize; ++i) if(rhs.mData[i]) return false;
+        const std::uint64_t* rhsData = rhs.mData + (kSize2 - kSize);
+        for(std::size_t i = 0; i < kSize; ++i) if(mData[i] != rhsData[i]) return false;
+        return true;
+    }
 }
 
 template<std::size_t kSize>
 inline bool WMPUInt<kSize>::operator==(std::uint64_t rhs) const
 {
-    for(std::size_t i = 0; i < kSize - 1; ++i)
-        if(mData[i]) return false;
+    for(std::size_t i = 0; i < kSize - 1; ++i) if(mData[i]) return false;
     return mData[kSize - 1] == rhs;
 }
 
@@ -721,7 +738,8 @@ inline bool operator==(std::uint64_t lhs, const WMPUInt<kSize>& rhs)
 }
 
 template<std::size_t kSize>
-inline bool WMPUInt<kSize>::operator!=(const WMPUInt<kSize>& rhs) const
+template<std::size_t kSize2>
+inline bool WMPUInt<kSize>::operator!=(const WMPUInt<kSize2>& rhs) const
 {
     return !(*this == rhs);
 }
@@ -729,8 +747,7 @@ inline bool WMPUInt<kSize>::operator!=(const WMPUInt<kSize>& rhs) const
 template<std::size_t kSize>
 inline bool WMPUInt<kSize>::operator!=(std::uint64_t rhs) const
 {
-    for(std::size_t i = 0; i < kSize - 1; ++i)
-        if(mData[i]) return true;
+    for(std::size_t i = 0; i < kSize - 1; ++i) if(mData[i]) return true;
     return mData[kSize - 1] != rhs;
 }
 
@@ -741,21 +758,28 @@ inline bool operator!=(std::uint64_t lhs, const WMPUInt<kSize>& rhs)
 }
 
 template<std::size_t kSize>
-inline bool WMPUInt<kSize>::operator<(const WMPUInt<kSize>& rhs) const
+template<std::size_t kSize2>
+inline bool WMPUInt<kSize>::operator<(const WMPUInt<kSize2>& rhs) const
 {
-    for(std::size_t i = 0; i < kSize; ++i)
+    if constexpr(kSize2 == 1) return *this < *rhs.data();
+    else if constexpr(kSize > kSize2) return !(rhs <= *this);
+    else
     {
-        if(mData[i] < rhs.mData[i]) return true;
-        if(mData[i] > rhs.mData[i]) return false;
+        if constexpr(kSize < kSize2) for(std::size_t i = 0; i < kSize2 - kSize; ++i) if(rhs.mData[i]) return true;
+        const std::uint64_t* rhsData = rhs.mData + (kSize2 - kSize);
+        for(std::size_t i = 0; i < kSize; ++i)
+        {
+            if(mData[i] < rhsData[i]) return true;
+            if(mData[i] > rhsData[i]) return false;
+        }
+        return false;
     }
-    return false;
 }
 
 template<std::size_t kSize>
 inline bool WMPUInt<kSize>::operator<(std::uint64_t rhs) const
 {
-    for(std::size_t i = 0; i < kSize - 1; ++i)
-        if(mData[i]) return false;
+    for(std::size_t i = 0; i < kSize - 1; ++i) if(mData[i]) return false;
     return mData[kSize - 1] < rhs;
 }
 
@@ -766,21 +790,28 @@ inline bool operator<(std::uint64_t lhs, const WMPUInt<kSize>& rhs)
 }
 
 template<std::size_t kSize>
-inline bool WMPUInt<kSize>::operator<=(const WMPUInt<kSize>& rhs) const
+template<std::size_t kSize2>
+inline bool WMPUInt<kSize>::operator<=(const WMPUInt<kSize2>& rhs) const
 {
-    for(std::size_t i = 0; i < kSize; ++i)
+    if constexpr(kSize2 == 1) return *this <= *rhs.data();
+    else if constexpr(kSize > kSize2) return !(rhs < *this);
+    else
     {
-        if(mData[i] < rhs.mData[i]) return true;
-        if(mData[i] > rhs.mData[i]) return false;
+        if constexpr(kSize < kSize2) for(std::size_t i = 0; i < kSize2 - kSize; ++i) if(rhs.mData[i]) return true;
+        const std::uint64_t* rhsData = rhs.mData + (kSize2 - kSize);
+        for(std::size_t i = 0; i < kSize; ++i)
+        {
+            if(mData[i] < rhsData[i]) return true;
+            if(mData[i] > rhsData[i]) return false;
+        }
+        return true;
     }
-    return true;
 }
 
 template<std::size_t kSize>
 inline bool WMPUInt<kSize>::operator<=(std::uint64_t rhs) const
 {
-    for(std::size_t i = 0; i < kSize - 1; ++i)
-        if(mData[i]) return false;
+    for(std::size_t i = 0; i < kSize - 1; ++i) if(mData[i]) return false;
     return mData[kSize - 1] <= rhs;
 }
 
@@ -791,21 +822,16 @@ inline bool operator<=(std::uint64_t lhs, const WMPUInt<kSize>& rhs)
 }
 
 template<std::size_t kSize>
-inline bool WMPUInt<kSize>::operator>(const WMPUInt<kSize>& rhs) const
+template<std::size_t kSize2>
+inline bool WMPUInt<kSize>::operator>(const WMPUInt<kSize2>& rhs) const
 {
-    for(std::size_t i = 0; i < kSize; ++i)
-    {
-        if(mData[i] < rhs.mData[i]) return false;
-        if(mData[i] > rhs.mData[i]) return true;
-    }
-    return false;
+    return rhs < *this;
 }
 
 template<std::size_t kSize>
 inline bool WMPUInt<kSize>::operator>(std::uint64_t rhs) const
 {
-    for(std::size_t i = 0; i < kSize - 1; ++i)
-        if(mData[i]) return true;
+    for(std::size_t i = 0; i < kSize - 1; ++i) if(mData[i]) return true;
     return mData[kSize - 1] > rhs;
 }
 
@@ -816,21 +842,16 @@ inline bool operator>(std::uint64_t lhs, const WMPUInt<kSize>& rhs)
 }
 
 template<std::size_t kSize>
-inline bool WMPUInt<kSize>::operator>=(const WMPUInt<kSize>& rhs) const
+template<std::size_t kSize2>
+inline bool WMPUInt<kSize>::operator>=(const WMPUInt<kSize2>& rhs) const
 {
-    for(std::size_t i = 0; i < kSize; ++i)
-    {
-        if(mData[i] < rhs.mData[i]) return false;
-        if(mData[i] > rhs.mData[i]) return true;
-    }
-    return true;
+    return rhs <= *this;
 }
 
 template<std::size_t kSize>
 inline bool WMPUInt<kSize>::operator>=(std::uint64_t rhs) const
 {
-    for(std::size_t i = 0; i < kSize - 1; ++i)
-        if(mData[i]) return true;
+    for(std::size_t i = 0; i < kSize - 1; ++i) if(mData[i]) return true;
     return mData[kSize - 1] >= rhs;
 }
 
