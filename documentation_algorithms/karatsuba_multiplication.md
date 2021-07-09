@@ -2,7 +2,7 @@
 
 The traditional long multiplication algorithm performs `n*m` individual (one-word) multiplications
 and additions, where `n` and `m` are the sizes (in words) of the multiplicand and the multiplier
-(n<sup>2</sup> if they are of the same size).
+(n<sup>2</sup> multiplications if they are of the same size).
 
 However, this is not the fastest possible algorithm for larger input values. The so-called
 _Karatsuba algorithm_ (first discovered by Anatoly Karatsuba in 1960) is the first, and perhaps
